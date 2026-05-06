@@ -66,8 +66,12 @@ class Turno(SQLModel, table=True):
 
     @property
     def bolas_metidas(self) -> list[int]:
-        return json.loads(self.bolas_metidas_json)
+        try:
+            result = json.loads(self.bolas_metidas_json or "[]")
+            return result if isinstance(result, list) else []
+        except (json.JSONDecodeError, TypeError):
+            return []
 
     @bolas_metidas.setter
     def bolas_metidas(self, value: list[int]):
-        self.bolas_metidas_json = json.dumps(value)
+        self.bolas_metidas_json = json.dumps(value if value is not None else [])

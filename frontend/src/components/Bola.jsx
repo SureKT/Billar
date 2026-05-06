@@ -17,7 +17,7 @@ const COLORES = {
   15: '#8b1a1a', // marrón rayada
 }
 
-export function BolaPool({ numero, size = 40, seleccionada = false, dimmed = false, onClick }) {
+export function BolaPool({ numero, size = 40, seleccionada = false, dimmed = false, metida = false, onClick }) {
   const esRayada = numero >= 9 && numero <= 15
   const esBlanca = numero === 0
   const esOcho = numero === 8
@@ -34,10 +34,12 @@ export function BolaPool({ numero, size = 40, seleccionada = false, dimmed = fal
         border: 'none',
         padding: 0,
         cursor: onClick ? 'pointer' : 'default',
-        opacity: dimmed ? 0.25 : 1,
+        opacity: dimmed ? 0.45 : 1,
         transform: seleccionada ? 'scale(1.2)' : 'scale(1)',
         transition: 'transform .15s, opacity .15s, filter .15s',
-        filter: seleccionada ? 'drop-shadow(0 0 6px rgba(255,255,255,.8))' : 'none',
+        filter: seleccionada
+          ? 'drop-shadow(0 0 6px rgba(255,255,255,.8))'
+          : metida ? 'grayscale(1) opacity(0.5)' : 'none',
         flexShrink: 0,
       }}
     >
@@ -69,7 +71,7 @@ export function BolaPool({ numero, size = 40, seleccionada = false, dimmed = fal
 
         {/* Círculo interior */}
         {!esBlanca && (
-          <circle cx={r} cy={r} r={r * 0.50} fill={esRayada ? '#f2f2f2' : 'white'} />
+          <circle cx={r} cy={r} r={r * 0.5} fill={esRayada ? '#f2f2f2' : 'white'} />
         )}
 
         {/* Número */}

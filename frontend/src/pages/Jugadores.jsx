@@ -27,7 +27,7 @@ function StatBox({ label, value, color, sub }) {
       <div style={{ fontSize: '20px', fontWeight: 800, color: color ?? 'var(--text)', lineHeight: 1 }}>{value}</div>
       {sub != null && (
         <div style={{ fontSize: '11px', color: '#93c5fd', fontWeight: 600, marginTop: 1 }}>
-          {sub} BM
+          {sub} x turno
         </div>
       )}
       <div style={{ fontSize: '10px', color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '.04em', marginTop: 2 }}>{label}</div>
@@ -41,6 +41,19 @@ function JugadorCard({ j, onReload }) {
   const [recursivoOk, setRecursivoOk] = useState(false)
   const [cargando, setCargando] = useState(false)
   const [error, setError] = useState(null)
+  const [mostrarH2H, setMostrarH2H] = useState(false)
+  const [h2h, setH2H] = useState(null)
+  const [cargandoH2H, setCargandoH2H] = useState(false)
+
+  async function toggleH2H() {
+    if (mostrarH2H) { setMostrarH2H(false); return }
+    setMostrarH2H(true)
+    if (h2h !== null) return
+    setCargandoH2H(true)
+    try { setH2H(await api.getH2H(j.id)) }
+    catch { setH2H([]) }
+    finally { setCargandoH2H(false) }
+  }
 
   const tienePartidas = j.partidas_jugadas > 0
 
@@ -179,27 +192,93 @@ function JugadorCard({ j, onReload }) {
               label="Bolas"
               value={j.bolas_metidas}
               color="#93c5fd"
-              sub={j.turnos_con_bola_en_mano > 0 ? j.bolas_metidas_con_bola_en_mano : null}
+              sub={j.partidas_jugadas > 0 ? j.bolas_por_turno : null}
             />
           </div>
-          {j.turnos_con_bola_en_mano > 0 && (
-            <p style={{ fontSize: '11px', color: 'var(--text-dim)', marginTop: 6 }}>
-              {j.turnos_con_bola_en_mano} turno{j.turnos_con_bola_en_mano > 1 ? 's' : ''} con bola en mano
-              · {j.bolas_metidas_con_bola_en_mano} bola{j.bolas_metidas_con_bola_en_mano !== 1 ? 's' : ''} metida{j.bolas_metidas_con_bola_en_mano !== 1 ? 's' : ''} desde bola en mano
-            </p>
-          )}
           <WinRate ganadas={j.partidas_ganadas} jugadas={j.partidas_jugadas} />
+          {j.racha_actual !== 0 && j.partidas_jugadas > 0 && (
+            <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span style={{
+                fontSize: '12px', fontWeight: 700,
+                color: j.racha_actual > 0 ? '#86efac' : '#fca5a5',
+              }}>
+                {j.racha_actual > 0 ? '▲' : '▼'} {Math.abs(j.racha_actual)} seguida{Math.abs(j.racha_actual) !== 1 ? 's' : ''}
+              </span>
+              <span style={{ fontSize: '11px', color: 'var(--text-dim)' }}>
+                {j.racha_actual > 0 ? 'ganando' : 'perdiendo'}
+              </span>
+            </div>
+          )}
+
+          {/* Cara a cara */}
+          {j.partidas_jugadas > 0 && (
+            <div style={{ marginTop: 10 }}>
+              <button
+                onClick={toggleH2H}
+                style={{
+                  background: 'none', border: 'none', padding: 0, cursor: 'pointer',
+                  fontSize: '11px', color: 'var(--text-dim)', fontWeight: 600,
+                  textTransform: 'uppercase', letterSpacing: '.04em',
+                  display: 'flex', alignItems: 'center', gap: 4,
+                }}
+              >
+                {mostrarH2H ? '▲' : '▼'} Cara a cara
+              </button>
+
+              {mostrarH2H && (
+                <div style={{ marginTop: 8 }}>
+                  {cargandoH2H && <div style={{ fontSize: '12px', color: 'var(--text-dim)' }}>Cargando…</div>}
+                  {h2h?.length === 0 && !cargandoH2H && (
+                    <p style={{ fontSize: '12px', color: 'var(--text-dim)' }}>Sin enfrentamientos registrados</p>
+                  )}
+                  {h2h?.map(r => {
+                    const pct = r.jugadas === 0 ? 0 : Math.round((r.ganadas / r.jugadas) * 100)
+                    const ganando = pct >= 50
+                    return (
+                      <div key={r.jugador_id} style={{
+                        display: 'flex', alignItems: 'center', gap: 8,
+                        padding: '6px 0', borderBottom: '1px solid var(--border)',
+                      }}>
+                        <span style={{ flex: 1, fontSize: '13px', fontWeight: 600 }}>{r.nombre}</span>
+                        <span style={{ fontSize: '12px', color: ganando ? '#86efac' : '#fca5a5', fontWeight: 700, minWidth: 28, textAlign: 'right' }}>
+                          {r.ganadas}–{r.jugadas - r.ganadas}
+                        </span>
+                        <div style={{ width: 44, height: 5, borderRadius: 3, background: 'var(--border)', overflow: 'hidden', flexShrink: 0 }}>
+                          <div style={{ height: '100%', width: `${pct}%`, background: ganando ? '#16a34a' : 'var(--team2)', borderRadius: 3 }} />
+                        </div>
+                        <span style={{ fontSize: '11px', fontWeight: 700, color: ganando ? '#86efac' : '#fca5a5', minWidth: 30, textAlign: 'right' }}>
+                          {pct}%
+                        </span>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+          )}
         </>
       )}
     </div>
   )
 }
 
+const ORDENES = [
+  { key: 'nombre',   label: 'Nombre',   fn: (a, b) => a.nombre.localeCompare(b.nombre) },
+  { key: 'winrate',  label: 'Win rate',  fn: (a, b) => {
+    const ra = a.partidas_jugadas ? a.partidas_ganadas / a.partidas_jugadas : 0
+    const rb = b.partidas_jugadas ? b.partidas_ganadas / b.partidas_jugadas : 0
+    return rb - ra || b.partidas_jugadas - a.partidas_jugadas
+  }},
+  { key: 'bolas',    label: 'Bolas',    fn: (a, b) => b.bolas_metidas - a.bolas_metidas },
+  { key: 'jugadas',  label: 'Partidas', fn: (a, b) => b.partidas_jugadas - a.partidas_jugadas },
+]
+
 export default function Jugadores() {
   const { data: stats, loading, reload } = useApi(api.getAllStats)
   const [nombre, setNombre] = useState('')
   const [error, setError] = useState(null)
   const [guardando, setGuardando] = useState(false)
+  const [orden, setOrden] = useState('nombre')
 
   async function crear(e) {
     e.preventDefault()
@@ -217,18 +296,49 @@ export default function Jugadores() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--gap)' }}>
       <h2 style={{ fontSize: '20px' }}>Jugadores</h2>
 
-      <form onSubmit={crear} style={{ display: 'flex', gap: 8 }}>
-        <input type="text" placeholder="Nombre del jugador" value={nombre}
-          onChange={e => setNombre(e.target.value)} style={{ flex: 1 }} autoComplete="off" />
-        <button type="submit" className="btn btn-primary" disabled={guardando || !nombre.trim()}>
-          Añadir
-        </button>
-      </form>
-      {error && <p style={{ color: 'var(--accent)', fontSize: '14px' }}>{error}</p>}
+      {/* Formulario de nuevo jugador */}
+      <div className="card" style={{ padding: '12px 16px' }}>
+        <p style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.05em', color: 'var(--text-dim)', marginBottom: 8 }}>
+          ＋ Nuevo jugador
+        </p>
+        <form onSubmit={crear} style={{ display: 'flex', gap: 8 }}>
+          <input type="text" placeholder="Nombre" value={nombre}
+            onChange={e => setNombre(e.target.value)} style={{ flex: 1 }} autoComplete="off" />
+          <button type="submit" className="btn btn-primary" disabled={guardando || !nombre.trim()}>
+            Añadir
+          </button>
+        </form>
+        {error && <p style={{ color: 'var(--accent)', fontSize: '13px', marginTop: 8 }}>{error}</p>}
+      </div>
 
       {loading && <div className="spinner" />}
       {stats?.length === 0 && <p className="empty">Sin jugadores. ¡Añade el primero!</p>}
-      {stats?.map(j => <JugadorCard key={j.id} j={j} onReload={reload} />)}
+
+      {/* Ordenar */}
+      {stats?.length > 1 && (
+        <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+          <span style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.05em', color: 'var(--text-dim)' }}>
+            Ordenar:
+          </span>
+          {ORDENES.map(o => (
+            <button
+              key={o.key}
+              onClick={() => setOrden(o.key)}
+              style={{
+                padding: '5px 12px', borderRadius: 20, fontSize: '12px', fontWeight: 600,
+                border: orden === o.key ? '1.5px solid var(--accent)' : '1px solid var(--border)',
+                background: orden === o.key ? 'var(--accent-bg)' : 'var(--surface2)',
+                color: orden === o.key ? 'var(--accent)' : 'var(--text-dim)',
+                transition: 'all .15s',
+              }}
+            >{o.label}</button>
+          ))}
+        </div>
+      )}
+
+      {[...(stats ?? [])].sort(ORDENES.find(o => o.key === orden)?.fn).map(j => (
+        <JugadorCard key={j.id} j={j} onReload={reload} />
+      ))}
     </div>
   )
 }

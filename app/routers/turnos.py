@@ -85,9 +85,17 @@ def registrar_turno(
     ).first()
     numero = (ultimo.numero + 1) if ultimo else 1
 
-    # Auto-detección: blanca dentro (solo si la 8 NO entra también — ese caso es "8+blanca = pierde")
+    # Auto-detección: blanca dentro
+    # Se omite cuando:
+    #  - Bola 8 entra también en Bola 8 (ese caso lo maneja la lógica de partida)
+    #  - Bola 9 entra también en Bola 9 (respot de la 9 — lo maneja _evaluar_bola9)
     falta_id = datos.falta_id
-    if 0 in datos.bolas_metidas and 8 not in datos.bolas_metidas:
+    es_bola9 = partida.modalidad == "bola9"
+    omitir_scratch = (
+        (not es_bola9 and 8 in datos.bolas_metidas) or   # bola8: 8+blanca
+        (es_bola9 and 9 in datos.bolas_metidas)           # bola9: 9+blanca → respot
+    )
+    if 0 in datos.bolas_metidas and not omitir_scratch:
         falta_blanca = session.exec(
             select(Falta).where(Falta.nombre == "Blanca dentro (Scratch)")
         ).first()

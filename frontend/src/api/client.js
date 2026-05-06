@@ -22,6 +22,7 @@ export const api = {
   eliminarJugador: (id) => request('DELETE', `/jugadores/${id}`),
   getStatsJugador: (id) => request('GET', `/jugadores/${id}/stats`),
   getAllStats: () => request('GET', '/jugadores/stats'),
+  getH2H: (id) => request('GET', `/jugadores/${id}/h2h`),
 
   // Partidas
   getPartidas: () => request('GET', '/partidas'),

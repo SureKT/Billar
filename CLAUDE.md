@@ -83,7 +83,7 @@ billar/
     - Con grupos: solo cuentan bolas del propio grupo
     - La bola 8 y la blanca (0) nunca cuentan para repetir
   - Si no mete bolas propias: repite = False
-- Siguiente jugador = lista circular de partida.jugadores
+- Siguiente jugador = siguiente en el equipo RIVAL (rota circular dentro del rival según quién jugó por última vez en ese equipo)
 
 ### Tres faltas consecutivas
 - Se cuenta a nivel de **equipo**, no de jugador individual

@@ -1,15 +1,19 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  --bg: #161626;
-  --surface: #1a1a2e;
-  --surface2: #16213e;
-  --border: #2a2a4a;
-  --accent: #e94560;
+  --bg: #0e0e14;
+  --surface: #18181f;
+  --surface2: #1e1e28;
+  --border: #30303e;
+  --accent: #06b6d4;
+  --accent-bg: rgba(6,182,212,.13);
   --text: #e0e0e0;
-  --text-dim: #7070a0;
+  --text-dim: #6b7280;
   --radius: 12px;
   --gap: 12px;
+  /* Colores de equipo */
+  --team1: #3b82f6;
+  --team2: #e94560;
 }
 
 html, body {
@@ -72,7 +76,7 @@ button {
   border-color: var(--accent);
   color: #fff;
 }
-.btn-primary:hover:not(:disabled) { background: #d63350; }
+.btn-primary:hover:not(:disabled) { background: #0891b2; }
 .btn-danger { background: #7f1d1d; border-color: #991b1b; color: #fca5a5; }
 .btn-ghost { background: transparent; border-color: var(--border); color: var(--text-dim); }
 .btn:disabled { opacity: .35; cursor: not-allowed; }

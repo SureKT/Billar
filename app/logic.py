@@ -50,17 +50,24 @@ def _tres_faltas_consecutivas(session: Session, partida_id: int, equipo: int) ->
     return all(t.falta_id is not None for t in turnos[:3])
 
 
-def _siguiente_jugador_circular(session: Session, partida: Partida, jugador_actual_id: int) -> int:
-    todos = session.exec(
-        select(PartidaJugador)
-        .where(PartidaJugador.partida_id == partida.id)
-        .order_by(PartidaJugador.orden)
-    ).all()
-    ids = [r.jugador_id for r in todos]
-    if not ids:
+def _siguiente_jugador(session: Session, partida: Partida, jugador_actual_id: int) -> int:
+    """El turno pasa al equipo rival. Dentro del rival, rota al siguiente tras el último que jugó."""
+    equipo_actual = _equipo_de_jugador(session, partida.id, jugador_actual_id)
+    equipo_rival = 2 if equipo_actual == 1 else 1
+    rival_ids = _jugadores_equipo(session, partida.id, equipo_rival)
+    if not rival_ids:
         return jugador_actual_id
-    idx = ids.index(jugador_actual_id) if jugador_actual_id in ids else 0
-    return ids[(idx + 1) % len(ids)]
+    if len(rival_ids) == 1:
+        return rival_ids[0]
+    ultimo_rival = session.exec(
+        select(Turno)
+        .where(Turno.partida_id == partida.id, Turno.jugador_id.in_(rival_ids))
+        .order_by(Turno.numero.desc())
+    ).first()
+    if ultimo_rival is None:
+        return rival_ids[0]
+    idx = rival_ids.index(ultimo_rival.jugador_id) if ultimo_rival.jugador_id in rival_ids else -1
+    return rival_ids[(idx + 1) % len(rival_ids)]
 
 
 def _get_falta_id(session: Session, nombre: str) -> int | None:
@@ -79,11 +86,46 @@ def _mete_bola_propia(bolas: list[int], grupo: str | None) -> bool:
     return False
 
 
-def evaluar_turno(session: Session, partida: Partida, turno: Turno) -> dict:
+def _evaluar_falta_comun(session: Session, partida: Partida, turno: Turno, resultado: dict) -> dict | None:
     """
-    Aplica la lógica de negocio tras registrar un turno.
-    Modifica `partida` y `turno` en memoria. No hace commit — el caller lo hace.
+    Procesa una falta: penalización, siguiente jugador, tres faltas consecutivas.
+    Retorna el dict resultado si la falta fue procesada (el caller debe hacer return),
+    o None si no había falta.
     """
+    if turno.falta_id is None:
+        return None
+
+    falta = session.get(Falta, turno.falta_id)
+    penalizacion = falta.penalizacion if falta else "ninguna"
+    equipo_actual = _equipo_de_jugador(session, partida.id, turno.jugador_id)
+    equipo_rival = 2 if equipo_actual == 1 else 1
+
+    if penalizacion == "pierde_partida":
+        partida.estado = "finalizada"
+        partida.ganador_equipo = equipo_rival
+        resultado["partida_finalizada"] = True
+        resultado["ganador_equipo"] = equipo_rival
+        return resultado
+
+    turno.repite = False
+    sig = _siguiente_jugador(session, partida, turno.jugador_id)
+    resultado["siguiente_jugador_id"] = sig
+    resultado["bola_en_mano_siguiente"] = (penalizacion == "bola_en_mano")
+    partida.siguiente_jugador_id = sig
+    partida.bola_en_mano = resultado["bola_en_mano_siguiente"]
+
+    if _tres_faltas_consecutivas(session, partida.id, equipo_actual):
+        turno.falta_id = _get_falta_id(session, "Tres faltas consecutivas") or turno.falta_id
+        partida.estado = "finalizada"
+        partida.ganador_equipo = equipo_rival
+        resultado["partida_finalizada"] = True
+        resultado["ganador_equipo"] = equipo_rival
+
+    return resultado
+
+
+def _evaluar_bola8(session: Session, partida: Partida, turno: Turno) -> dict:
+    """Lógica de Bola 8."""
     resultado = {
         "grupos_asignados": False,
         "partida_finalizada": False,
@@ -97,50 +139,37 @@ def evaluar_turno(session: Session, partida: Partida, turno: Turno) -> dict:
     equipo_actual = _equipo_de_jugador(session, partida.id, turno.jugador_id)
     equipo_rival = 2 if equipo_actual == 1 else 1
 
-    # --- Falta (incluye Blanca dentro auto-asignada antes de llamar a esta función) ---
-    if turno.falta_id is not None:
-        falta = session.get(Falta, turno.falta_id)
-        penalizacion = falta.penalizacion if falta else "ninguna"
-
-        if penalizacion == "pierde_partida":
+    # --- Break con bola 8: se evalúa ANTES de las faltas ---
+    # Así "8 + scratch en el saque" resulta en derrota y no en simple bola-en-mano.
+    if turno.numero == 1 and 8 in bolas:
+        if 0 in bolas:
+            # Golden Break + Scratch → pierde la partida
             partida.estado = "finalizada"
             partida.ganador_equipo = equipo_rival
             resultado["partida_finalizada"] = True
             resultado["ganador_equipo"] = equipo_rival
-            return resultado
-
-        turno.repite = False
-        sig = _siguiente_jugador_circular(session, partida, turno.jugador_id)
-        resultado["siguiente_jugador_id"] = sig
-        resultado["bola_en_mano_siguiente"] = (penalizacion == "bola_en_mano")
-        partida.siguiente_jugador_id = sig
-        partida.bola_en_mano = resultado["bola_en_mano_siguiente"]
-
-        # Tres faltas consecutivas
-        if _tres_faltas_consecutivas(session, partida.id, equipo_actual):
-            turno.falta_id = _get_falta_id(session, "Tres faltas consecutivas") or turno.falta_id
+        else:
+            # Golden Break limpio → gana la partida
             partida.estado = "finalizada"
-            partida.ganador_equipo = equipo_rival
+            partida.ganador_equipo = equipo_actual
             resultado["partida_finalizada"] = True
-            resultado["ganador_equipo"] = equipo_rival
-
+            resultado["ganador_equipo"] = equipo_actual
         return resultado
+
+    # --- Falta (turnos normales y saques sin la 8) ---
+    res_falta = _evaluar_falta_comun(session, partida, turno, resultado)
+    if res_falta is not None:
+        return res_falta
 
     # --- Sin falta ---
 
-    # Break (turno numero == 1)
+    # Break sin la 8
     if turno.numero == 1:
-        if 8 in bolas:
-            partida.estado = "finalizada"
-            partida.ganador_equipo = equipo_rival
-            resultado["partida_finalizada"] = True
-            resultado["ganador_equipo"] = equipo_rival
-            return resultado
         turno.repite = _mete_bola_propia(bolas, None)
         resultado["repite"] = turno.repite
         resultado["siguiente_jugador_id"] = (
             turno.jugador_id if turno.repite
-            else _siguiente_jugador_circular(session, partida, turno.jugador_id)
+            else _siguiente_jugador(session, partida, turno.jugador_id)
         )
         partida.siguiente_jugador_id = resultado["siguiente_jugador_id"]
         partida.bola_en_mano = False
@@ -195,14 +224,93 @@ def evaluar_turno(session: Session, partida: Partida, turno: Turno) -> dict:
         else (partida.equipo1_grupo if equipo_actual == 1 else partida.equipo2_grupo)
     )
 
-    # Repite solo si metió bola de su propio grupo
     turno.repite = _mete_bola_propia(bolas, grupo_propio)
     resultado["repite"] = turno.repite
     resultado["siguiente_jugador_id"] = (
         turno.jugador_id if turno.repite
-        else _siguiente_jugador_circular(session, partida, turno.jugador_id)
+        else _siguiente_jugador(session, partida, turno.jugador_id)
     )
     partida.siguiente_jugador_id = resultado["siguiente_jugador_id"]
     partida.bola_en_mano = False
 
     return resultado
+
+
+def _evaluar_bola9(session: Session, partida: Partida, turno: Turno) -> dict:
+    """
+    Lógica de Bola 9.
+    - Ganar: meter la 9 sin la blanca (incluso en el break = Golden Break).
+    - 9 + blanca simultáneas: respot de la 9, bola en mano para el rival.
+    - Repetir turno: meter cualquier bola 1-8 sin falta.
+    - Falta → bola en mano para el rival (no hay grupos).
+    - Tres faltas consecutivas del equipo → pierde.
+    """
+    resultado = {
+        "grupos_asignados": False,
+        "partida_finalizada": False,
+        "ganador_equipo": None,
+        "repite": False,
+        "siguiente_jugador_id": None,
+        "bola_en_mano_siguiente": False,
+    }
+
+    bolas = turno.bolas_metidas
+    equipo_actual = _equipo_de_jugador(session, partida.id, turno.jugador_id)
+    equipo_rival = 2 if equipo_actual == 1 else 1
+
+    # --- Caso especial: 9 + blanca simultáneas → respot de la 9, bola en mano ---
+    # Se evalúa ANTES que la falta genérica para poder quitar la 9 de bolas_metidas.
+    if 9 in bolas and 0 in bolas:
+        turno.bolas_metidas = [b for b in bolas if b != 9]   # la 9 vuelve a la mesa
+        turno.falta_id = turno.falta_id or _get_falta_id(session, "Blanca dentro (Scratch)")
+        turno.repite = False
+        sig = _siguiente_jugador(session, partida, turno.jugador_id)
+        resultado["siguiente_jugador_id"] = sig
+        resultado["bola_en_mano_siguiente"] = True
+        partida.siguiente_jugador_id = sig
+        partida.bola_en_mano = True
+        # Tres faltas consecutivas
+        if _tres_faltas_consecutivas(session, partida.id, equipo_actual):
+            turno.falta_id = _get_falta_id(session, "Tres faltas consecutivas") or turno.falta_id
+            partida.estado = "finalizada"
+            partida.ganador_equipo = equipo_rival
+            resultado["partida_finalizada"] = True
+            resultado["ganador_equipo"] = equipo_rival
+        return resultado
+
+    # --- Falta (sin caso 9+blanca) ---
+    res_falta = _evaluar_falta_comun(session, partida, turno, resultado)
+    if res_falta is not None:
+        return res_falta
+
+    # --- Sin falta ---
+
+    # Meter la 9 = victoria (Golden Break incluido: turno numero == 1 también)
+    if 9 in bolas:
+        partida.estado = "finalizada"
+        partida.ganador_equipo = equipo_actual
+        resultado["partida_finalizada"] = True
+        resultado["ganador_equipo"] = equipo_actual
+        return resultado
+
+    # Repite si metió alguna bola 1-8
+    turno.repite = any(1 <= b <= 8 for b in bolas)
+    resultado["repite"] = turno.repite
+    resultado["siguiente_jugador_id"] = (
+        turno.jugador_id if turno.repite
+        else _siguiente_jugador(session, partida, turno.jugador_id)
+    )
+    partida.siguiente_jugador_id = resultado["siguiente_jugador_id"]
+    partida.bola_en_mano = False
+
+    return resultado
+
+
+def evaluar_turno(session: Session, partida: Partida, turno: Turno) -> dict:
+    """
+    Aplica la lógica de negocio tras registrar un turno.
+    Modifica `partida` y `turno` en memoria. No hace commit — el caller lo hace.
+    """
+    if partida.modalidad == "bola9":
+        return _evaluar_bola9(session, partida, turno)
+    return _evaluar_bola8(session, partida, turno)

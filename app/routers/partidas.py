@@ -18,6 +18,7 @@ class PartidaCreate(BaseModel):
     modalidad: str = "bola8"
     equipo1: EquipoInput
     equipo2: EquipoInput
+    primer_jugador_id: Optional[int] = None
 
 
 class PartidaResumen(BaseModel):
@@ -88,8 +89,11 @@ def crear_partida(datos: PartidaCreate, session: Session = Depends(get_session))
         session.add(PartidaJugador(partida_id=partida.id, jugador_id=jid, equipo=2, orden=orden))
         orden += 1
 
-    # El primer jugador del equipo 1 empieza
-    partida.siguiente_jugador_id = datos.equipo1.jugador_ids[0]
+    # Primer jugador: el indicado o por defecto el primero del equipo 1
+    if datos.primer_jugador_id and datos.primer_jugador_id in todos_ids:
+        partida.siguiente_jugador_id = datos.primer_jugador_id
+    else:
+        partida.siguiente_jugador_id = datos.equipo1.jugador_ids[0]
     session.commit()
     session.refresh(partida)
     return _build_resumen(session, partida)
@@ -125,10 +129,20 @@ def estado_partida(partida_id: int, session: Session = Depends(get_session)):
             return sorted(rayadas - metidas)
         return []
 
+    # Bola 9: bolas 1-9 pendientes y objetivo (la más baja en mesa)
+    bolas_pendientes_9: list[int] = []
+    bola_objetivo: int | None = None
+    if partida.modalidad == "bola9":
+        bolas_9 = set(range(1, 10))
+        bolas_pendientes_9 = sorted(bolas_9 - metidas)
+        bola_objetivo = bolas_pendientes_9[0] if bolas_pendientes_9 else None
+
     return {
         "bolas_metidas": sorted(metidas),
         "equipo1_pendientes": pendientes_grupo(partida.equipo1_grupo),
         "equipo2_pendientes": pendientes_grupo(partida.equipo2_grupo),
+        "bolas_pendientes_9": bolas_pendientes_9,
+        "bola_objetivo": bola_objetivo,
     }
 
 

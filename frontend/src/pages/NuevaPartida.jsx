@@ -1,9 +1,131 @@
-import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useState, useRef } from 'react'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { useApi } from '../hooks/useApi'
 import { api } from '../api/client'
 
-function SelectorEquipo({ titulo, jugadores, seleccionados, onChange, excluidos }) {
+function ListaOrdenable({ ids, jugadores, onChange }) {
+  const [dragging, setDragging] = useState(null)
+  const [insertBefore, setInsertBefore] = useState(null)
+  const containerRef = useRef(null)
+
+  function getInsertIdx(clientY) {
+    const container = containerRef.current
+    if (!container) return null
+    const items = Array.from(container.querySelectorAll('[data-drag-item]'))
+    for (let i = 0; i < items.length; i++) {
+      const rect = items[i].getBoundingClientRect()
+      if (clientY < rect.top + rect.height / 2) return i
+    }
+    return items.length
+  }
+
+  function startDrag(e, fromIdx) {
+    e.preventDefault()
+    setDragging(fromIdx)
+    const target = { idx: null }
+
+    function onMove(me) {
+      const t = getInsertIdx(me.clientY)
+      target.idx = t
+      setInsertBefore(t)
+    }
+
+    function onUp() {
+      const to = target.idx
+      if (to !== null && to !== fromIdx && to !== fromIdx + 1) {
+        const arr = [...ids]
+        const [item] = arr.splice(fromIdx, 1)
+        arr.splice(to > fromIdx ? to - 1 : to, 0, item)
+        onChange(arr)
+      }
+      setDragging(null)
+      setInsertBefore(null)
+      window.removeEventListener('pointermove', onMove)
+      window.removeEventListener('pointerup', onUp)
+    }
+
+    window.addEventListener('pointermove', onMove)
+    window.addEventListener('pointerup', onUp)
+  }
+
+  function remove(id) {
+    onChange(ids.filter(x => x !== id))
+  }
+
+  if (ids.length < 2) return null
+
+  return (
+    <div style={{ marginTop: 12 }}>
+      <p style={{ fontSize: '11px', color: 'var(--text-dim)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '.04em' }}>
+        Orden de juego · arrastra ⠿ para cambiar
+      </p>
+      <div ref={containerRef}>
+        {ids.map((id, i) => {
+          const j = jugadores.find(j => j.id === id)
+          const isDragging = dragging === i
+          const showLine = insertBefore === i || (insertBefore === ids.length && i === ids.length - 1 && insertBefore !== i)
+
+          return (
+            <div key={id}>
+              {insertBefore === i && dragging !== i && dragging !== i - 1 && (
+                <div style={{ height: 2, background: 'var(--accent)', borderRadius: 1, margin: '2px 6px' }} />
+              )}
+              <div
+                data-drag-item={i}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 8,
+                  padding: '7px 10px', borderRadius: 8, marginBottom: 4,
+                  background: isDragging ? 'var(--accent-bg)' : 'var(--surface2)',
+                  border: `1px solid ${isDragging ? 'var(--accent)' : 'var(--border)'}`,
+                  opacity: isDragging ? 0.45 : 1,
+                  transition: 'opacity .1s, background .1s',
+                  userSelect: 'none',
+                }}
+              >
+                <span
+                  onPointerDown={e => startDrag(e, i)}
+                  style={{
+                    color: 'var(--text-dim)', fontSize: '17px', lineHeight: 1,
+                    cursor: 'grab', touchAction: 'none', padding: '2px 3px', flexShrink: 0,
+                  }}
+                >⠿</span>
+                <span style={{
+                  width: 20, height: 20, borderRadius: '50%',
+                  background: 'rgba(6,182,212, 0.13)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: '11px', fontWeight: 800, color: 'var(--accent)', flexShrink: 0,
+                }}>{i + 1}</span>
+                <span style={{ flex: 1, fontSize: '14px', fontWeight: 600 }}>
+                  {j?.nombre}
+                </span>
+                <button
+                  onClick={() => remove(id)}
+                  style={{
+                    background: 'none', border: 'none', color: 'var(--text-dim)',
+                    fontSize: '20px', cursor: 'pointer', lineHeight: 1, padding: '0 2px', flexShrink: 0,
+                  }}
+                >×</button>
+              </div>
+            </div>
+          )
+        })}
+        {insertBefore === ids.length && dragging !== ids.length - 1 && (
+          <div style={{ height: 2, background: 'var(--accent)', borderRadius: 1, margin: '2px 6px' }} />
+        )}
+      </div>
+    </div>
+  )
+}
+
+// teamNum: 1 = azul, 2 = rojo
+const TEAM_COLOR = {
+  1: { main: 'var(--team1)', bg: 'rgba(59,130,246,.14)', border: 'var(--team1)' },
+  2: { main: 'var(--team2)', bg: 'rgba(233,69,96,.14)',  border: 'var(--team2)'  },
+}
+
+function SelectorEquipo({ titulo, teamNum, jugadores, seleccionados, onChange, excluidos }) {
+  const tc = TEAM_COLOR[teamNum]
+
   function toggle(id) {
     onChange(
       seleccionados.includes(id)
@@ -13,11 +135,11 @@ function SelectorEquipo({ titulo, jugadores, seleccionados, onChange, excluidos 
   }
 
   return (
-    <div className="card">
+    <div className="card" style={{ borderLeft: `3px solid ${tc.main}` }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-        <p style={{ fontWeight: 700, fontSize: '15px' }}>{titulo}</p>
+        <p style={{ fontWeight: 700, fontSize: '15px', color: tc.main }}>{titulo}</p>
         <span style={{ fontSize: '13px', color: seleccionados.length > 0 ? '#86efac' : 'var(--text-dim)' }}>
-          {seleccionados.length === 0 ? 'Sin jugadores' : `${seleccionados.length} seleccionado${seleccionados.length > 1 ? 's' : ''}`}
+          {seleccionados.length === 0 ? 'Sin jugadores' : `${seleccionados.length} jugador${seleccionados.length > 1 ? 'es' : ''}`}
         </span>
       </div>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
@@ -30,13 +152,10 @@ function SelectorEquipo({ titulo, jugadores, seleccionados, onChange, excluidos 
               disabled={excluido}
               onClick={() => toggle(j.id)}
               style={{
-                padding: '9px 16px',
-                borderRadius: 8,
-                fontSize: '14px',
-                fontWeight: 600,
-                border: sel ? '1.5px solid var(--accent)' : '1px solid var(--border)',
-                background: sel ? 'rgba(233,69,96,.15)' : excluido ? 'transparent' : 'var(--surface2)',
-                color: sel ? 'var(--accent)' : excluido ? 'var(--text-dim)' : 'var(--text)',
+                padding: '8px 14px', borderRadius: 8, fontSize: '14px', fontWeight: 600,
+                border: sel ? `1.5px solid ${tc.main}` : '1px solid var(--border)',
+                background: sel ? tc.bg : excluido ? 'transparent' : 'var(--surface2)',
+                color: sel ? tc.main : excluido ? 'var(--text-dim)' : 'var(--text)',
                 opacity: excluido ? .35 : 1,
                 cursor: excluido ? 'not-allowed' : 'pointer',
                 transition: 'background .15s, border-color .15s, color .15s',
@@ -47,18 +166,37 @@ function SelectorEquipo({ titulo, jugadores, seleccionados, onChange, excluidos 
           )
         })}
       </div>
+      <ListaOrdenable ids={seleccionados} jugadores={jugadores} onChange={onChange} />
     </div>
   )
 }
 
 export default function NuevaPartida() {
   const { data: jugadores, loading } = useApi(api.getJugadores)
-  const [modalidad, setModalidad] = useState('bola8')
-  const [equipo1, setEquipo1] = useState([])
-  const [equipo2, setEquipo2] = useState([])
+  const { state: prefill } = useLocation()
+  const [modalidad, setModalidad] = useState(prefill?.modalidad ?? 'bola8')
+  const [equipo1, setEquipo1] = useState(prefill?.equipo1 ?? [])
+  const [equipo2, setEquipo2] = useState(prefill?.equipo2 ?? [])
+  const [primerJugador, setPrimerJugador] = useState(prefill?.equipo1?.[0] ?? null)
   const [error, setError] = useState(null)
   const [creando, setCreando] = useState(false)
   const navigate = useNavigate()
+
+  function setEquipo1Safe(ids) {
+    setEquipo1(ids)
+    setPrimerJugador(prev => {
+      if (prev && (ids.includes(prev) || equipo2.includes(prev))) return prev
+      return ids[0] ?? equipo2[0] ?? null
+    })
+  }
+
+  function setEquipo2Safe(ids) {
+    setEquipo2(ids)
+    setPrimerJugador(prev => {
+      if (prev && (equipo1.includes(prev) || ids.includes(prev))) return prev
+      return equipo1[0] ?? ids[0] ?? null
+    })
+  }
 
   async function crear() {
     if (equipo1.length === 0 || equipo2.length === 0) {
@@ -72,6 +210,7 @@ export default function NuevaPartida() {
         modalidad,
         equipo1: { jugador_ids: equipo1 },
         equipo2: { jugador_ids: equipo2 },
+        primer_jugador_id: primerJugador,
       })
       navigate(`/partida/${p.id}`)
     } catch (err) {
@@ -103,7 +242,7 @@ export default function NuevaPartida() {
                 flex: 1, padding: '10px',
                 borderRadius: 8, fontSize: '15px', fontWeight: 700,
                 border: modalidad === val ? '1.5px solid var(--accent)' : '1px solid var(--border)',
-                background: modalidad === val ? 'rgba(233,69,96,.15)' : 'var(--surface2)',
+                background: modalidad === val ? 'rgba(6,182,212, 0.13)' : 'var(--surface2)',
                 color: modalidad === val ? 'var(--accent)' : 'var(--text)',
                 transition: 'all .15s',
               }}
@@ -124,19 +263,51 @@ export default function NuevaPartida() {
       ) : (
         <>
           <SelectorEquipo
-            titulo="Equipo 1"
+            titulo="Equipo 1" teamNum={1}
             jugadores={jList}
             seleccionados={equipo1}
-            onChange={setEquipo1}
+            onChange={setEquipo1Safe}
             excluidos={equipo2}
           />
           <SelectorEquipo
-            titulo="Equipo 2"
+            titulo="Equipo 2" teamNum={2}
             jugadores={jList}
             seleccionados={equipo2}
-            onChange={setEquipo2}
+            onChange={setEquipo2Safe}
             excluidos={equipo1}
           />
+
+          {/* ¿Quién saca? — solo si ambos equipos tienen jugadores */}
+          {equipo1.length > 0 && equipo2.length > 0 && (
+            <div className="card">
+              <p style={{ fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.05em', color: 'var(--text-dim)', marginBottom: 10 }}>
+                ¿Quién saca?
+              </p>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                {[...equipo1, ...equipo2].map(id => {
+                  const j = jList.find(j => j.id === id)
+                  const sel = primerJugador === id
+                  const enEq2 = equipo2.includes(id)
+                  return (
+                    <button
+                      key={id}
+                      onClick={() => setPrimerJugador(id)}
+                      style={{
+                        padding: '8px 14px', borderRadius: 8, fontSize: '14px', fontWeight: 600,
+                        border: sel ? '1.5px solid var(--accent)' : '1px solid var(--border)',
+                        background: sel ? 'var(--accent-bg)' : 'var(--surface2)',
+                        color: sel ? 'var(--accent)' : 'var(--text-dim)',
+                        transition: 'background .15s, border-color .15s',
+                      }}
+                    >
+                      {sel ? '✓ ' : ''}{j?.nombre}
+                      <span style={{ fontSize: '11px', marginLeft: 5, color: enEq2 ? 'var(--team2)' : 'var(--team1)', opacity: .8 }}>Eq{enEq2 ? 2 : 1}</span>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          )}
         </>
       )}
 
@@ -150,7 +321,7 @@ export default function NuevaPartida() {
         disabled={creando || !listo}
         style={{ padding: '15px', fontSize: '17px', marginTop: 4, borderRadius: 10 }}
       >
-        {creando ? 'Creando…' : listo ? '¡Empezar partida!' : 'Selecciona los equipos'}
+        {creando ? 'Creando…' : listo ? '▶ Empezar partida' : 'Selecciona los equipos'}
       </button>
     </div>
   )

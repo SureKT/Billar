@@ -2,6 +2,10 @@ import { useNavigate } from 'react-router-dom'
 import { useApi } from '../hooks/useApi'
 import { api } from '../api/client'
 
+function nombreJugador(id, jugadores) {
+  return jugadores?.find(j => j.id === id)?.nombre ?? `#${id}`
+}
+
 function formatFecha(iso) {
   return new Date(iso).toLocaleString('es-ES', {
     day: '2-digit', month: 'short',
@@ -11,6 +15,7 @@ function formatFecha(iso) {
 
 export default function Inicio() {
   const { data: partidas, loading, error } = useApi(api.getPartidas)
+  const { data: jugadores } = useApi(api.getJugadores)
   const navigate = useNavigate()
 
   if (loading) return <div className="spinner" />
@@ -27,7 +32,7 @@ export default function Inicio() {
           <div style={{ fontSize: '48px', marginBottom: 12 }}>🎱</div>
           <p style={{ color: 'var(--text-dim)', marginBottom: 16 }}>Sin partidas todavía</p>
           <button className="btn btn-primary" onClick={() => navigate('/nueva')}>
-            Crear primera partida
+            ▶ Crear primera partida
           </button>
         </div>
       )}
@@ -38,7 +43,7 @@ export default function Inicio() {
             En curso
           </p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {enCurso.map(p => <PartidaCard key={p.id} p={p} onClick={() => navigate(`/partida/${p.id}`)} />)}
+            {enCurso.map(p => <PartidaCard key={p.id} p={p} jugadores={jugadores} onClick={() => navigate(`/partida/${p.id}`)} />)}
           </div>
         </section>
       )}
@@ -49,7 +54,7 @@ export default function Inicio() {
             Finalizadas
           </p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {finalizadas.map(p => <PartidaCard key={p.id} p={p} onClick={() => navigate(`/partida/${p.id}`)} />)}
+            {finalizadas.map(p => <PartidaCard key={p.id} p={p} jugadores={jugadores} onClick={() => navigate(`/partida/${p.id}`)} />)}
           </div>
         </section>
       )}
@@ -57,19 +62,19 @@ export default function Inicio() {
   )
 }
 
-function PartidaCard({ p, onClick }) {
+function PartidaCard({ p, jugadores, onClick }) {
   const finalizada = p.estado === 'finalizada'
+  const eq1nombres = p.equipo1_jugadores.map(id => nombreJugador(id, jugadores)).join(', ')
+  const eq2nombres = p.equipo2_jugadores.map(id => nombreJugador(id, jugadores)).join(', ')
 
   return (
     <button
       onClick={onClick}
       style={{
         width: '100%', textAlign: 'left', cursor: 'pointer',
-        background: 'var(--surface)',
-        color: 'var(--text)',
-        border: `1px solid ${finalizada ? 'var(--border)' : 'rgba(233,69,96,.3)'}`,
-        borderRadius: 'var(--radius)',
-        padding: 14,
+        background: 'var(--surface)', color: 'var(--text)',
+        border: '1px solid var(--border)',
+        borderRadius: 'var(--radius)', padding: 14,
         transition: 'border-color .15s, transform .1s',
         animation: 'slideUp .2s ease both',
       }}
@@ -86,26 +91,39 @@ function PartidaCard({ p, onClick }) {
         </span>
       </div>
 
-      <p style={{ fontSize: '12px', color: 'var(--text-dim)', marginBottom: 8 }}>
-        {formatFecha(p.fecha)}
-      </p>
-
-      <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-        <EquipoInfo label="Eq 1" grupo={p.equipo1_grupo} ganador={finalizada && p.ganador_equipo === 1} />
-        <span style={{ color: 'var(--text-dim)', fontSize: '12px' }}>vs</span>
-        <EquipoInfo label="Eq 2" grupo={p.equipo2_grupo} ganador={finalizada && p.ganador_equipo === 2} />
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <EquipoInfo
+          nombres={eq1nombres}
+          grupo={p.equipo1_grupo}
+          ganador={finalizada && p.ganador_equipo === 1}
+          teamColor="var(--team1)"
+        />
+        <span style={{ color: 'var(--text-dim)', fontSize: '12px', flexShrink: 0 }}>vs</span>
+        <EquipoInfo
+          nombres={eq2nombres}
+          grupo={p.equipo2_grupo}
+          ganador={finalizada && p.ganador_equipo === 2}
+          teamColor="var(--team2)"
+        />
       </div>
+
+      {!finalizada && p.siguiente_jugador_id && jugadores && (
+        <p style={{ fontSize: '11px', marginTop: 6,
+          color: p.equipo1_jugadores.includes(p.siguiente_jugador_id) ? 'var(--team1)' : 'var(--team2)' }}>
+          Turno: {nombreJugador(p.siguiente_jugador_id, jugadores)}
+        </p>
+      )}
     </button>
   )
 }
 
-function EquipoInfo({ label, grupo, ganador }) {
+function EquipoInfo({ nombres, grupo, ganador, teamColor }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-      <span style={{ fontSize: '12px', color: ganador ? '#fcd34d' : 'var(--text-dim)' }}>
-        {label} {ganador && '🏆'}
+    <div style={{ display: 'flex', alignItems: 'center', gap: 4, minWidth: 0 }}>
+      <span style={{ fontSize: '13px', fontWeight: 600, color: ganador ? '#fcd34d' : teamColor ?? 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        {ganador ? '🏆 ' : ''}{nombres}
       </span>
-      {grupo && <span className={`badge badge-${grupo}`} style={{ fontSize: '11px', padding: '1px 6px' }}>{grupo}</span>}
+      {grupo && <span className={`badge badge-${grupo}`} style={{ fontSize: '10px', padding: '1px 6px', flexShrink: 0 }}>{grupo}</span>}
     </div>
   )
 }

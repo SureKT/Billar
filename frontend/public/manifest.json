@@ -1,0 +1,13 @@
+{
+  "name": "Billar",
+  "short_name": "Billar",
+  "description": "Gestor de partidas de billar",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#161626",
+  "theme_color": "#e94560",
+  "orientation": "portrait",
+  "icons": [
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}
