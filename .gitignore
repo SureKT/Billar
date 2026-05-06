@@ -1,0 +1,22 @@
+# Base de datos
+billar.db
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+*.egg-info/
+
+# Frontend — dependencias y build
+frontend/node_modules/
+app/static/
+
+# Entorno
+.env
+.env.*
+
+# OS
+.DS_Store
+Thumbs.db
