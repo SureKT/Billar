@@ -85,6 +85,15 @@ def registrar_turno(
     ).first()
     numero = (ultimo.numero + 1) if ultimo else 1
 
+    # Guardia de concurrencia: si ya existe ese número de turno, hay race condition
+    if session.exec(select(Turno).where(
+        Turno.partida_id == partida_id, Turno.numero == numero
+    )).first():
+        raise HTTPException(
+            status_code=409,
+            detail="Conflicto: otro turno fue registrado simultáneamente. Recarga la partida.",
+        )
+
     # Auto-detección: blanca dentro
     # Se omite cuando:
     #  - Bola 8 entra también en Bola 8 (ese caso lo maneja la lógica de partida)

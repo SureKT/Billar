@@ -45,6 +45,14 @@ function usePartidaData(id) {
     return () => window.removeEventListener('focus', onFocus)
   }, [reload])
 
+  // Polling ligero: resincroniza cada 15 s mientras la partida está en curso
+  // (útil en multidispositivo o si alguien recarga desde otro móvil)
+  useEffect(() => {
+    if (!partida || partida.estado !== 'en_curso') return
+    const timer = setInterval(() => { reload().catch(() => {}) }, 15_000)
+    return () => clearInterval(timer)
+  }, [partida?.estado, reload])
+
   return { partida, estado, turnos, jugadores, faltas, loading, reload }
 }
 
@@ -114,7 +122,13 @@ function BolasEquipo({ titulo, teamNum, pendientes, grupo, esActivo, ganador, ju
 }
 
 
-const FALTAS_OCULTAS = ['Blanca dentro (Scratch)', 'Bola 8 ilegal', 'Tres faltas consecutivas']
+// Faltas gestionadas automáticamente o con botón dedicado (no aparecen en el selector manual)
+const FALTAS_OCULTAS = [
+  'Blanca dentro (Scratch)',
+  'Bola 8 ilegal',
+  'Tres faltas consecutivas',
+  'No toca objetivo legal',   // tiene botón dedicado en bola9
+]
 
 export default function Partida() {
   const { id } = useParams()
@@ -480,6 +494,34 @@ export default function Partida() {
 
           {/* Faltas: auto-detectadas + manuales ordenadas por frecuencia */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+
+            {/* Bola 9: toggle rápido de "No toqué el objetivo" */}
+            {partida.modalidad === 'bola9' && (() => {
+              const fNoObj = faltas.find(f => f.nombre === 'No toca objetivo legal')
+              if (!fNoObj) return null
+              const activa = faltasIds.has(fNoObj.id)
+              return (
+                <button
+                  onClick={() => setFaltasIds(prev => {
+                    const s = new Set(prev)
+                    activa ? s.delete(fNoObj.id) : s.add(fNoObj.id)
+                    return s
+                  })}
+                  style={{
+                    padding: '10px 14px', borderRadius: 10, fontSize: '14px', fontWeight: 700,
+                    border: activa ? '1.5px solid #f97316' : '1px solid var(--border)',
+                    background: activa ? 'rgba(251,146,60,.15)' : 'var(--surface2)',
+                    color: activa ? '#fb923c' : 'var(--text-dim)',
+                    cursor: 'pointer', transition: 'background .15s, border-color .15s, color .15s',
+                    textAlign: 'left', display: 'flex', alignItems: 'center', gap: 8,
+                  }}
+                >
+                  <span style={{ fontSize: '18px', lineHeight: 1 }}>⚑</span>
+                  <span>No toqué el objetivo{activa ? ' · FALTA' : ''}</span>
+                </button>
+              )
+            })()}
+
             {/* Auto-detectadas y badges informativos — min-height para evitar saltos */}
             <div style={{ minHeight: 36, display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'flex-start' }}>
               {/* Badges de faltas automáticas */}

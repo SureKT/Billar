@@ -1,6 +1,7 @@
 from datetime import datetime
 from typing import Optional
 from sqlmodel import Field, SQLModel, Relationship
+from sqlalchemy import UniqueConstraint
 import json
 
 
@@ -51,6 +52,10 @@ class Falta(SQLModel, table=True):
 
 
 class Turno(SQLModel, table=True):
+    __table_args__ = (
+        UniqueConstraint("partida_id", "numero", name="uq_turno_partida_numero"),
+    )
+
     id: Optional[int] = Field(default=None, primary_key=True)
     partida_id: int = Field(foreign_key="partida.id")
     jugador_id: int = Field(foreign_key="jugador.id")
