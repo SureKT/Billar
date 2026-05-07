@@ -39,6 +39,10 @@ export default function Nav() {
         <span style={{ fontSize: '18px', lineHeight: 1 }}>＋</span>
         Nueva
       </NavLink>
+      <NavLink to="/stats" style={link}>
+        <span style={{ fontSize: '16px', lineHeight: 1 }}>📊</span>
+        Stats
+      </NavLink>
       <NavLink to="/jugadores" style={link}>
         <span style={{ fontSize: '16px', lineHeight: 1 }}>👤</span>
         Jugadores
