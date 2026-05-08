@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useApi } from '../hooks/useApi'
 import { api } from '../api/client'
@@ -15,25 +16,49 @@ function formatFecha(iso) {
 
 function duracionMin(fecha, fechaFin) {
   if (!fechaFin) return null
-  const min = Math.round((new Date(fechaFin) - new Date(fecha)) / 60_000)
-  return min < 1 ? '<1 min' : `${min} min`
+  const ms = new Date(fechaFin) - new Date(fecha)
+  const min = Math.floor(ms / 60_000)
+  const seg = Math.floor((ms % 60_000) / 1_000)
+  return `${min}' ${String(seg).padStart(2, '0')}"`
+}
+
+function ChipFiltro({ label, activo, onClick }) {
+  return (
+    <button onClick={onClick} style={{
+      padding: '5px 12px', borderRadius: 20, fontSize: '12px', fontWeight: 600,
+      border: activo ? '1.5px solid var(--accent)' : '1px solid var(--border)',
+      background: activo ? 'var(--accent-bg)' : 'var(--surface2)',
+      color: activo ? 'var(--accent)' : 'var(--text-dim)',
+      cursor: 'pointer', transition: 'all .15s',
+    }}>{label}</button>
+  )
 }
 
 export default function Inicio() {
   const { data: partidas, loading, error } = useApi(api.getPartidas)
   const { data: jugadores } = useApi(api.getJugadores)
   const navigate = useNavigate()
+  const [filtroEstado, setFiltroEstado] = useState('todas')      // 'todas' | 'en_curso' | 'finalizada'
+  const [filtroModal, setFiltroModal]   = useState('todas')      // 'todas' | 'bola8' | 'bola9'
 
   if (loading) return <div className="spinner" />
   if (error) return <p style={{ color: 'var(--accent)', padding: '20px 0' }}>Error: {error}</p>
 
-  const enCurso = partidas.filter(p => p.estado === 'en_curso')
-  const finalizadas = partidas.filter(p => p.estado === 'finalizada')
+  const todasLasPartidas = partidas ?? []
+
+  const partidasFiltradas = todasLasPartidas
+    .filter(p => filtroEstado === 'todas' || p.estado === filtroEstado)
+    .filter(p => filtroModal  === 'todas' || p.modalidad === filtroModal)
+
+  const enCurso    = partidasFiltradas.filter(p => p.estado === 'en_curso')
+  const finalizadas = partidasFiltradas.filter(p => p.estado === 'finalizada')
+
+  const hayFiltroActivo = filtroEstado !== 'todas' || filtroModal !== 'todas'
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
 
-      {partidas.length === 0 && (
+      {todasLasPartidas.length === 0 && (
         <div style={{ textAlign: 'center', padding: '60px 20px' }}>
           <div style={{ fontSize: '48px', marginBottom: 12 }}>🎱</div>
           <p style={{ color: 'var(--text-dim)', marginBottom: 16 }}>Sin partidas todavía</p>
@@ -41,6 +66,25 @@ export default function Inicio() {
             ▶ Crear primera partida
           </button>
         </div>
+      )}
+
+      {/* Filtros — solo cuando hay partidas */}
+      {todasLasPartidas.length > 0 && (
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+          <ChipFiltro label="Todas"      activo={filtroEstado === 'todas'}      onClick={() => setFiltroEstado('todas')} />
+          <ChipFiltro label="En curso"   activo={filtroEstado === 'en_curso'}   onClick={() => setFiltroEstado('en_curso')} />
+          <ChipFiltro label="Finalizadas" activo={filtroEstado === 'finalizada'} onClick={() => setFiltroEstado('finalizada')} />
+          <div style={{ width: 1, background: 'var(--border)', margin: '0 2px' }} />
+          <ChipFiltro label="Bola 8" activo={filtroModal === 'bola8'} onClick={() => setFiltroModal(filtroModal === 'bola8' ? 'todas' : 'bola8')} />
+          <ChipFiltro label="Bola 9" activo={filtroModal === 'bola9'} onClick={() => setFiltroModal(filtroModal === 'bola9' ? 'todas' : 'bola9')} />
+        </div>
+      )}
+
+      {/* Sin resultados con filtro activo */}
+      {hayFiltroActivo && partidasFiltradas.length === 0 && (
+        <p style={{ color: 'var(--text-dim)', fontSize: '14px', textAlign: 'center', padding: '20px 0' }}>
+          Sin partidas con este filtro
+        </p>
       )}
 
       {enCurso.length > 0 && (

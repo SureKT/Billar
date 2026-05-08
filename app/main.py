@@ -1,3 +1,4 @@
+from contextlib import asynccontextmanager
 from pathlib import Path
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
@@ -7,7 +8,17 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.database import init_db
 from app.routers import jugadores, partidas, turnos, catalogos
 
-app = FastAPI(title="Billar App", version="1.0.0")
+STATIC_DIR = Path(__file__).parent / "static"
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    init_db()
+    STATIC_DIR.mkdir(exist_ok=True)
+    yield
+
+
+app = FastAPI(title="Billar App", version="1.0.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -20,16 +31,6 @@ app.include_router(jugadores.router)
 app.include_router(partidas.router)
 app.include_router(turnos.router)
 app.include_router(catalogos.router)
-
-STATIC_DIR = Path(__file__).parent / "static"
-
-
-@app.on_event("startup")
-def on_startup():
-    init_db()
-    # Crear directorio static si no existe (dev mode)
-    STATIC_DIR.mkdir(exist_ok=True)
-
 
 ASSETS_DIR = STATIC_DIR / "assets"
 

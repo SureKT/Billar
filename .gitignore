@@ -17,6 +17,10 @@ app/static/
 .env
 .env.*
 
+# Certificados SSL locales
+cert.pem
+key.pem
+
 # OS
 .DS_Store
 Thumbs.db

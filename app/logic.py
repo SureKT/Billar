@@ -181,8 +181,12 @@ def _evaluar_bola8(session: Session, partida: Partida, turno: Turno) -> dict:
 
     # Bola 8 metida (sin blanca — si hay blanca lo maneja el router antes)
     if 8 in bolas:
-        pendientes = _bolas_pendientes_equipo(session, partida, equipo_actual)
-        if pendientes:
+        # Sin grupos asignados: meter la 8 fuera del break siempre es ilegal
+        # (_bolas_pendientes_equipo devolvería [] porque grupo=None, lo que
+        #  se interpretaría erróneamente como "sin pendientes → gana")
+        sin_grupos = partida.equipo1_grupo is None
+        pendientes = [] if sin_grupos else _bolas_pendientes_equipo(session, partida, equipo_actual)
+        if sin_grupos or pendientes:
             turno.falta_id = _get_falta_id(session, "Bola 8 ilegal")
             _finalizar(partida, equipo_rival)
             resultado["partida_finalizada"] = True

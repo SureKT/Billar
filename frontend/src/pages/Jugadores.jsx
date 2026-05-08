@@ -35,15 +35,55 @@ function StatBox({ label, value, color, sub }) {
   )
 }
 
+function ModalidadChip({ label, ganadas, jugadas, color }) {
+  const p = jugadas === 0 ? 0 : Math.round((ganadas / jugadas) * 100)
+  return (
+    <div style={{
+      flex: 1, display: 'flex', flexDirection: 'column', gap: 3,
+      background: 'var(--surface2)', borderRadius: 8, padding: '6px 10px',
+      border: '1px solid var(--border)',
+    }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+        <span style={{ fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.04em', color: 'var(--text-dim)' }}>
+          {label}
+        </span>
+        <span style={{ fontSize: '11px', fontWeight: 700, color }}>
+          {ganadas}/{jugadas} · {p}%
+        </span>
+      </div>
+      <div style={{ height: 4, borderRadius: 2, background: 'var(--border)', overflow: 'hidden' }}>
+        <div style={{ height: '100%', width: `${p}%`, background: color, borderRadius: 2, transition: 'width .4s ease' }} />
+      </div>
+    </div>
+  )
+}
+
+function fechaCorta(isoStr) {
+  return new Date(isoStr).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })
+}
+
 function JugadorCard({ j, onReload }) {
   const [modo, setModo] = useState(null) // null | 'editar' | 'eliminar'
   const [nombreEdit, setNombreEdit] = useState(j.nombre)
   const [recursivoOk, setRecursivoOk] = useState(false)
   const [cargando, setCargando] = useState(false)
   const [error, setError] = useState(null)
+  const [mostrarUltimas, setMostrarUltimas] = useState(false)
+  const [ultimas, setUltimas] = useState(null)
+  const [cargandoUltimas, setCargandoUltimas] = useState(false)
   const [mostrarH2H, setMostrarH2H] = useState(false)
   const [h2h, setH2H] = useState(null)
   const [cargandoH2H, setCargandoH2H] = useState(false)
+
+  async function toggleUltimas() {
+    if (mostrarUltimas) { setMostrarUltimas(false); return }
+    setMostrarUltimas(true)
+    if (ultimas !== null) return
+    setCargandoUltimas(true)
+    try { setUltimas(await api.getUltimasPartidas(j.id)) }
+    catch { setUltimas([]) }
+    finally { setCargandoUltimas(false) }
+  }
 
   async function toggleH2H() {
     if (mostrarH2H) { setMostrarH2H(false); return }
@@ -196,6 +236,29 @@ function JugadorCard({ j, onReload }) {
             />
           </div>
           <WinRate ganadas={j.partidas_ganadas} jugadas={j.partidas_jugadas} />
+
+          {/* Desglose por modalidad */}
+          {(j.partidas_jugadas_bola8 > 0 || j.partidas_jugadas_bola9 > 0) && (
+            <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
+              {j.partidas_jugadas_bola8 > 0 && (
+                <ModalidadChip
+                  label="Bola 8"
+                  ganadas={j.partidas_ganadas_bola8}
+                  jugadas={j.partidas_jugadas_bola8}
+                  color="#93c5fd"
+                />
+              )}
+              {j.partidas_jugadas_bola9 > 0 && (
+                <ModalidadChip
+                  label="Bola 9"
+                  ganadas={j.partidas_ganadas_bola9}
+                  jugadas={j.partidas_jugadas_bola9}
+                  color="#c4b5fd"
+                />
+              )}
+            </div>
+          )}
+
           {j.racha_actual !== 0 && j.partidas_jugadas > 0 && (
             <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
               <span style={{
@@ -207,6 +270,60 @@ function JugadorCard({ j, onReload }) {
               <span style={{ fontSize: '11px', color: 'var(--text-dim)' }}>
                 {j.racha_actual > 0 ? 'ganando' : 'perdiendo'}
               </span>
+            </div>
+          )}
+
+          {/* Últimas partidas */}
+          {j.partidas_jugadas > 0 && (
+            <div style={{ marginTop: 10 }}>
+              <button
+                onClick={toggleUltimas}
+                style={{
+                  background: 'none', border: 'none', padding: 0, cursor: 'pointer',
+                  fontSize: '11px', color: 'var(--text-dim)', fontWeight: 600,
+                  textTransform: 'uppercase', letterSpacing: '.04em',
+                  display: 'flex', alignItems: 'center', gap: 4,
+                }}
+              >
+                {mostrarUltimas ? '▲' : '▼'} Últimas partidas
+              </button>
+
+              {mostrarUltimas && (
+                <div style={{ marginTop: 8 }}>
+                  {cargandoUltimas && <div style={{ fontSize: '12px', color: 'var(--text-dim)' }}>Cargando…</div>}
+                  {ultimas?.length === 0 && !cargandoUltimas && (
+                    <p style={{ fontSize: '12px', color: 'var(--text-dim)' }}>Sin partidas finalizadas</p>
+                  )}
+                  {ultimas?.map(p => (
+                    <div key={p.id} style={{
+                      display: 'flex', alignItems: 'center', gap: 8,
+                      padding: '6px 0', borderBottom: '1px solid var(--border)',
+                    }}>
+                      <span style={{
+                        fontSize: '11px', fontWeight: 700, minWidth: 22, textAlign: 'center',
+                        padding: '2px 5px', borderRadius: 4,
+                        background: p.gano ? 'rgba(22,163,74,.18)' : 'rgba(220,38,38,.18)',
+                        color: p.gano ? '#86efac' : '#fca5a5',
+                      }}>
+                        {p.gano ? 'W' : 'L'}
+                      </span>
+                      <span style={{
+                        fontSize: '10px', fontWeight: 700, padding: '2px 6px', borderRadius: 4,
+                        background: 'var(--surface2)', color: 'var(--text-dim)',
+                        border: '1px solid var(--border)', flexShrink: 0,
+                      }}>
+                        {p.modalidad === 'bola8' ? 'B8' : 'B9'}
+                      </span>
+                      <span style={{ flex: 1, fontSize: '12px', color: 'var(--text-dim)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        vs {p.rival_nombres.join(', ')}
+                      </span>
+                      <span style={{ fontSize: '11px', color: 'var(--text-dim)', flexShrink: 0 }}>
+                        {fechaCorta(p.fecha)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 
@@ -294,7 +411,14 @@ export default function Jugadores() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--gap)' }}>
-      <h2 style={{ fontSize: '20px' }}>Jugadores</h2>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+        <h2 style={{ fontSize: '20px' }}>Jugadores</h2>
+        {stats != null && (
+          <span style={{ fontSize: '13px', color: 'var(--text-dim)', fontWeight: 400 }}>
+            {stats.length} registrado{stats.length !== 1 ? 's' : ''}
+          </span>
+        )}
+      </div>
 
       {/* Formulario de nuevo jugador */}
       <div className="card" style={{ padding: '12px 16px' }}>

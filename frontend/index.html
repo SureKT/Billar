@@ -5,7 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <meta name="theme-color" content="#e94560" />
     <link rel="manifest" href="/manifest.json" />
-    <link rel="apple-touch-icon" href="/icon.svg" />
+    <!-- iOS PWA -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Billar" />
+    <link rel="apple-touch-icon" href="/icon-192.png" />
     <title>Billar</title>
   </head>
   <body>
@@ -13,7 +17,13 @@
     <script type="module" src="/src/main.jsx"></script>
     <script>
       if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js'))
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js')
+            .then(r => console.log('[SW] registrado, scope:', r.scope))
+            .catch(e => console.warn('[SW] fallo al registrar:', e))
+        })
+      } else {
+        console.warn('[SW] Service Workers no disponibles en este navegador/contexto')
       }
     </script>
   </body>

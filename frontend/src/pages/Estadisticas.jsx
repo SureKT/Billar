@@ -16,14 +16,19 @@ function pct(ganadas, jugadas) {
 
 // ─── sub-componentes ──────────────────────────────────────────────────────────
 
-function ContadorCard({ label, value, sub, color }) {
+function ContadorCard({ label, value, sub, color, compact }) {
   return (
     <div style={{
       flex: 1, background: 'var(--surface2)', borderRadius: 10,
       padding: '12px 8px', textAlign: 'center',
       display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2,
+      minWidth: 0,
     }}>
-      <span style={{ fontSize: '22px', fontWeight: 800, color: color ?? 'var(--text)', lineHeight: 1 }}>
+      <span style={{
+        fontSize: compact ? '15px' : '22px', fontWeight: 800,
+        color: color ?? 'var(--text)', lineHeight: 1,
+        whiteSpace: 'nowrap',
+      }}>
         {value}
       </span>
       {sub != null && (
@@ -77,7 +82,7 @@ function FilaRanking({ pos, j, esTop }) {
           {j.nombre}
         </span>
         <span style={{ fontSize: '11px', color: 'var(--text-dim)' }}>
-          {j.partidas_ganadas}G · {j.partidas_jugadas - j.partidas_ganadas}P · {j.partidas_jugadas} partidas
+          {j.partidas_ganadas} W · {j.partidas_jugadas - j.partidas_ganadas} L · {j.partidas_jugadas} Partidas
         </span>
       </div>
 
@@ -127,6 +132,7 @@ export default function Estadisticas() {
 
   // Cifras globales
   const totalBolasMetidas = (stats ?? []).reduce((s, j) => s + j.bolas_metidas, 0)
+  const totalFaltas = (faltas ?? []).reduce((s, f) => s + f.frecuencia, 0)
 
   // Ranking según filtro (solo partidas que coinciden con la modalidad)
   // Nota: los stats del backend son globales — para el filtro usamos la relación
@@ -163,8 +169,17 @@ export default function Estadisticas() {
 
   // Duración media de partidas finalizadas con fecha_fin
   const conDuracion = finalizadas.filter(p => p.fecha_fin)
-  const duracionMediaMin = conDuracion.length > 0
-    ? Math.round(conDuracion.reduce((s, p) => s + (new Date(p.fecha_fin) - new Date(p.fecha)), 0) / conDuracion.length / 60_000)
+  const duracionMedia = (() => {
+    if (conDuracion.length === 0) return null
+    const ms = conDuracion.reduce((s, p) => s + (new Date(p.fecha_fin) - new Date(p.fecha)), 0) / conDuracion.length
+    const min = Math.floor(ms / 60_000)
+    const seg = Math.floor((ms % 60_000) / 1_000)
+    return { min, seg, str: `${min}' ${String(seg).padStart(2, '0')}"` }
+  })()
+
+  // Faltas por partida finalizada
+  const faltasPorPartida = finalizadas.length > 0
+    ? (totalFaltas / finalizadas.length).toFixed(1)
     : null
 
   // Faltas más frecuentes (excluir internas)
@@ -209,9 +224,15 @@ export default function Estadisticas() {
               <ContadorCard label="Bola 9" value={bola9.length}
                 sub={`${Math.round((bola9.length / todasPartidas.length) * 100)}%`} />
               <ContadorCard label="Jugadores" value={(stats ?? []).length} />
-              {duracionMediaMin != null
-                ? <ContadorCard label="Duración media" value={`${duracionMediaMin}′`} color="#c4b5fd" />
-                : <ContadorCard label="Con partidas" value={jugadoresConPartidas.length} />}
+              {duracionMedia != null
+                ? <ContadorCard label="Duración media" value={duracionMedia.str} color="#c4b5fd" compact />
+                : <ContadorCard label="Faltas" value={totalFaltas} color="#f97316" />}
+            </div>
+            <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
+              <ContadorCard label="Total faltas" value={totalFaltas} color="#f97316" />
+              {faltasPorPartida != null && (
+                <ContadorCard label="Faltas / partida" value={faltasPorPartida} color="#fb923c" />
+              )}
             </div>
           </div>
 

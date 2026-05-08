@@ -3,6 +3,18 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import { useApi } from '../hooks/useApi'
 import { api } from '../api/client'
 
+function RachaChip({ racha }) {
+  if (!racha) return null
+  return (
+    <span style={{
+      fontSize: '10px', fontWeight: 700, marginLeft: 4,
+      color: racha > 0 ? '#86efac' : '#fca5a5',
+    }}>
+      {racha > 0 ? `▲${racha}` : `▼${Math.abs(racha)}`}
+    </span>
+  )
+}
+
 function ListaOrdenable({ ids, jugadores, onChange }) {
   const [dragging, setDragging] = useState(null)
   const [insertBefore, setInsertBefore] = useState(null)
@@ -123,7 +135,7 @@ const TEAM_COLOR = {
   2: { main: 'var(--team2)', bg: 'rgba(233,69,96,.14)',  border: 'var(--team2)'  },
 }
 
-function SelectorEquipo({ titulo, teamNum, jugadores, seleccionados, onChange, excluidos }) {
+function SelectorEquipo({ titulo, teamNum, jugadores, seleccionados, onChange, excluidos, statsMap }) {
   const tc = TEAM_COLOR[teamNum]
 
   function toggle(id) {
@@ -146,6 +158,7 @@ function SelectorEquipo({ titulo, teamNum, jugadores, seleccionados, onChange, e
         {jugadores.map(j => {
           const excluido = excluidos.includes(j.id)
           const sel = seleccionados.includes(j.id)
+          const racha = statsMap?.[j.id]?.racha_actual ?? 0
           return (
             <button
               key={j.id}
@@ -159,9 +172,11 @@ function SelectorEquipo({ titulo, teamNum, jugadores, seleccionados, onChange, e
                 opacity: excluido ? .35 : 1,
                 cursor: excluido ? 'not-allowed' : 'pointer',
                 transition: 'background .15s, border-color .15s, color .15s',
+                display: 'flex', alignItems: 'center',
               }}
             >
               {sel ? '✓ ' : ''}{j.nombre}
+              <RachaChip racha={racha} />
             </button>
           )
         })}
@@ -172,7 +187,10 @@ function SelectorEquipo({ titulo, teamNum, jugadores, seleccionados, onChange, e
 }
 
 export default function NuevaPartida() {
-  const { data: jugadores, loading } = useApi(api.getJugadores)
+  const { data: jugadores, loading: jLoading } = useApi(api.getJugadores)
+  const { data: statsData, loading: sLoading }  = useApi(api.getAllStats)
+  const loading = jLoading || sLoading
+  const statsMap = Object.fromEntries((statsData ?? []).map(s => [s.id, s]))
   const { state: prefill } = useLocation()
   const [modalidad, setModalidad] = useState(prefill?.modalidad ?? 'bola8')
   const [equipo1, setEquipo1] = useState(prefill?.equipo1 ?? [])
@@ -268,6 +286,7 @@ export default function NuevaPartida() {
             seleccionados={equipo1}
             onChange={setEquipo1Safe}
             excluidos={equipo2}
+            statsMap={statsMap}
           />
           <SelectorEquipo
             titulo="Equipo 2" teamNum={2}
@@ -275,6 +294,7 @@ export default function NuevaPartida() {
             seleccionados={equipo2}
             onChange={setEquipo2Safe}
             excluidos={equipo1}
+            statsMap={statsMap}
           />
 
           {/* ¿Quién saca? — solo si ambos equipos tienen jugadores */}

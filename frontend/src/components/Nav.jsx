@@ -1,6 +1,9 @@
 import { NavLink } from 'react-router-dom'
+import { useApi } from '../hooks/useApi'
+import { api } from '../api/client'
 
 export default function Nav() {
+  const { data: jugadores } = useApi(api.getJugadores)
   const link = ({ isActive }) => ({
     padding: '12px 0 10px',
     flex: 1,

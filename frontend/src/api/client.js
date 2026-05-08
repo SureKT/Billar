@@ -23,6 +23,7 @@ export const api = {
   getStatsJugador: (id) => request('GET', `/jugadores/${id}/stats`),
   getAllStats: () => request('GET', '/jugadores/stats'),
   getH2H: (id) => request('GET', `/jugadores/${id}/h2h`),
+  getUltimasPartidas: (id) => request('GET', `/jugadores/${id}/ultimas-partidas`),
 
   // Partidas
   getPartidas: () => request('GET', '/partidas'),

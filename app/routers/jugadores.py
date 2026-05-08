@@ -1,3 +1,4 @@
+from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session, select
 from pydantic import BaseModel
@@ -17,6 +18,10 @@ class JugadorStats(BaseModel):
     nombre: str
     partidas_jugadas: int
     partidas_ganadas: int
+    partidas_jugadas_bola8: int
+    partidas_ganadas_bola8: int
+    partidas_jugadas_bola9: int
+    partidas_ganadas_bola9: int
     bolas_metidas: int
     bolas_por_turno: float
     turnos_con_bola_en_mano: int
@@ -31,6 +36,14 @@ class H2HRecord(BaseModel):
     jugadas: int
 
 
+class PartidaResumenJugador(BaseModel):
+    id: int
+    fecha: datetime
+    modalidad: str
+    gano: bool
+    rival_nombres: list[str]
+
+
 def _calcular_stats(session: Session, jugador: Jugador) -> JugadorStats:
     participaciones = session.exec(
         select(PartidaJugador).where(PartidaJugador.jugador_id == jugador.id)
@@ -38,12 +51,21 @@ def _calcular_stats(session: Session, jugador: Jugador) -> JugadorStats:
     partida_ids = [p.partida_id for p in participaciones]
     partidas_jugadas = len(partida_ids)
     partidas_ganadas = 0
+    partidas_jugadas_bola8 = 0
+    partidas_ganadas_bola8 = 0
+    partidas_jugadas_bola9 = 0
+    partidas_ganadas_bola9 = 0
 
     resultados = []  # (fecha, gano) para calcular racha
     for pid in partida_ids:
         partida = session.get(Partida, pid)
         if not partida:
             continue
+        # Conteo por modalidad (todas las partidas, no solo finalizadas)
+        if partida.modalidad == "bola8":
+            partidas_jugadas_bola8 += 1
+        elif partida.modalidad == "bola9":
+            partidas_jugadas_bola9 += 1
         pj = session.exec(
             select(PartidaJugador).where(
                 PartidaJugador.partida_id == pid,
@@ -54,6 +76,10 @@ def _calcular_stats(session: Session, jugador: Jugador) -> JugadorStats:
             gano = pj.equipo == partida.ganador_equipo
             if gano:
                 partidas_ganadas += 1
+                if partida.modalidad == "bola8":
+                    partidas_ganadas_bola8 += 1
+                elif partida.modalidad == "bola9":
+                    partidas_ganadas_bola9 += 1
             resultados.append((partida.fecha, gano))
 
     # Racha: ordenar por fecha desc y contar consecutivos del mismo tipo
@@ -77,6 +103,10 @@ def _calcular_stats(session: Session, jugador: Jugador) -> JugadorStats:
         nombre=jugador.nombre,
         partidas_jugadas=partidas_jugadas,
         partidas_ganadas=partidas_ganadas,
+        partidas_jugadas_bola8=partidas_jugadas_bola8,
+        partidas_ganadas_bola8=partidas_ganadas_bola8,
+        partidas_jugadas_bola9=partidas_jugadas_bola9,
+        partidas_ganadas_bola9=partidas_ganadas_bola9,
         bolas_metidas=bolas_metidas,
         bolas_por_turno=round(bolas_metidas / len(turnos), 2) if turnos else 0.0,
         turnos_con_bola_en_mano=turnos_bm,
@@ -172,6 +202,46 @@ def head_to_head(jugador_id: int, session: Session = Depends(get_session)):
                 jugadas=stats["jugadas"],
             ))
     return sorted(result, key=lambda x: (-x.jugadas, x.nombre))
+
+
+@router.get("/{jugador_id}/ultimas-partidas", response_model=list[PartidaResumenJugador])
+def ultimas_partidas(jugador_id: int, session: Session = Depends(get_session)):
+    jugador = session.get(Jugador, jugador_id)
+    if not jugador:
+        raise HTTPException(status_code=404, detail="Jugador no encontrado")
+
+    participaciones = session.exec(
+        select(PartidaJugador).where(PartidaJugador.jugador_id == jugador_id)
+    ).all()
+
+    result = []
+    for pj in participaciones:
+        partida = session.get(Partida, pj.partida_id)
+        if not partida or not partida.ganador_equipo:
+            continue
+        gano = pj.equipo == partida.ganador_equipo
+        rival_equipo = 2 if pj.equipo == 1 else 1
+        rivales = session.exec(
+            select(PartidaJugador).where(
+                PartidaJugador.partida_id == pj.partida_id,
+                PartidaJugador.equipo == rival_equipo,
+            )
+        ).all()
+        rival_nombres = []
+        for r in rivales:
+            opp = session.get(Jugador, r.jugador_id)
+            if opp:
+                rival_nombres.append(opp.nombre)
+        result.append(PartidaResumenJugador(
+            id=partida.id,
+            fecha=partida.fecha,
+            modalidad=partida.modalidad,
+            gano=gano,
+            rival_nombres=rival_nombres,
+        ))
+
+    result.sort(key=lambda x: x.fecha, reverse=True)
+    return result[:5]
 
 
 @router.delete("/{jugador_id}", status_code=204)
