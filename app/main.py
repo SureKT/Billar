@@ -1,3 +1,4 @@
+import asyncio
 from contextlib import asynccontextmanager
 from pathlib import Path
 from fastapi import FastAPI
@@ -7,12 +8,14 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.database import init_db
 from app.routers import jugadores, partidas, turnos, catalogos
+from app import events
 
 STATIC_DIR = Path(__file__).parent / "static"
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    events.set_loop(asyncio.get_event_loop())
     init_db()
     STATIC_DIR.mkdir(exist_ok=True)
     yield

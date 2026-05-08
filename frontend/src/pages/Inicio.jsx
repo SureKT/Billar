@@ -178,7 +178,7 @@ function EquipoInfo({ nombres, grupo, ganador, teamColor }) {
       <span style={{ fontSize: '13px', fontWeight: 600, color: ganador ? '#fcd34d' : teamColor ?? 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
         {ganador ? '🏆 ' : ''}{nombres}
       </span>
-      {grupo && <span className={`badge badge-${grupo}`} style={{ fontSize: '10px', padding: '1px 6px', flexShrink: 0 }}>{grupo}</span>}
+      {grupo && <span className={`badge badge-${grupo}`} style={{ fontSize: '10px', padding: '1px 6px', flexShrink: 0 }}>{grupo.charAt(0).toUpperCase() + grupo.slice(1)}</span>}
     </div>
   )
 }

@@ -4,6 +4,7 @@ import NuevaPartida from './pages/NuevaPartida'
 import Partida from './pages/Partida'
 import Jugadores from './pages/Jugadores'
 import Estadisticas from './pages/Estadisticas'
+import Sugerencias from './pages/Sugerencias'
 import Nav from './components/Nav'
 import ErrorBoundary from './components/ErrorBoundary'
 
@@ -19,6 +20,7 @@ export default function App() {
             <Route path="/partida/:id" element={<Partida />} />
             <Route path="/jugadores" element={<Jugadores />} />
             <Route path="/stats" element={<Estadisticas />} />
+            <Route path="/sugerencias" element={<Sugerencias />} />
           </Routes>
         </ErrorBoundary>
       </main>

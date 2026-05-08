@@ -89,8 +89,13 @@ export default function Partida() {
   const pendientesEq1 = estado?.equipo1_pendientes ?? []
   const pendientesEq2 = estado?.equipo2_pendientes ?? []
 
-  // Mapa id→stats para rachas
+  // Mapa id→stats para rachas y faltas personales
   const statsMap = Object.fromEntries((stats ?? []).map(s => [s.id, s]))
+
+  const statsActual = statsMap[partida.siguiente_jugador_id]
+  const faltaPersonalId = partida.modalidad === 'bola8'
+    ? (statsActual?.falta_frecuente_bola8_id ?? null)
+    : (statsActual?.falta_frecuente_bola9_id ?? null)
 
   function buildEquipo(ids) {
     return ids.map(jid => ({
@@ -284,6 +289,7 @@ export default function Partida() {
           faltasIds={faltasIds}
           setFaltasIds={setFaltasIds}
           faltasAutoIds={faltasAutoIds}
+          faltaPersonalId={faltaPersonalId}
           registrando={registrando}
           flash={flash}
           onRegistrar={registrar}

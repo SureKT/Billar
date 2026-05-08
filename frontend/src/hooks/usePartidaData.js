@@ -47,7 +47,16 @@ export function usePartidaData(id) {
     return () => window.removeEventListener('focus', onFocus)
   }, [reload])
 
-  // Polling cada 15 s mientras la partida está en curso (multidispositivo)
+  // SSE: recibe 'update' en tiempo real cuando cambia el estado de la partida
+  useEffect(() => {
+    if (!id) return
+    const es = new EventSource(`/api/partidas/${id}/eventos`)
+    es.onmessage = () => { reload().catch(() => {}) }
+    es.onerror = () => { es.close() }
+    return () => es.close()
+  }, [id, reload])
+
+  // Polling cada 15 s como fallback (multidispositivo, por si el SSE falla)
   useEffect(() => {
     if (!partida || partida.estado !== 'en_curso') return
     const timer = setInterval(() => { reload().catch(() => {}) }, 15_000)

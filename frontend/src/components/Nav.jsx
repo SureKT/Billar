@@ -46,6 +46,10 @@ export default function Nav() {
         <span style={{ fontSize: '16px', lineHeight: 1 }}>📊</span>
         Stats
       </NavLink>
+      <NavLink to="/sugerencias" style={link}>
+        <span style={{ fontSize: '16px', lineHeight: 1 }}>🎲</span>
+        Mix
+      </NavLink>
       <NavLink to="/jugadores" style={link}>
         <span style={{ fontSize: '16px', lineHeight: 1 }}>👤</span>
         Jugadores

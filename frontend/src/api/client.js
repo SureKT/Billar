@@ -24,8 +24,11 @@ export const api = {
   getAllStats: () => request('GET', '/jugadores/stats'),
   getH2H: (id) => request('GET', `/jugadores/${id}/h2h`),
   getUltimasPartidas: (id) => request('GET', `/jugadores/${id}/ultimas-partidas`),
+  editarColorJugador: (id, color) => request('PATCH', `/jugadores/${id}/color`, { color }),
 
   // Partidas
+  getSugerencias: (jugadoresPorEquipo = 1) =>
+    request('GET', `/partidas/sugerencias?jugadores_por_equipo=${jugadoresPorEquipo}`),
   getPartidas: () => request('GET', '/partidas'),
   getPartida: (id) => request('GET', `/partidas/${id}`),
   getEstadoPartida: (id) => request('GET', `/partidas/${id}/estado`),

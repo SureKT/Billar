@@ -1,4 +1,6 @@
+from collections import Counter
 from datetime import datetime
+from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session, select
 from pydantic import BaseModel
@@ -27,6 +29,9 @@ class JugadorStats(BaseModel):
     turnos_con_bola_en_mano: int
     bolas_metidas_con_bola_en_mano: int
     racha_actual: int  # positivo = racha ganadora, negativo = perdedora, 0 = sin partidas
+    falta_frecuente_bola8_id: Optional[int] = None
+    falta_frecuente_bola9_id: Optional[int] = None
+    color: Optional[str] = None
 
 
 class H2HRecord(BaseModel):
@@ -98,6 +103,24 @@ def _calcular_stats(session: Session, jugador: Jugador) -> JugadorStats:
     turnos_bm = sum(1 for t in turnos if t.bola_en_mano)
     bolas_desde_bm = sum(len(t.bolas_metidas) for t in turnos if t.bola_en_mano)
 
+    # Falta más frecuente por modalidad (se construye sobre partidas ya cargadas)
+    modalidad_por_partida = {}
+    for pid in partida_ids:
+        p = session.get(Partida, pid)
+        if p:
+            modalidad_por_partida[pid] = p.modalidad
+
+    falta_count: dict[str, Counter] = {"bola8": Counter(), "bola9": Counter()}
+    for t in turnos:
+        if t.falta_id:
+            mod = modalidad_por_partida.get(t.partida_id)
+            if mod in falta_count:
+                falta_count[mod][t.falta_id] += 1
+
+    def top_falta(mod: str) -> Optional[int]:
+        c = falta_count[mod]
+        return c.most_common(1)[0][0] if c else None
+
     return JugadorStats(
         id=jugador.id,
         nombre=jugador.nombre,
@@ -112,6 +135,9 @@ def _calcular_stats(session: Session, jugador: Jugador) -> JugadorStats:
         turnos_con_bola_en_mano=turnos_bm,
         bolas_metidas_con_bola_en_mano=bolas_desde_bm,
         racha_actual=racha,
+        falta_frecuente_bola8_id=top_falta("bola8"),
+        falta_frecuente_bola9_id=top_falta("bola9"),
+        color=jugador.color,
     )
 
 
@@ -202,6 +228,22 @@ def head_to_head(jugador_id: int, session: Session = Depends(get_session)):
                 jugadas=stats["jugadas"],
             ))
     return sorted(result, key=lambda x: (-x.jugadas, x.nombre))
+
+
+class ColorUpdate(BaseModel):
+    color: Optional[str] = None  # hex string o null para quitar
+
+
+@router.patch("/{jugador_id}/color", response_model=Jugador)
+def actualizar_color(jugador_id: int, datos: ColorUpdate, session: Session = Depends(get_session)):
+    jugador = session.get(Jugador, jugador_id)
+    if not jugador:
+        raise HTTPException(status_code=404, detail="Jugador no encontrado")
+    jugador.color = datos.color
+    session.add(jugador)
+    session.commit()
+    session.refresh(jugador)
+    return jugador
 
 
 @router.get("/{jugador_id}/ultimas-partidas", response_model=list[PartidaResumenJugador])

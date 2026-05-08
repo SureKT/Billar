@@ -1,11 +1,16 @@
+import asyncio
+from collections import defaultdict
 from datetime import datetime
-from fastapi import APIRouter, Depends, HTTPException
+from itertools import combinations
+from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi.responses import StreamingResponse
 from sqlmodel import Session, select
 from pydantic import BaseModel
 from typing import Optional
 
 from app.models import Partida, PartidaJugador, Jugador, Turno
 from app.database import get_session
+from app import events
 
 router = APIRouter(prefix="/api/partidas", tags=["partidas"])
 
@@ -63,6 +68,94 @@ def _build_resumen(session: Session, partida: Partida) -> PartidaResumen:
         equipo1_jugadores=eq1,
         equipo2_jugadores=eq2,
     )
+
+
+class SugerenciaJugador(BaseModel):
+    id: int
+    nombre: str
+    color: Optional[str] = None
+
+
+class Sugerencia(BaseModel):
+    equipo1: list[SugerenciaJugador]
+    equipo2: list[SugerenciaJugador]
+    enfrentamientos: int        # veces que estos jugadores se han enfrentado (equipos cruzados)
+    interacciones_totales: int  # veces que han jugado en la misma partida (cualquier combo)
+
+
+@router.get("/sugerencias", response_model=list[Sugerencia])
+def sugerencias_partidas(
+    jugadores_por_equipo: int = 1,
+    session: Session = Depends(get_session),
+):
+    """Devuelve matchups sugeridos basados en los enfrentamientos históricos más bajos."""
+    jugadores = session.exec(select(Jugador).order_by(Jugador.nombre)).all()
+    if len(jugadores) < jugadores_por_equipo * 2:
+        return []
+
+    # Matrices de interacción
+    confrontaciones: dict = defaultdict(lambda: defaultdict(int))  # equipos opuestos
+    interacciones: dict = defaultdict(lambda: defaultdict(int))     # misma partida, cualquier equipo
+
+    partidas = session.exec(select(Partida)).all()
+    for partida in partidas:
+        pjs = session.exec(
+            select(PartidaJugador).where(PartidaJugador.partida_id == partida.id)
+        ).all()
+        eq1 = [p.jugador_id for p in pjs if p.equipo == 1]
+        eq2 = [p.jugador_id for p in pjs if p.equipo == 2]
+        todos = eq1 + eq2
+
+        for a, b in combinations(sorted(todos), 2):
+            interacciones[a][b] += 1
+            interacciones[b][a] += 1
+
+        for a in eq1:
+            for b in eq2:
+                confrontaciones[a][b] += 1
+                confrontaciones[b][a] += 1
+
+    jug_map = {j.id: j for j in jugadores}
+    jug_ids = [j.id for j in jugadores]
+    candidatos: list[tuple] = []
+    seen: set = set()
+
+    if jugadores_por_equipo == 1:
+        for a, b in combinations(jug_ids, 2):
+            key = (min(a, b), max(a, b))
+            if key in seen:
+                continue
+            seen.add(key)
+            candidatos.append((
+                confrontaciones[a][b],
+                interacciones[a][b],
+                [a], [b],
+            ))
+    else:
+        for t1 in combinations(jug_ids, jugadores_por_equipo):
+            restantes = [j for j in jug_ids if j not in t1]
+            for t2 in combinations(restantes, jugadores_por_equipo):
+                t1s = tuple(sorted(t1))
+                t2s = tuple(sorted(t2))
+                key = (min(t1s, t2s), max(t1s, t2s))
+                if key in seen:
+                    continue
+                seen.add(key)
+                enf = sum(confrontaciones[a][b] for a in t1s for b in t2s)
+                intr = sum(interacciones[a][b] for a in t1s for b in t2s)
+                candidatos.append((enf, intr, list(t1s), list(t2s)))
+
+    candidatos.sort(key=lambda x: (x[0], x[1]))
+
+    result = []
+    for enf, intr, t1_ids, t2_ids in candidatos[:6]:
+        result.append(Sugerencia(
+            equipo1=[SugerenciaJugador(id=i, nombre=jug_map[i].nombre, color=jug_map[i].color) for i in t1_ids],
+            equipo2=[SugerenciaJugador(id=i, nombre=jug_map[i].nombre, color=jug_map[i].color) for i in t2_ids],
+            enfrentamientos=enf,
+            interacciones_totales=intr,
+        ))
+    return result
 
 
 @router.get("", response_model=list[PartidaResumen])
@@ -151,6 +244,33 @@ def estado_partida(partida_id: int, session: Session = Depends(get_session)):
         "bolas_pendientes_9": bolas_pendientes_9,
         "bola_objetivo": bola_objetivo,
     }
+
+
+@router.get("/{partida_id}/eventos")
+async def eventos_partida(partida_id: int, request: Request):
+    """SSE: envía 'update' cada vez que cambia el estado de la partida."""
+    queue: asyncio.Queue = asyncio.Queue(maxsize=20)
+    events._subscribers[partida_id].add(queue)
+
+    async def stream():
+        try:
+            yield "data: connected\n\n"
+            while True:
+                if await request.is_disconnected():
+                    break
+                try:
+                    msg = await asyncio.wait_for(queue.get(), timeout=25)
+                    yield f"data: {msg}\n\n"
+                except asyncio.TimeoutError:
+                    yield ": heartbeat\n\n"  # keep-alive, no dispara onmessage
+        finally:
+            events._subscribers[partida_id].discard(queue)
+
+    return StreamingResponse(
+        stream(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
 
 
 @router.patch("/{partida_id}/tiempos", response_model=PartidaResumen)

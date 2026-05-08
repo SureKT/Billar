@@ -12,6 +12,7 @@ function nombre(id, jugadores) {
 export default function FormularioTurno({
   partida, estado, turnos, jugadores, faltas,
   bolas, setBolas, faltasIds, setFaltasIds, faltasAutoIds,
+  faltaPersonalId,
   registrando, flash, onRegistrar, onDeshacer,
 }) {
   const [otrasFaltasOpen, setOtrasFaltasOpen] = useState(false)
@@ -55,6 +56,11 @@ export default function FormularioTurno({
   const faltasManuales = (faltas ?? [])
     .filter(f => !FALTAS_OCULTAS.includes(f.nombre))
     .sort((a, b) => {
+      // La falta más habitual del jugador actual va primero
+      if (faltaPersonalId) {
+        if (a.id === faltaPersonalId) return -1
+        if (b.id === faltaPersonalId) return 1
+      }
       const diff = (b[freqKey] ?? 0) - (a[freqKey] ?? 0)
       if (diff !== 0) return diff
       if (partida.modalidad === 'bola9') {

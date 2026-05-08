@@ -29,6 +29,7 @@ def _migrate():
     with engine.connect() as conn:
         for stmt in [
             "ALTER TABLE partida ADD COLUMN fecha_fin DATETIME",
+            "ALTER TABLE jugador ADD COLUMN color TEXT",
         ]:
             try:
                 conn.execute(text(stmt))

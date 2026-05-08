@@ -8,6 +8,7 @@ import json
 class Jugador(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     nombre: str = Field(index=True, unique=True)
+    color: Optional[str] = Field(default=None)  # hex, p.ej. "#3b82f6"
 
     turnos: list["Turno"] = Relationship(back_populates="jugador")
 

@@ -43,6 +43,108 @@ function ContadorCard({ label, value, sub, color, compact }) {
   )
 }
 
+// Gráfica de barras horizontal
+// labelAbove=true → etiqueta encima de la barra (para textos largos)
+function GraficaHorizontal({ datos, color, labelWidth = 80, labelAbove = false }) {
+  // datos: [{ label, value, sub?, playerColor? }]
+  const max = Math.max(...datos.map(d => d.value), 1)
+
+  if (labelAbove) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        {datos.map((d, i) => {
+          const p = Math.round((d.value / max) * 100)
+          const barColor = d.playerColor ?? (typeof color === 'function' ? color(d, i) : color)
+          return (
+            <div key={d.label}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                <span style={{ fontSize: '12px', color: 'var(--text-dim)' }}>{d.label}</span>
+                <span style={{ fontSize: '12px', fontWeight: 700, color: barColor, flexShrink: 0, marginLeft: 8 }}>
+                  {d.value}{d.sub ? ` · ${d.sub}` : ''}
+                </span>
+              </div>
+              <div style={{ height: 10, borderRadius: 5, background: 'var(--surface2)', overflow: 'hidden' }}>
+                <div style={{ height: '100%', width: `${p}%`, background: barColor, borderRadius: 5, transition: 'width .5s ease' }} />
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    )
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+      {datos.map((d, i) => {
+        const p = Math.round((d.value / max) * 100)
+        const barColor = d.playerColor ?? (typeof color === 'function' ? color(d, i) : color)
+        return (
+          <div key={d.label} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{
+              width: labelWidth, fontSize: '12px', color: 'var(--text-dim)',
+              textAlign: 'right', flexShrink: 0,
+              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+            }}>
+              {d.label}
+            </span>
+            <div style={{ flex: 1, height: 22, borderRadius: 5, background: 'var(--surface2)', overflow: 'hidden', position: 'relative' }}>
+              <div style={{
+                height: '100%', width: `${p}%`, background: barColor,
+                borderRadius: 5, transition: 'width .5s ease',
+                display: 'flex', alignItems: 'center',
+              }}>
+                {p >= 20 && (
+                  <span style={{ paddingLeft: 8, fontSize: '12px', fontWeight: 700, color: '#fff', whiteSpace: 'nowrap' }}>
+                    {d.value}{d.sub ? ` · ${d.sub}` : ''}
+                  </span>
+                )}
+              </div>
+              {p < 20 && d.value > 0 && (
+                <span style={{
+                  position: 'absolute', left: `${p + 2}%`, top: '50%', transform: 'translateY(-50%)',
+                  fontSize: '12px', fontWeight: 700, color: 'var(--text-dim)', whiteSpace: 'nowrap',
+                }}>
+                  {d.value}{d.sub ? ` · ${d.sub}` : ''}
+                </span>
+              )}
+            </div>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+// Gráfica de barras verticales (para evolución temporal)
+function GraficaVertical({ datos, altura = 80 }) {
+  // datos: [{ label, wins, losses }]
+  const maxTotal = Math.max(...datos.map(d => d.wins + d.losses), 1)
+  return (
+    <div style={{ display: 'flex', gap: 4, alignItems: 'flex-end', height: altura + 24 }}>
+      {datos.map((d, i) => {
+        const total  = d.wins + d.losses
+        const hWins  = Math.round((d.wins   / maxTotal) * altura)
+        const hLoss  = Math.round((d.losses / maxTotal) * altura)
+        return (
+          <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', height: altura, width: '100%', gap: 1 }}>
+              {d.wins > 0 && (
+                <div style={{ height: hWins, background: '#16a34a', borderRadius: '3px 3px 0 0', opacity: .85 }} />
+              )}
+              {d.losses > 0 && (
+                <div style={{ height: hLoss, background: 'var(--team2)', borderRadius: d.wins === 0 ? '3px 3px 0 0' : 0, opacity: .75 }} />
+              )}
+            </div>
+            <span style={{ fontSize: '9px', color: 'var(--text-dim)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%', textAlign: 'center' }}>
+              {d.label}
+            </span>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
 function BarraWin({ ganadas, jugadas, color }) {
   const p = pct(ganadas, jugadas)
   return (
@@ -54,8 +156,6 @@ function BarraWin({ ganadas, jugadas, color }) {
     </div>
   )
 }
-
-// ─── ranking ─────────────────────────────────────────────────────────────────
 
 function FilaRanking({ pos, j, esTop }) {
   const p = pct(j.partidas_ganadas, j.partidas_jugadas)
@@ -69,13 +169,10 @@ function FilaRanking({ pos, j, esTop }) {
       background: esTop ? 'rgba(250,204,21,.06)' : 'transparent',
       borderBottom: '1px solid var(--border)',
     }}>
-      {/* posición */}
       <span style={{ width: 22, fontSize: pos <= 3 ? '18px' : '12px', textAlign: 'center', flexShrink: 0,
         color: pos > 3 ? 'var(--text-dim)' : undefined }}>
         {pos <= 3 ? medallas[pos - 1] : pos}
       </span>
-
-      {/* nombre + racha */}
       <div style={{ flex: 1, minWidth: 0 }}>
         <span style={{ fontSize: '14px', fontWeight: 700, color: esTop ? '#fcd34d' : 'var(--text)',
           display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -85,16 +182,12 @@ function FilaRanking({ pos, j, esTop }) {
           {j.partidas_ganadas} W · {j.partidas_jugadas - j.partidas_ganadas} L · {j.partidas_jugadas} Partidas
         </span>
       </div>
-
-      {/* barra win-rate */}
       <div style={{ width: 120, flexShrink: 0 }}>
         <BarraWin ganadas={j.partidas_ganadas} jugadas={j.partidas_jugadas} color={barColor} />
       </div>
     </div>
   )
 }
-
-// ─── records ─────────────────────────────────────────────────────────────────
 
 function RecordCard({ emoji, titulo, nombre, valor }) {
   return (
@@ -105,21 +198,29 @@ function RecordCard({ emoji, titulo, nombre, valor }) {
       <span style={{ fontSize: '22px', flexShrink: 0 }}>{emoji}</span>
       <div style={{ minWidth: 0 }}>
         <div style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '.05em', color: 'var(--text-dim)', marginBottom: 2 }}>{titulo}</div>
-        <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text)',
-          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{nombre}</div>
+        <div style={{ fontSize: '14px', fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{nombre}</div>
         {valor && <div style={{ fontSize: '12px', color: 'var(--accent)', fontWeight: 600 }}>{valor}</div>}
       </div>
     </div>
   )
 }
 
+function SeccionTitulo({ children }) {
+  return (
+    <p style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase',
+      letterSpacing: '.06em', color: 'var(--text-dim)', marginBottom: 10 }}>
+      {children}
+    </p>
+  )
+}
+
 // ─── página principal ─────────────────────────────────────────────────────────
 
 export default function Estadisticas() {
-  const { data: stats, loading: loadingStats }  = useApi(api.getAllStats)
-  const { data: partidas, loading: loadingPart } = useApi(api.getPartidas)
-  const { data: faltas, loading: loadingFaltas } = useApi(api.getFaltas)
-  const [filtro, setFiltro] = useState('todas') // 'todas' | 'bola8' | 'bola9'
+  const { data: stats,   loading: loadingStats }  = useApi(api.getAllStats)
+  const { data: partidas, loading: loadingPart }  = useApi(api.getPartidas)
+  const { data: faltas,  loading: loadingFaltas } = useApi(api.getFaltas)
+  const [filtro, setFiltro] = useState('todas')
 
   if (loadingStats || loadingPart || loadingFaltas) return <div className="spinner" />
 
@@ -130,19 +231,14 @@ export default function Estadisticas() {
   const bola8         = todasPartidas.filter(p => p.modalidad === 'bola8')
   const bola9         = todasPartidas.filter(p => p.modalidad === 'bola9')
 
-  // Cifras globales
   const totalBolasMetidas = (stats ?? []).reduce((s, j) => s + j.bolas_metidas, 0)
   const totalFaltas = (faltas ?? []).reduce((s, f) => s + f.frecuencia, 0)
 
-  // Ranking según filtro (solo partidas que coinciden con la modalidad)
-  // Nota: los stats del backend son globales — para el filtro usamos la relación
-  // jugadores ↔ partidas que conocemos de `partidas`. Construimos ganadas/jugadas
-  // por modalidad a partir de la lista de partidas finalizadas.
+  // Ranking filtrado
   const rankingFiltrado = (() => {
     if (filtro === 'todas') {
       return [...jugadoresConPartidas].sort((a, b) => winrate(b) - winrate(a) || b.partidas_jugadas - a.partidas_jugadas)
     }
-    // filtro por modalidad: construir stats parciales
     const rel = finalizadas
       .filter(p => p.modalidad === filtro)
       .flatMap(p => {
@@ -167,31 +263,64 @@ export default function Estadisticas() {
       .sort((a, b) => winrate(b) - winrate(a) || b.partidas_jugadas - a.partidas_jugadas)
   })()
 
-  // Duración media de partidas finalizadas con fecha_fin
+  // Duración media
   const conDuracion = finalizadas.filter(p => p.fecha_fin)
   const duracionMedia = (() => {
     if (conDuracion.length === 0) return null
     const ms = conDuracion.reduce((s, p) => s + (new Date(p.fecha_fin) - new Date(p.fecha)), 0) / conDuracion.length
     const min = Math.floor(ms / 60_000)
     const seg = Math.floor((ms % 60_000) / 1_000)
-    return { min, seg, str: `${min}' ${String(seg).padStart(2, '0')}"` }
+    return { str: `${min}' ${String(seg).padStart(2, '0')}"` }
   })()
 
-  // Faltas por partida finalizada
   const faltasPorPartida = finalizadas.length > 0
-    ? (totalFaltas / finalizadas.length).toFixed(1)
-    : null
+    ? (totalFaltas / finalizadas.length).toFixed(1) : null
 
-  // Faltas más frecuentes (excluir internas)
+  // Faltas más frecuentes
   const faltasOrdenadas = (faltas ?? [])
     .filter(f => !FALTAS_INTERNAS.includes(f.nombre) && f.frecuencia > 0)
     .sort((a, b) => b.frecuencia - a.frecuencia)
-    .slice(0, 5)
+    .slice(0, 6)
 
-  // Records globales
+  // Records
   const mejorWinRate = [...jugadoresConPartidas].sort((a, b) => winrate(b) - winrate(a))[0]
   const masBolas     = [...(stats ?? [])].sort((a, b) => b.bolas_metidas - a.bolas_metidas)[0]
   const rachaPos     = [...jugadoresConPartidas].filter(j => j.racha_actual > 0).sort((a, b) => b.racha_actual - a.racha_actual)[0]
+  const masEficiente = [...jugadoresConPartidas].filter(j => j.bolas_por_turno > 0).sort((a, b) => b.bolas_por_turno - a.bolas_por_turno)[0]
+
+  // Datos para gráficas
+  const COLORES_FALLBACK = ['#3b82f6','#06b6d4','#8b5cf6','#10b981','#f59e0b','#ef4444','#ec4899','#84cc16']
+
+  const grafBolas = [...jugadoresConPartidas]
+    .filter(j => j.bolas_metidas > 0)
+    .sort((a, b) => b.bolas_metidas - a.bolas_metidas)
+    .slice(0, 8)
+    .map((j, i) => ({ label: j.nombre, value: j.bolas_metidas, playerColor: j.color ?? COLORES_FALLBACK[i % COLORES_FALLBACK.length] }))
+
+  const grafEficiencia = [...jugadoresConPartidas]
+    .filter(j => j.bolas_por_turno > 0)
+    .sort((a, b) => b.bolas_por_turno - a.bolas_por_turno)
+    .slice(0, 8)
+    .map((j, i) => ({ label: j.nombre, value: j.bolas_por_turno, playerColor: j.color ?? COLORES_FALLBACK[i % COLORES_FALLBACK.length] }))
+
+  // Evolución mensual de partidas (últimos 8 meses con actividad)
+  const evolucion = (() => {
+    if (finalizadas.length === 0) return []
+    const porMes = {}
+    for (const p of finalizadas) {
+      const d = new Date(p.fecha)
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+      const label = d.toLocaleDateString('es-ES', { month: 'short', year: '2-digit' })
+      if (!porMes[key]) porMes[key] = { label, wins: 0, losses: 0 }
+      // wins = veces que ganó el equipo 1 (o alguno) — aquí sólo contamos partidas jugadas
+      // usamos wins = partidas finalizadas, losses = 0 para mostrar actividad
+      porMes[key].wins += 1
+    }
+    return Object.entries(porMes)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .slice(-8)
+      .map(([, v]) => v)
+  })()
 
   const sinDatos = todasPartidas.length === 0
 
@@ -208,58 +337,56 @@ export default function Estadisticas() {
         <>
           {/* ── Cifras globales ── */}
           <div className="card" style={{ padding: '12px' }}>
-            <p style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase',
-              letterSpacing: '.06em', color: 'var(--text-dim)', marginBottom: 10 }}>
-              Resumen global
-            </p>
+            <SeccionTitulo>Resumen global</SeccionTitulo>
             <div style={{ display: 'flex', gap: 6 }}>
-              <ContadorCard label="Partidas" value={todasPartidas.length} />
+              <ContadorCard label="Partidas"    value={todasPartidas.length} />
               <ContadorCard label="Finalizadas" value={finalizadas.length} color="#86efac" />
-              <ContadorCard label="En curso"  value={enCurso.length}  color="#fbbf24" />
-              <ContadorCard label="Bolas" value={totalBolasMetidas} color="#93c5fd" />
+              <ContadorCard label="En curso"    value={enCurso.length}     color="#fbbf24" />
+              <ContadorCard label="Bolas"       value={totalBolasMetidas}  color="#93c5fd" />
             </div>
             <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
               <ContadorCard label="Bola 8" value={bola8.length}
                 sub={`${Math.round((bola8.length / todasPartidas.length) * 100)}%`} />
               <ContadorCard label="Bola 9" value={bola9.length}
                 sub={`${Math.round((bola9.length / todasPartidas.length) * 100)}%`} />
-              <ContadorCard label="Jugadores" value={(stats ?? []).length} />
               {duracionMedia != null
                 ? <ContadorCard label="Duración media" value={duracionMedia.str} color="#c4b5fd" compact />
-                : <ContadorCard label="Faltas" value={totalFaltas} color="#f97316" />}
-            </div>
-            <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
+                : <ContadorCard label="Jugadores" value={(stats ?? []).length} />}
               <ContadorCard label="Total faltas" value={totalFaltas} color="#f97316" />
-              {faltasPorPartida != null && (
-                <ContadorCard label="Faltas / partida" value={faltasPorPartida} color="#fb923c" />
-              )}
             </div>
+            {faltasPorPartida != null && (
+              <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
+                <ContadorCard label="Faltas / partida" value={faltasPorPartida} color="#fb923c" />
+                <ContadorCard label="Jugadores" value={(stats ?? []).length} />
+                <div style={{ flex: 2 }} />
+              </div>
+            )}
           </div>
 
           {/* ── Records ── */}
-          {(mejorWinRate || masBolas || rachaPos) && (
+          {(mejorWinRate || masBolas || rachaPos || masEficiente) && (
             <div className="card" style={{ padding: '12px', display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <p style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase',
-                letterSpacing: '.06em', color: 'var(--text-dim)', marginBottom: 2 }}>
-                Récords
-              </p>
+              <SeccionTitulo>Récords</SeccionTitulo>
               {mejorWinRate && mejorWinRate.partidas_jugadas >= 2 && (
-                <RecordCard
-                  emoji="🏆" titulo="Mejor win rate"
+                <RecordCard emoji="🏆" titulo="Mejor win rate"
                   nombre={mejorWinRate.nombre}
                   valor={`${pct(mejorWinRate.partidas_ganadas, mejorWinRate.partidas_jugadas)}% (${mejorWinRate.partidas_ganadas}/${mejorWinRate.partidas_jugadas})`}
                 />
               )}
               {masBolas && masBolas.bolas_metidas > 0 && (
-                <RecordCard
-                  emoji="🎱" titulo="Más bolas metidas"
+                <RecordCard emoji="🎱" titulo="Más bolas metidas"
                   nombre={masBolas.nombre}
                   valor={`${masBolas.bolas_metidas} bolas · ${masBolas.bolas_por_turno} x turno`}
                 />
               )}
+              {masEficiente && masEficiente !== masBolas && (
+                <RecordCard emoji="⚡" titulo="Más eficiente (bolas/turno)"
+                  nombre={masEficiente.nombre}
+                  valor={`${masEficiente.bolas_por_turno} bolas por turno`}
+                />
+              )}
               {rachaPos && (
-                <RecordCard
-                  emoji="🔥" titulo="Racha ganadora actual"
+                <RecordCard emoji="🔥" titulo="Racha ganadora actual"
                   nombre={rachaPos.nombre}
                   valor={`${rachaPos.racha_actual} seguidas`}
                 />
@@ -267,36 +394,40 @@ export default function Estadisticas() {
             </div>
           )}
 
+          {/* ── Gráfica: bolas metidas ── */}
+          {grafBolas.length > 0 && (
+            <div className="card" style={{ padding: '12px' }}>
+              <SeccionTitulo>Bolas metidas por jugador</SeccionTitulo>
+              <GraficaHorizontal datos={grafBolas} />
+            </div>
+          )}
+
+          {/* ── Gráfica: eficiencia ── */}
+          {grafEficiencia.length > 1 && (
+            <div className="card" style={{ padding: '12px' }}>
+              <SeccionTitulo>Eficiencia · bolas por turno</SeccionTitulo>
+              <GraficaHorizontal datos={grafEficiencia} />
+              <p style={{ fontSize: '10px', color: 'var(--text-dim)', marginTop: 8 }}>
+                Media de bolas metidas por turno jugado, a mayor valor más preciso
+              </p>
+            </div>
+          )}
+
           {/* ── Faltas más frecuentes ── */}
           {faltasOrdenadas.length > 0 && (
             <div className="card" style={{ padding: '12px' }}>
-              <p style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase',
-                letterSpacing: '.06em', color: 'var(--text-dim)', marginBottom: 10 }}>
-                Faltas más frecuentes
-              </p>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {faltasOrdenadas.map((f, i) => {
-                  const max = faltasOrdenadas[0].frecuencia
-                  const p = Math.round((f.frecuencia / max) * 100)
-                  return (
-                    <div key={f.id} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                      <span style={{ width: 14, fontSize: '12px', color: 'var(--text-dim)', flexShrink: 0, textAlign: 'right' }}>{i + 1}</span>
-                      <span style={{ flex: 1, fontSize: '13px', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.nombre}</span>
-                      <div style={{ width: 80, height: 5, borderRadius: 3, background: 'var(--border)', overflow: 'hidden', flexShrink: 0 }}>
-                        <div style={{ height: '100%', width: `${p}%`, background: '#f97316', borderRadius: 3 }} />
-                      </div>
-                      <span style={{ fontSize: '12px', fontWeight: 700, color: '#fb923c', minWidth: 20, textAlign: 'right', flexShrink: 0 }}>{f.frecuencia}</span>
-                    </div>
-                  )
-                })}
-              </div>
+              <SeccionTitulo>Faltas más frecuentes</SeccionTitulo>
+              <GraficaHorizontal
+                datos={faltasOrdenadas.map(f => ({ label: f.nombre, value: f.frecuencia }))}
+                color={() => '#f97316'}
+                labelAbove
+              />
             </div>
           )}
 
           {/* ── Ranking ── */}
           {jugadoresConPartidas.length > 0 && (
             <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-              {/* Cabecera + filtro */}
               <div style={{
                 padding: '12px 14px 10px',
                 borderBottom: '1px solid var(--border)',
@@ -317,7 +448,6 @@ export default function Estadisticas() {
                   ))}
                 </div>
               </div>
-
               {rankingFiltrado.length === 0 ? (
                 <p style={{ padding: '16px 14px', fontSize: '13px', color: 'var(--text-dim)' }}>
                   Sin datos para este filtro

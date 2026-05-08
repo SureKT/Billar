@@ -6,6 +6,7 @@ from typing import Optional
 from app.models import Partida, PartidaJugador, Turno, Jugador, Bola, Falta
 from app.database import get_session
 from app.logic import evaluar_turno
+from app import events
 
 router = APIRouter(prefix="/api/partidas", tags=["turnos"])
 
@@ -129,6 +130,7 @@ def registrar_turno(
     session.add(partida)
     session.commit()
     session.refresh(turno)
+    events.broadcast(partida_id)
 
     return TurnoResponse(
         id=turno.id,
@@ -187,3 +189,4 @@ def deshacer_ultimo_turno(partida_id: int, session: Session = Depends(get_sessio
 
     session.add(partida)
     session.commit()
+    events.broadcast(partida_id)

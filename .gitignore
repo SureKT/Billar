@@ -1,6 +1,3 @@
-# Base de datos
-billar.db
-
 # Python
 __pycache__/
 *.pyc

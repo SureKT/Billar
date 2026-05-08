@@ -2,6 +2,12 @@ import { useState } from 'react'
 import { useApi } from '../hooks/useApi'
 import { api } from '../api/client'
 
+const PALETA = [
+  '#3b82f6', '#ef4444', '#22c55e', '#f59e0b',
+  '#a855f7', '#ec4899', '#14b8a6', '#f97316',
+  '#06b6d4', '#84cc16', '#6366f1', '#f43f5e',
+]
+
 function WinRate({ ganadas, jugadas }) {
   const pct = jugadas === 0 ? 0 : Math.round((ganadas / jugadas) * 100)
   return (
@@ -62,7 +68,11 @@ function fechaCorta(isoStr) {
   return new Date(isoStr).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })
 }
 
-function JugadorCard({ j, onReload }) {
+function JugadorCard({ j, onReload, todosStats }) {
+  const coloresTomados = new Set(
+    (todosStats ?? []).filter(s => s.id !== j.id && s.color).map(s => s.color)
+  )
+  const [expandido, setExpandido] = useState(false)
   const [modo, setModo] = useState(null) // null | 'editar' | 'eliminar'
   const [nombreEdit, setNombreEdit] = useState(j.nombre)
   const [recursivoOk, setRecursivoOk] = useState(false)
@@ -74,6 +84,14 @@ function JugadorCard({ j, onReload }) {
   const [mostrarH2H, setMostrarH2H] = useState(false)
   const [h2h, setH2H] = useState(null)
   const [cargandoH2H, setCargandoH2H] = useState(false)
+
+  async function elegirColor(color) {
+    const nuevo = j.color === color ? null : color  // tap mismo color → quitar
+    try {
+      await api.editarColorJugador(j.id, nuevo)
+      onReload()
+    } catch {}
+  }
 
   async function toggleUltimas() {
     if (mostrarUltimas) { setMostrarUltimas(false); return }
@@ -124,7 +142,7 @@ function JugadorCard({ j, onReload }) {
   return (
     <div className="card">
       {/* Cabecera */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: modo ? 12 : 0 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: (modo || expandido) ? 12 : 0 }}>
         {modo === 'editar' ? (
           <input
             type="text"
@@ -135,7 +153,21 @@ function JugadorCard({ j, onReload }) {
             style={{ flex: 1, marginRight: 8 }}
           />
         ) : (
-          <span style={{ fontSize: '16px', fontWeight: 700 }}>{j.nombre}</span>
+          <button
+            onClick={() => setExpandido(v => !v)}
+            style={{ display: 'flex', alignItems: 'center', gap: 7, background: 'none', border: 'none', cursor: 'pointer', flex: 1, textAlign: 'left', padding: 0, minWidth: 0 }}
+          >
+            {j.color && (
+              <span style={{ width: 10, height: 10, borderRadius: '50%', background: j.color, flexShrink: 0 }} />
+            )}
+            <span style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text)' }}>{j.nombre}</span>
+            {j.racha_actual !== 0 && (
+              <span style={{ fontSize: '11px', fontWeight: 700, flexShrink: 0, color: j.racha_actual > 0 ? '#86efac' : '#fca5a5' }}>
+                {j.racha_actual > 0 ? `▲${j.racha_actual}` : `▼${Math.abs(j.racha_actual)}`}
+              </span>
+            )}
+            <span style={{ fontSize: '11px', color: 'var(--text-dim)', marginLeft: 2 }}>{expandido ? '▲' : '▼'}</span>
+          </button>
         )}
 
         <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
@@ -163,6 +195,36 @@ function JugadorCard({ j, onReload }) {
           )}
         </div>
       </div>
+
+      {/* Picker de color — solo en modo editar */}
+      {modo === 'editar' && (
+        <div style={{ marginBottom: 8 }}>
+          <span style={{ fontSize: '11px', color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '.04em', display: 'block', marginBottom: 6 }}>Color</span>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+            {PALETA.map(c => {
+              const esMio  = j.color === c
+              const tomado = coloresTomados.has(c)
+              return (
+                <button
+                  key={c}
+                  onClick={() => !tomado && elegirColor(c)}
+                  disabled={tomado}
+                  title={tomado ? 'Color en uso' : c}
+                  style={{
+                    width: 26, height: 26, borderRadius: '50%',
+                    background: tomado ? 'var(--surface2)' : c,
+                    border: esMio ? '2.5px solid #fff' : tomado ? `1px solid ${c}44` : '2px solid transparent',
+                    cursor: tomado ? 'not-allowed' : 'pointer',
+                    opacity: tomado ? 0.3 : 1, padding: 0, flexShrink: 0,
+                    boxShadow: esMio ? `0 0 0 1px ${c}` : 'none',
+                    transition: 'opacity .15s, border .15s',
+                  }}
+                />
+              )
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Panel eliminar */}
       {modo === 'eliminar' && (
@@ -214,8 +276,8 @@ function JugadorCard({ j, onReload }) {
         </div>
       )}
 
-      {/* Stats — solo si no está en modo editar/eliminar */}
-      {modo === null && (
+      {/* Stats — solo si expandido y sin modo activo */}
+      {modo === null && expandido && (
         <>
           <div style={{ display: 'flex', borderRadius: 8, overflow: 'hidden', background: 'var(--surface2)', marginTop: 12 }}>
             <StatBox label="Jugadas" value={j.partidas_jugadas} />
@@ -235,7 +297,19 @@ function JugadorCard({ j, onReload }) {
               sub={j.partidas_jugadas > 0 ? j.bolas_por_turno : null}
             />
           </div>
-          <WinRate ganadas={j.partidas_ganadas} jugadas={j.partidas_jugadas} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{ flex: 1 }}>
+              <WinRate ganadas={j.partidas_ganadas} jugadas={j.partidas_jugadas} />
+            </div>
+            {j.racha_actual !== 0 && (
+              <span style={{
+                fontSize: '11px', fontWeight: 700, flexShrink: 0,
+                color: j.racha_actual > 0 ? '#86efac' : '#fca5a5',
+              }}>
+                {j.racha_actual > 0 ? `▲${j.racha_actual}` : `▼${Math.abs(j.racha_actual)}`}
+              </span>
+            )}
+          </div>
 
           {/* Desglose por modalidad */}
           {(j.partidas_jugadas_bola8 > 0 || j.partidas_jugadas_bola9 > 0) && (
@@ -256,20 +330,6 @@ function JugadorCard({ j, onReload }) {
                   color="#c4b5fd"
                 />
               )}
-            </div>
-          )}
-
-          {j.racha_actual !== 0 && j.partidas_jugadas > 0 && (
-            <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
-              <span style={{
-                fontSize: '12px', fontWeight: 700,
-                color: j.racha_actual > 0 ? '#86efac' : '#fca5a5',
-              }}>
-                {j.racha_actual > 0 ? '▲' : '▼'} {Math.abs(j.racha_actual)} seguida{Math.abs(j.racha_actual) !== 1 ? 's' : ''}
-              </span>
-              <span style={{ fontSize: '11px', color: 'var(--text-dim)' }}>
-                {j.racha_actual > 0 ? 'ganando' : 'perdiendo'}
-              </span>
             </div>
           )}
 
@@ -461,7 +521,7 @@ export default function Jugadores() {
       )}
 
       {[...(stats ?? [])].sort(ORDENES.find(o => o.key === orden)?.fn).map(j => (
-        <JugadorCard key={j.id} j={j} onReload={reload} />
+        <JugadorCard key={j.id} j={j} onReload={reload} todosStats={stats ?? []} />
       ))}
     </div>
   )

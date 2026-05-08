@@ -36,7 +36,7 @@ export default function BolasEquipo({
           {titulo} {ganador && '🏆'}
         </span>
         {!esBola9 && (grupo
-          ? <span className={`badge badge-${grupo}`} style={{ fontSize: '10px', padding: '2px 7px' }}>{grupo}</span>
+          ? <span className={`badge badge-${grupo}`} style={{ fontSize: '10px', padding: '2px 7px' }}>{grupo.charAt(0).toUpperCase() + grupo.slice(1)}</span>
           : <span style={{ fontSize: '10px', color: 'var(--text-dim)' }}>—</span>
         )}
       </div>

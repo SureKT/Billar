@@ -7,7 +7,7 @@ const TEAM_COLOR = {
 }
 
 export default function HistorialTurnos({ turnos, jugadores, faltas, equipo1Jugadores, equipo2Jugadores }) {
-  const [mostrar, setMostrar] = useState(false)
+  const [mostrar, setMostrar] = useState(true)
 
   return (
     <div>
@@ -40,10 +40,10 @@ export default function HistorialTurnos({ turnos, jugadores, faltas, equipo1Juga
                   </span>
                   <div style={{ display: 'flex', gap: 4 }}>
                     {t.bola_en_mano && (
-                      <span className="badge" style={{ background: '#3d2c00', color: '#fcd34d', fontSize: '11px' }}>mano</span>
+                      <span className="badge" style={{ background: '#3d2c00', color: '#fcd34d', fontSize: '11px' }}>En mano</span>
                     )}
                     {t.repite && (
-                      <span className="badge" style={{ background: '#1e3a5f', color: '#93c5fd', fontSize: '11px' }}>repitió</span>
+                      <span className="badge" style={{ background: '#1e3a5f', color: '#93c5fd', fontSize: '11px' }}>Repite turno</span>
                     )}
                     {t.falta_id && (
                       <span className="badge" style={{ background: 'rgba(127,29,29,.5)', color: '#fca5a5', fontSize: '11px' }}>
