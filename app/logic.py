@@ -1,8 +1,16 @@
 """
 Lógica de negocio: evaluación de turno, asignación de grupos, fin de partida.
 """
+from datetime import datetime
 from sqlmodel import Session, select
 from app.models import Partida, Turno, Falta, PartidaJugador
+
+
+def _finalizar(partida: Partida, ganador: int) -> None:
+    """Marca la partida como finalizada y registra la hora de fin."""
+    partida.estado = "finalizada"
+    partida.ganador_equipo = ganador
+    partida.fecha_fin = datetime.utcnow()
 
 
 def _jugadores_equipo(session: Session, partida_id: int, equipo: int) -> list[int]:
@@ -101,8 +109,7 @@ def _evaluar_falta_comun(session: Session, partida: Partida, turno: Turno, resul
     equipo_rival = 2 if equipo_actual == 1 else 1
 
     if penalizacion == "pierde_partida":
-        partida.estado = "finalizada"
-        partida.ganador_equipo = equipo_rival
+        _finalizar(partida, equipo_rival)
         resultado["partida_finalizada"] = True
         resultado["ganador_equipo"] = equipo_rival
         return resultado
@@ -116,8 +123,7 @@ def _evaluar_falta_comun(session: Session, partida: Partida, turno: Turno, resul
 
     if _tres_faltas_consecutivas(session, partida.id, equipo_actual):
         turno.falta_id = _get_falta_id(session, "Tres faltas consecutivas") or turno.falta_id
-        partida.estado = "finalizada"
-        partida.ganador_equipo = equipo_rival
+        _finalizar(partida, equipo_rival)
         resultado["partida_finalizada"] = True
         resultado["ganador_equipo"] = equipo_rival
 
@@ -144,14 +150,12 @@ def _evaluar_bola8(session: Session, partida: Partida, turno: Turno) -> dict:
     if turno.numero == 1 and 8 in bolas:
         if 0 in bolas:
             # Golden Break + Scratch → pierde la partida
-            partida.estado = "finalizada"
-            partida.ganador_equipo = equipo_rival
+            _finalizar(partida, equipo_rival)
             resultado["partida_finalizada"] = True
             resultado["ganador_equipo"] = equipo_rival
         else:
             # Golden Break limpio → gana la partida
-            partida.estado = "finalizada"
-            partida.ganador_equipo = equipo_actual
+            _finalizar(partida, equipo_actual)
             resultado["partida_finalizada"] = True
             resultado["ganador_equipo"] = equipo_actual
         return resultado
@@ -180,13 +184,11 @@ def _evaluar_bola8(session: Session, partida: Partida, turno: Turno) -> dict:
         pendientes = _bolas_pendientes_equipo(session, partida, equipo_actual)
         if pendientes:
             turno.falta_id = _get_falta_id(session, "Bola 8 ilegal")
-            partida.estado = "finalizada"
-            partida.ganador_equipo = equipo_rival
+            _finalizar(partida, equipo_rival)
             resultado["partida_finalizada"] = True
             resultado["ganador_equipo"] = equipo_rival
         else:
-            partida.estado = "finalizada"
-            partida.ganador_equipo = equipo_actual
+            _finalizar(partida, equipo_actual)
             resultado["partida_finalizada"] = True
             resultado["ganador_equipo"] = equipo_actual
         return resultado
@@ -272,8 +274,7 @@ def _evaluar_bola9(session: Session, partida: Partida, turno: Turno) -> dict:
         # Tres faltas consecutivas
         if _tres_faltas_consecutivas(session, partida.id, equipo_actual):
             turno.falta_id = _get_falta_id(session, "Tres faltas consecutivas") or turno.falta_id
-            partida.estado = "finalizada"
-            partida.ganador_equipo = equipo_rival
+            _finalizar(partida, equipo_rival)
             resultado["partida_finalizada"] = True
             resultado["ganador_equipo"] = equipo_rival
         return resultado
@@ -287,8 +288,7 @@ def _evaluar_bola9(session: Session, partida: Partida, turno: Turno) -> dict:
 
     # Meter la 9 = victoria (Golden Break incluido: turno numero == 1 también)
     if 9 in bolas:
-        partida.estado = "finalizada"
-        partida.ganador_equipo = equipo_actual
+        _finalizar(partida, equipo_actual)
         resultado["partida_finalizada"] = True
         resultado["ganador_equipo"] = equipo_actual
         return resultado

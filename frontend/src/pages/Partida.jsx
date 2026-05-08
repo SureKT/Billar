@@ -11,6 +11,7 @@ function usePartidaData(id) {
   const [jugadores, setJugadores] = useState([])
   const [faltas, setFaltas] = useState([])
   const [loading, setLoading] = useState(true)
+  const [ultimoReload, setUltimoReload] = useState(null)
 
   const reload = useCallback(async (showSpinner = false) => {
     if (showSpinner) setLoading(true)
@@ -29,6 +30,7 @@ function usePartidaData(id) {
         const e = await api.getEstadoPartida(id)
         setEstado(e)
       }
+      setUltimoReload(new Date())
     } catch (err) {
       console.error('reload error:', err)
       throw err   // re-throw para que registrar() lo capture en su try/catch
@@ -53,11 +55,18 @@ function usePartidaData(id) {
     return () => clearInterval(timer)
   }, [partida?.estado, reload])
 
-  return { partida, estado, turnos, jugadores, faltas, loading, reload }
+  return { partida, estado, turnos, jugadores, faltas, loading, reload, ultimoReload }
 }
 
 function nombre(id, jugadores) {
   return jugadores.find(j => j.id === id)?.nombre ?? `#${id}`
+}
+
+function duracion(fecha, fechaFin) {
+  const ms = new Date(fechaFin ?? Date.now()) - new Date(fecha)
+  const min = Math.floor(ms / 60_000)
+  const seg = Math.floor((ms % 60_000) / 1_000)
+  return min > 0 ? `${min} min ${seg} s` : `${seg} s`
 }
 
 // Colores por equipo
@@ -135,7 +144,7 @@ const FALTAS_FIJAS = ['No toca objetivo legal']
 export default function Partida() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const { partida, estado, turnos, jugadores, faltas, loading, reload } = usePartidaData(id)
+  const { partida, estado, turnos, jugadores, faltas, loading, reload, ultimoReload } = usePartidaData(id)
 
   const [bolas, setBolas] = useState([])
   const [faltasIds, setFaltasIds] = useState(new Set())
@@ -208,11 +217,12 @@ export default function Partida() {
     : [1,2,3,4,5,6,7,9,10,11,12,13,14,15].filter(n => !bolasYaMetidas.has(n))
   const bolaObjetivo = estado?.bola_objetivo ?? null
 
-  // Faltas manuales ordenadas por frecuencia global (campo frecuencia del backend)
-  // Barato: el backend lo calcula una vez al cargar la partida
+  // Faltas manuales ordenadas por frecuencia de la modalidad activa
+  // Así la falta más habitual en bola8 aparece arriba en bola8, y viceversa en bola9
+  const freqKey = partida.modalidad === 'bola9' ? 'frecuencia_bola9' : 'frecuencia_bola8'
   const faltasManualesOrdenadas = (faltas ?? [])
     .filter(f => !FALTAS_OCULTAS.includes(f.nombre) && !FALTAS_FIJAS.includes(f.nombre))
-    .sort((a, b) => (b.frecuencia ?? 0) - (a.frecuencia ?? 0))
+    .sort((a, b) => (b[freqKey] ?? 0) - (a[freqKey] ?? 0))
   const faltasFijasVisibles = (faltas ?? []).filter(f => FALTAS_FIJAS.includes(f.nombre))
   const faltaPrincipal = faltasManualesOrdenadas[0] ?? null
   const faltasSecundarias = faltasManualesOrdenadas.slice(1)
@@ -339,9 +349,16 @@ export default function Partida() {
             <span style={{ color: 'var(--text-dim)', fontWeight: 400 }}> · #{id}</span>
           </h2>
         </div>
-        <span className={`badge ${finalizada ? 'badge-fin' : 'badge-curso'}`} style={{ flexShrink: 0, marginLeft: 8 }}>
-          {finalizada ? 'Finalizada' : 'En curso'}
-        </span>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2, flexShrink: 0, marginLeft: 8 }}>
+          <span className={`badge ${finalizada ? 'badge-fin' : 'badge-curso'}`}>
+            {finalizada ? 'Finalizada' : 'En curso'}
+          </span>
+          {!finalizada && ultimoReload && (
+            <span style={{ fontSize: '9px', color: 'var(--text-dim)', letterSpacing: '.03em' }}>
+              sync {ultimoReload.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+            </span>
+          )}
+        </div>
       </div>
 
       {/* Estado de equipos */}
@@ -393,6 +410,12 @@ export default function Partida() {
             <p style={{ fontSize: '14px', color: 'var(--text-dim)', marginTop: 4 }}>
               {ganadores.map(jid => nombre(jid, jugadores)).join(', ')}
             </p>
+
+            {partida.fecha_fin && (
+              <p style={{ fontSize: '12px', color: 'var(--text-dim)', marginTop: 6 }}>
+                ⏱ {duracion(partida.fecha, partida.fecha_fin)}
+              </p>
+            )}
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginTop: 14 }}>
               {[

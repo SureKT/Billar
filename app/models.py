@@ -29,6 +29,7 @@ class Partida(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     modalidad: str = Field(default="bola8")  # "bola8" | "bola9"
     fecha: datetime = Field(default_factory=datetime.utcnow)
+    fecha_fin: Optional[datetime] = Field(default=None)   # se rellena al finalizar
     estado: str = Field(default="en_curso")  # "en_curso" | "finalizada"
     ganador_equipo: Optional[int] = Field(default=None)  # 1 o 2
 

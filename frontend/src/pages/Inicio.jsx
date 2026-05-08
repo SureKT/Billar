@@ -13,6 +13,12 @@ function formatFecha(iso) {
   })
 }
 
+function duracionMin(fecha, fechaFin) {
+  if (!fechaFin) return null
+  const min = Math.round((new Date(fechaFin) - new Date(fecha)) / 60_000)
+  return min < 1 ? '<1 min' : `${min} min`
+}
+
 export default function Inicio() {
   const { data: partidas, loading, error } = useApi(api.getPartidas)
   const { data: jugadores } = useApi(api.getJugadores)
@@ -111,6 +117,11 @@ function PartidaCard({ p, jugadores, onClick }) {
         <p style={{ fontSize: '11px', marginTop: 6,
           color: p.equipo1_jugadores.includes(p.siguiente_jugador_id) ? 'var(--team1)' : 'var(--team2)' }}>
           Turno: {nombreJugador(p.siguiente_jugador_id, jugadores)}
+        </p>
+      )}
+      {finalizada && duracionMin(p.fecha, p.fecha_fin) && (
+        <p style={{ fontSize: '11px', color: 'var(--text-dim)', marginTop: 4 }}>
+          ⏱ {duracionMin(p.fecha, p.fecha_fin)}
         </p>
       )}
     </button>

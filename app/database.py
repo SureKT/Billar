@@ -19,7 +19,22 @@ FALTAS = [
 
 def init_db():
     SQLModel.metadata.create_all(engine)
+    _migrate()
     _seed_datos_base()
+
+
+def _migrate():
+    """Migraciones incrementales para DBs existentes (ALTER TABLE idempotentes)."""
+    from sqlalchemy import text
+    with engine.connect() as conn:
+        for stmt in [
+            "ALTER TABLE partida ADD COLUMN fecha_fin DATETIME",
+        ]:
+            try:
+                conn.execute(text(stmt))
+                conn.commit()
+            except Exception:
+                pass  # columna ya existe — ignorar
 
 
 def get_session():

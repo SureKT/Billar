@@ -175,6 +175,7 @@ def deshacer_ultimo_turno(partida_id: int, session: Session = Depends(get_sessio
 
     partida.estado = "en_curso"
     partida.ganador_equipo = None
+    partida.fecha_fin = None
     partida.equipo1_grupo = None
     partida.equipo2_grupo = None
     partida.siguiente_jugador_id = primer_jugador.jugador_id if primer_jugador else None

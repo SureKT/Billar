@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { useApi } from '../hooks/useApi'
 import { api } from '../api/client'
 
+const FALTAS_INTERNAS = ['Bola 8 ilegal', 'Tres faltas consecutivas', 'Blanca dentro (Scratch)']
+
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
 function winrate(j) {
@@ -111,9 +113,10 @@ function RecordCard({ emoji, titulo, nombre, valor }) {
 export default function Estadisticas() {
   const { data: stats, loading: loadingStats }  = useApi(api.getAllStats)
   const { data: partidas, loading: loadingPart } = useApi(api.getPartidas)
+  const { data: faltas, loading: loadingFaltas } = useApi(api.getFaltas)
   const [filtro, setFiltro] = useState('todas') // 'todas' | 'bola8' | 'bola9'
 
-  if (loadingStats || loadingPart) return <div className="spinner" />
+  if (loadingStats || loadingPart || loadingFaltas) return <div className="spinner" />
 
   const jugadoresConPartidas = (stats ?? []).filter(j => j.partidas_jugadas > 0)
   const todasPartidas = partidas ?? []
@@ -158,6 +161,18 @@ export default function Estadisticas() {
       .sort((a, b) => winrate(b) - winrate(a) || b.partidas_jugadas - a.partidas_jugadas)
   })()
 
+  // Duración media de partidas finalizadas con fecha_fin
+  const conDuracion = finalizadas.filter(p => p.fecha_fin)
+  const duracionMediaMin = conDuracion.length > 0
+    ? Math.round(conDuracion.reduce((s, p) => s + (new Date(p.fecha_fin) - new Date(p.fecha)), 0) / conDuracion.length / 60_000)
+    : null
+
+  // Faltas más frecuentes (excluir internas)
+  const faltasOrdenadas = (faltas ?? [])
+    .filter(f => !FALTAS_INTERNAS.includes(f.nombre) && f.frecuencia > 0)
+    .sort((a, b) => b.frecuencia - a.frecuencia)
+    .slice(0, 5)
+
   // Records globales
   const mejorWinRate = [...jugadoresConPartidas].sort((a, b) => winrate(b) - winrate(a))[0]
   const masBolas     = [...(stats ?? [])].sort((a, b) => b.bolas_metidas - a.bolas_metidas)[0]
@@ -194,7 +209,9 @@ export default function Estadisticas() {
               <ContadorCard label="Bola 9" value={bola9.length}
                 sub={`${Math.round((bola9.length / todasPartidas.length) * 100)}%`} />
               <ContadorCard label="Jugadores" value={(stats ?? []).length} />
-              <ContadorCard label="Con partidas" value={jugadoresConPartidas.length} />
+              {duracionMediaMin != null
+                ? <ContadorCard label="Duración media" value={`${duracionMediaMin}′`} color="#c4b5fd" />
+                : <ContadorCard label="Con partidas" value={jugadoresConPartidas.length} />}
             </div>
           </div>
 
@@ -226,6 +243,32 @@ export default function Estadisticas() {
                   valor={`${rachaPos.racha_actual} seguidas`}
                 />
               )}
+            </div>
+          )}
+
+          {/* ── Faltas más frecuentes ── */}
+          {faltasOrdenadas.length > 0 && (
+            <div className="card" style={{ padding: '12px' }}>
+              <p style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase',
+                letterSpacing: '.06em', color: 'var(--text-dim)', marginBottom: 10 }}>
+                Faltas más frecuentes
+              </p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {faltasOrdenadas.map((f, i) => {
+                  const max = faltasOrdenadas[0].frecuencia
+                  const p = Math.round((f.frecuencia / max) * 100)
+                  return (
+                    <div key={f.id} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <span style={{ width: 14, fontSize: '12px', color: 'var(--text-dim)', flexShrink: 0, textAlign: 'right' }}>{i + 1}</span>
+                      <span style={{ flex: 1, fontSize: '13px', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.nombre}</span>
+                      <div style={{ width: 80, height: 5, borderRadius: 3, background: 'var(--border)', overflow: 'hidden', flexShrink: 0 }}>
+                        <div style={{ height: '100%', width: `${p}%`, background: '#f97316', borderRadius: 3 }} />
+                      </div>
+                      <span style={{ fontSize: '12px', fontWeight: 700, color: '#fb923c', minWidth: 20, textAlign: 'right', flexShrink: 0 }}>{f.frecuencia}</span>
+                    </div>
+                  )
+                })}
+              </div>
             </div>
           )}
 

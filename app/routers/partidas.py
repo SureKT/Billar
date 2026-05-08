@@ -25,6 +25,7 @@ class PartidaResumen(BaseModel):
     id: int
     modalidad: str
     fecha: datetime
+    fecha_fin: Optional[datetime]
     estado: str
     ganador_equipo: Optional[int]
     equipo1_grupo: Optional[str]
@@ -47,6 +48,7 @@ def _build_resumen(session: Session, partida: Partida) -> PartidaResumen:
         id=partida.id,
         modalidad=partida.modalidad,
         fecha=partida.fecha,
+        fecha_fin=partida.fecha_fin,
         estado=partida.estado,
         ganador_equipo=partida.ganador_equipo,
         equipo1_grupo=partida.equipo1_grupo,
