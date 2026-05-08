@@ -21,6 +21,11 @@ class PartidaCreate(BaseModel):
     primer_jugador_id: Optional[int] = None
 
 
+class TiemposUpdate(BaseModel):
+    fecha: Optional[datetime] = None
+    fecha_fin: Optional[datetime] = None
+
+
 class PartidaResumen(BaseModel):
     id: int
     modalidad: str
@@ -146,6 +151,21 @@ def estado_partida(partida_id: int, session: Session = Depends(get_session)):
         "bolas_pendientes_9": bolas_pendientes_9,
         "bola_objetivo": bola_objetivo,
     }
+
+
+@router.patch("/{partida_id}/tiempos", response_model=PartidaResumen)
+def actualizar_tiempos(partida_id: int, datos: TiemposUpdate, session: Session = Depends(get_session)):
+    partida = session.get(Partida, partida_id)
+    if not partida:
+        raise HTTPException(status_code=404, detail="Partida no encontrada")
+    if datos.fecha is not None:
+        partida.fecha = datos.fecha
+    if datos.fecha_fin is not None:
+        partida.fecha_fin = datos.fecha_fin
+    session.add(partida)
+    session.commit()
+    session.refresh(partida)
+    return _build_resumen(session, partida)
 
 
 @router.delete("/{partida_id}", status_code=204)

@@ -18,6 +18,10 @@ export default function Partida() {
   const [registrando, setRegistrando] = useState(false)
   const [confirmarBorrar, setConfirmarBorrar] = useState(false)
   const [flash, setFlash]             = useState(null)
+  const [editandoTiempos, setEditandoTiempos] = useState(false)
+  const [fechaEdit, setFechaEdit]     = useState('')
+  const [fechaFinEdit, setFechaFinEdit] = useState('')
+  const [guardandoTiempos, setGuardandoTiempos] = useState(false)
   const wakeLockRef = useRef(null)
 
   // ── Auto-detect faltas según bolas seleccionadas ─────────────────────────────
@@ -160,6 +164,35 @@ export default function Partida() {
     })
   }
 
+  function toDatetimeLocal(isoStr) {
+    if (!isoStr) return ''
+    const d = new Date(isoStr)
+    const p = n => String(n).padStart(2, '0')
+    return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`
+  }
+
+  function abrirEditarTiempos() {
+    setFechaEdit(toDatetimeLocal(partida.fecha))
+    setFechaFinEdit(toDatetimeLocal(partida.fecha_fin))
+    setEditandoTiempos(true)
+  }
+
+  async function guardarTiempos() {
+    setGuardandoTiempos(true)
+    try {
+      const datos = {}
+      if (fechaEdit)    datos.fecha     = new Date(fechaEdit).toISOString()
+      if (fechaFinEdit) datos.fecha_fin = new Date(fechaFinEdit).toISOString()
+      await api.actualizarTiempos(id, datos)
+      setEditandoTiempos(false)
+      await reload()
+    } catch (err) {
+      setFlash({ texto: err.message, tipo: 'error' })
+    } finally {
+      setGuardandoTiempos(false)
+    }
+  }
+
   function repetir() {
     navigate('/nueva', {
       state: {
@@ -266,6 +299,59 @@ export default function Partida() {
         equipo1Jugadores={partida.equipo1_jugadores}
         equipo2Jugadores={partida.equipo2_jugadores}
       />
+
+      {/* Editar tiempos */}
+      {!editandoTiempos ? (
+        <button
+          className="btn btn-ghost btn-full"
+          onClick={abrirEditarTiempos}
+          style={{ color: 'var(--text-dim)', fontSize: '13px' }}
+        >
+          ✎ Editar tiempos
+        </button>
+      ) : (
+        <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <p style={{ fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.05em', color: 'var(--text-dim)' }}>
+            Editar tiempos
+          </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <span style={{ fontSize: '11px', color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '.04em' }}>Inicio</span>
+              <input
+                type="datetime-local"
+                value={fechaEdit}
+                onChange={e => setFechaEdit(e.target.value)}
+                style={{ fontSize: '14px' }}
+              />
+            </label>
+            <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <span style={{ fontSize: '11px', color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '.04em' }}>Fin</span>
+              <input
+                type="datetime-local"
+                value={fechaFinEdit}
+                onChange={e => setFechaFinEdit(e.target.value)}
+                style={{ fontSize: '14px' }}
+              />
+            </label>
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button
+              className="btn btn-primary btn-full"
+              onClick={guardarTiempos}
+              disabled={guardandoTiempos}
+            >
+              {guardandoTiempos ? 'Guardando…' : 'Guardar'}
+            </button>
+            <button
+              className="btn btn-ghost btn-full"
+              onClick={() => setEditandoTiempos(false)}
+              disabled={guardandoTiempos}
+            >
+              Cancelar
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Eliminar partida */}
       {!confirmarBorrar ? (

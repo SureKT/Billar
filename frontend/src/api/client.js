@@ -31,6 +31,7 @@ export const api = {
   getEstadoPartida: (id) => request('GET', `/partidas/${id}/estado`),
   crearPartida: (datos) => request('POST', '/partidas', datos),
   eliminarPartida: (id) => request('DELETE', `/partidas/${id}`),
+  actualizarTiempos: (id, datos) => request('PATCH', `/partidas/${id}/tiempos`, datos),
 
   // Turnos
   getTurnos: (partidaId) => request('GET', `/partidas/${partidaId}/turnos`),
