@@ -17,6 +17,7 @@ export default function Partida() {
   const [faltasAutoIds, setFaltasAutoIds] = useState(new Set())
   const [registrando, setRegistrando] = useState(false)
   const [confirmarBorrar, setConfirmarBorrar] = useState(false)
+  const [confirmarBorrar2, setConfirmarBorrar2] = useState(false)
   const [flash, setFlash]             = useState(null)
   const [editandoTiempos, setEditandoTiempos] = useState(false)
   const [editandoTurnos, setEditandoTurnos] = useState(false)
@@ -172,8 +173,14 @@ export default function Partida() {
   }
 
   async function eliminar() {
-    await api.eliminarPartida(id)
-    navigate('/')
+    try {
+      await api.eliminarPartida(id)
+      navigate(partida?.torneo_id ? `/torneo/${partida.torneo_id}` : '/')
+    } catch (err) {
+      setFlash({ texto: err.message, tipo: 'error' })
+      setConfirmarBorrar(false)
+      setConfirmarBorrar2(false)
+    }
   }
 
   function revancha() {
@@ -289,13 +296,28 @@ export default function Partida() {
 
       {/* Banner de resultado */}
       {finalizada && (
-        <ResultadoBanner
-          partida={partida}
-          turnos={turnos}
-          jugadores={jugadores}
-          onRevancha={revancha}
-          onRepetir={repetir}
-        />
+        <>
+          <ResultadoBanner
+            partida={partida}
+            turnos={turnos}
+            jugadores={jugadores}
+            onRevancha={revancha}
+            onRepetir={repetir}
+            torneoId={partida.torneo_id}
+          />
+          {partida.torneo_id && (
+            <button
+              onClick={() => navigate(`/torneo/${partida.torneo_id}`)}
+              style={{
+                width: '100%', padding: '11px 0', borderRadius: 10,
+                background: 'rgba(234,179,8,.1)', border: '1px solid rgba(234,179,8,.3)',
+                color: '#fbbf24', fontWeight: 700, fontSize: 14, cursor: 'pointer',
+              }}
+            >
+              🏆 {partida.torneo_nombre ? `Ir a ${partida.torneo_nombre}` : 'Ir al torneo'}
+            </button>
+          )}
+        </>
       )}
 
       {/* Formulario del turno */}
@@ -401,6 +423,13 @@ export default function Partida() {
           </div>
         )}
 
+        {/* Error eliminar */}
+        {flash?.tipo === 'error' && !confirmarBorrar && (
+          <div style={{ padding: '10px 14px', borderRadius: 8, fontSize: 13, fontWeight: 600, background: 'rgba(239,68,68,.12)', color: '#fca5a5' }}>
+            {flash.texto}
+          </div>
+        )}
+
         {/* Eliminar partida */}
         {!confirmarBorrar ? (
           <button
@@ -416,8 +445,14 @@ export default function Partida() {
               ¿Eliminar esta partida? No se puede deshacer.
             </p>
             <div style={{ display: 'flex', gap: 8 }}>
-              <button className="btn btn-danger btn-full" onClick={eliminar}>Sí, eliminar</button>
-              <button className="btn btn-ghost btn-full" onClick={() => setConfirmarBorrar(false)}>Cancelar</button>
+              <button
+                className={`btn ${confirmarBorrar2 ? '' : 'btn-danger'}`}
+                onClick={() => confirmarBorrar2 ? eliminar() : setConfirmarBorrar2(true)}
+                style={{ flex: 1, ...(confirmarBorrar2 ? { background: '#dc2626', color: '#fff', border: 'none' } : {}) }}
+              >
+                {confirmarBorrar2 ? '⚠ Confirmar' : 'Sí, eliminar'}
+              </button>
+              <button className="btn btn-ghost" style={{ flex: 1 }} onClick={() => { setConfirmarBorrar(false); setConfirmarBorrar2(false) }}>Cancelar</button>
             </div>
           </div>
         )}

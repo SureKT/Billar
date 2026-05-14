@@ -4,9 +4,11 @@ import NuevaPartida from './pages/NuevaPartida'
 import Partida from './pages/Partida'
 import Jugadores from './pages/Jugadores'
 import Estadisticas from './pages/Estadisticas'
-import Sugerencias from './pages/Sugerencias'
+import Torneos from './pages/Torneos'
+import TorneoDetalle from './pages/TorneoDetalle'
 import Nav from './components/Nav'
 import ErrorBoundary from './components/ErrorBoundary'
+import ToastContainer from './components/Toast'
 
 export default function App() {
   return (
@@ -20,10 +22,12 @@ export default function App() {
             <Route path="/partida/:id" element={<Partida />} />
             <Route path="/jugadores" element={<Jugadores />} />
             <Route path="/stats" element={<Estadisticas />} />
-            <Route path="/sugerencias" element={<Sugerencias />} />
+            <Route path="/torneos" element={<Torneos />} />
+            <Route path="/torneo/:id" element={<TorneoDetalle />} />
           </Routes>
         </ErrorBoundary>
       </main>
+      <ToastContainer />
     </>
   )
 }

@@ -24,7 +24,7 @@ function MiniBar({ value, max, color }) {
   )
 }
 
-export default function ResultadoBanner({ partida, turnos, jugadores, onRevancha, onRepetir }) {
+export default function ResultadoBanner({ partida, turnos, jugadores, onRevancha, onRepetir, torneoId }) {
   // Derivar estadísticas por jugador
   const bolasXJugador  = {}
   const faltasXJugador = {}
@@ -141,16 +141,18 @@ export default function ResultadoBanner({ partida, turnos, jugadores, onRevancha
       </div>
 
       {/* ── Botones ── */}
-      <div style={{ display: 'flex', gap: 8 }}>
-        <button className="btn btn-primary" onClick={onRevancha}
-          style={{ flex: 1, padding: '10px', fontSize: '14px' }}>
-          ↺ Revancha
-        </button>
-        <button className="btn btn-ghost" onClick={onRepetir}
-          style={{ flex: 1, padding: '10px', fontSize: '14px', borderColor: 'var(--border)' }}>
-          = Mismos equipos
-        </button>
-      </div>
+      {!torneoId && (
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button className="btn btn-primary" onClick={onRevancha}
+            style={{ flex: 1, padding: '10px', fontSize: '14px' }}>
+            ↺ Revancha
+          </button>
+          <button className="btn btn-ghost" onClick={onRepetir}
+            style={{ flex: 1, padding: '10px', fontSize: '14px', borderColor: 'var(--border)' }}>
+            = Mismos equipos
+          </button>
+        </div>
+      )}
     </div>
   )
 }

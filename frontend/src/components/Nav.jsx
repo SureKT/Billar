@@ -39,16 +39,16 @@ export default function Nav() {
         background: 'rgba(6,182,212,.07)',
         borderBottom: isActive ? '2px solid var(--accent)' : '2px solid transparent',
       })}>
-        <span style={{ fontSize: '18px', lineHeight: 1 }}>＋</span>
+        <span style={{ fontSize: '18px', lineHeight: 1 }}>🎱</span>
         Nueva
       </NavLink>
       <NavLink to="/stats" style={link}>
         <span style={{ fontSize: '16px', lineHeight: 1 }}>📊</span>
         Stats
       </NavLink>
-      <NavLink to="/sugerencias" style={link}>
-        <span style={{ fontSize: '16px', lineHeight: 1 }}>🎲</span>
-        Mix
+      <NavLink to="/torneos" style={link}>
+        <span style={{ fontSize: '16px', lineHeight: 1 }}>🏆</span>
+        Torneos
       </NavLink>
       <NavLink to="/jugadores" style={link}>
         <span style={{ fontSize: '16px', lineHeight: 1 }}>👤</span>

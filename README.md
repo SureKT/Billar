@@ -1,35 +1,101 @@
 # Billar App
 
-Aplicación local para gestionar partidas de billar pool (Bola 8) entre amigos. Diseñada para uso en red doméstica desde el móvil — sin hosting, sin autenticación.
+Aplicación local para gestionar partidas de billar pool entre amigos. Diseñada para uso en red doméstica desde el móvil — sin hosting, sin autenticación.
+
+Soporta **Bola 8** y **Bola 9** con lógica completa y automática.
+
+---
 
 ## Funcionalidades
 
+### Inicio — Historial de partidas
+- Partidas agrupadas por sesión de juego (día), colapsables
+- Duración total de sesión (formato h + min)
+- Sección de partidas en curso con temporizador en vivo
+- Filtros por estado (todas / en curso / finalizadas), modalidad (Bola 8 / Bola 9)
+- Filtro multi-selección de jugadores (lógica AND — muestra partidas donde participaron todos los seleccionados)
+- Numeración secuencial de partidas (ignora huecos de partidas de prueba eliminadas)
+
 ### Jugadores
-- Crear, editar y eliminar jugadores
-- Historial de estadísticas por jugador: partidas jugadas, ganadas, perdidas, bolas metidas
-- Seguimiento de turnos con bola en mano y bolas metidas desde bola en mano
-- Eliminación con borrado en cascada de todos los datos relacionados
+- Crear, renombrar y eliminar jugadores (eliminación en cascada)
+- Asignar color personalizado (paleta de 12 colores, sin duplicados)
+- Activar / desactivar jugador (los inactivos no aparecen al crear partidas)
+- Ordenar por nombre, win rate, bolas o partidas jugadas
+- **Estadísticas expandibles por jugador:**
+  - Partidas jugadas / ganadas / perdidas / bolas metidas
+  - Win rate con barra visual
+  - Racha actual y racha histórica (mejor racha de victorias consecutivas)
+  - Forma reciente — puntos verde/rojo de las últimas 12 partidas
+  - Tendencia — comparativa bolas/turno en las últimas 5 partidas vs global
+  - Desglose por modalidad (Bola 8 / Bola 9): win rate y falta más común
+  - Duración media de partida
+  - Últimas 5 partidas finalizadas con rival y resultado
+  - Cara a cara vs cada rival: récord, win %, mini barra
 
-### Partidas
-- Crear partida seleccionando jugadores y asignándolos a dos equipos
-- Soporte para equipos de uno o varios jugadores
-- Vista de partidas en curso y finalizadas
+### Nueva Partida
+- Selección de modalidad (Bola 8 / Bola 9)
+- Dos equipos con nombre personalizable
+- Añadir y reordenar jugadores por arrastre (drag & drop)
+- Solo muestra jugadores activos; jugadores del equipo rival ocultos
+- Badges de racha en los botones de jugador
+- Selección de quién saca primero (con indicador de color de equipo)
 
-### Registro de turnos
-- Selección visual de bolas metidas (SVG con colores oficiales)
-- Selección de faltas con detección automática:
-  - *Blanca dentro* — se activa al seleccionar la bola 0
-  - *Bola 8 ilegal* — se activa al seleccionar la 8 con bolas pendientes del equipo
-- Múltiples faltas por turno; se aplica la más grave (pierde partida > bola en mano)
-- Deshacer el último turno
-- Indicador de bola en mano para el siguiente turno
+### Partida en curso
+- Header con modalidad, número de partida, estado y temporizador en vivo
+- Cajas de equipo con nombre, jugadores, indicador de turno (◆) y rachas
+- Grupos asignados (Lisas / Rayadas) cuando aplica
+- **Formulario de turno:**
+  - Selector visual de bolas (SVG coloreadas, filtra bolas ya metidas)
+  - Badges automáticos (⚡): Bola 8 ilegal, Blanca dentro, Respot (Bola 9)
+  - Aviso de faltas consecutivas (1 → amarillo, 2 → rojo "¡siguiente pierde!")
+  - Faltas manuales principales + sección "Otras faltas" colapsable
+  - Múltiples faltas simultáneas; se aplica la más grave
+- **Banner de resultado** al finalizar: ganador, duración, stats por jugador, MVP (★)
+- Botones de revancha (equipos invertidos) y rematch (mismos equipos)
+- **Historial de turnos** colapsable:
+  - Listado en orden inverso con badges (repite, bola en mano, faltas, 2 consecutivas)
+  - Modo edición: editar o eliminar turnos individuales con re-evaluación completa
+  - Insertar turno entre dos existentes
+- Deshacer último turno (doble toque con confirmación de 3 s)
+- Editar tiempos de inicio y fin
+- Eliminar partida (confirmación en dos pasos)
 
-### Lógica de Bola 8 (automática)
-- Asignación de grupos (lisas/rayadas) tras el primer turno válido post-break
+### Estadísticas globales
+- Cards resumen: partidas totales, en curso, finalizadas, bolas, % Bola 8 / Bola 9, duración media, faltas totales
+- **Récords:** mejor win rate, más bolas, más eficiente (bolas/turno), racha actual, racha histórica, partida más rápida, partida más lenta
+- **Gráficas horizontales:**
+  - Bolas metidas por jugador
+  - Eficiencia (bolas/turno)
+  - Duración media por jugador
+  - Faltas más frecuentes (top 6)
+- **Ranking** con filtro Bola 8 / Bola 9 / Todas: posición con medallas, win rate, W-L, %
+- **Evolución mensual:** barras apiladas (victorias/derrotas) de los últimos 8 meses
+
+### Sugerencias de partida
+- Modo 1v1 / 2v2 y modalidad Bola 8 / Bola 9
+- Ordenadas por enfrentamientos menos jugados
+- Badge de interacción (⚡ sin historial / 🆕 primer duelo / ⚔ N veces)
+- Historial del emparejamiento exacto y partidas jugadas juntos
+- Crear partida directamente desde la sugerencia
+
+---
+
+## Lógica de juego (automática)
+
+### Bola 8
+- Asignación de grupos (Lisas 1-7 / Rayadas 9-15) tras el primer turno válido post-break
 - Repetición de turno al meter bolas del propio grupo
-- Detección de victoria/derrota: bola 8 legal, bola 8 ilegal, bola blanca junto a la 8, bola 8 en el break
+- Golden Break: meter la 8 en el break = victoria (o derrota si hay scratch simultáneo)
+- Condiciones de derrota: bola 8 ilegal, bola 8 + blanca, bola 8 con pendientes, 3 faltas consecutivas del equipo
 - Tres faltas consecutivas por equipo → derrota automática
-- Bola en mano: flag en el siguiente turno
+
+### Bola 9
+- Victoria al meter la bola 9 en cualquier turno
+- Respot automático si se mete la 9 y la blanca en el mismo turno (bola en mano para rival)
+- Tres faltas consecutivas → derrota automática
+
+### Edición retroactiva
+- Editar, insertar o eliminar cualquier turno re-evalúa toda la secuencia posterior automáticamente
 
 ---
 
@@ -42,8 +108,6 @@ Aplicación local para gestionar partidas de billar pool (Bola 8) entre amigos. 
 
 ## Desarrollo local
 
-### 1. Instalar dependencias
-
 ```bash
 # Backend
 pip install fastapi uvicorn sqlmodel
@@ -53,89 +117,65 @@ cd frontend
 npm install
 ```
 
-### 2. Arrancar en modo desarrollo
-
-Requiere dos terminales:
+Dos terminales en desarrollo:
 
 ```bash
 # Terminal 1 — Backend
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
-# Terminal 2 — Frontend (con hot-reload y proxy a la API)
+# Terminal 2 — Frontend (hot-reload, proxy /api → backend)
 cd frontend
 npm run dev
 ```
 
-El frontend queda en `http://localhost:5173` con proxy de `/api` al backend.
+Frontend en `http://localhost:5173`.
 
 ---
 
-## Compilación y despliegue (un solo proceso)
-
-El frontend se compila a `app/static/` y FastAPI lo sirve como estático. Con esto basta un único proceso para toda la app.
-
-### Compilar el frontend
+## Compilación (un solo proceso)
 
 ```bash
-cd frontend
-npm run build
-```
-
-### Arrancar la app completa
-
-```bash
+cd frontend && npm run build
 uvicorn app.main:app --host 0.0.0.0 --port 8000
 ```
 
-Accesible en `http://localhost:8000` o desde cualquier dispositivo en la red local en `http://<IP-del-servidor>:8000`.
-
-Para encontrar la IP del servidor:
-
-```bash
-# Windows
-ipconfig
-
-# Linux / macOS
-ip a
-```
+Accesible en `http://localhost:8000` o desde cualquier dispositivo en la red local en `http://<IP>:8000`.
 
 ---
 
-## Estructura del proyecto
+## Estructura
 
 ```
 billar/
 ├── app/
-│   ├── main.py          # FastAPI, serve SPA, startup
-│   ├── models.py        # Modelos SQLModel (Jugador, Partida, Turno…)
+│   ├── main.py
+│   ├── models.py        # Jugador, Partida, Turno, Bola, Falta
 │   ├── database.py      # Init DB, seed bolas y faltas
-│   ├── logic.py         # Lógica de partida (evaluar_turno)
+│   ├── logic.py         # evaluar_turno — lógica central
 │   └── routers/
-│       ├── jugadores.py
-│       ├── partidas.py
-│       ├── turnos.py
-│       └── catalogos.py
+│       ├── jugadores.py # Stats, H2H, color, activo
+│       ├── partidas.py  # CRUD, sugerencias, SSE eventos
+│       ├── turnos.py    # Registro, edición, inserción, undo
+│       └── catalogos.py # GET /bolas, GET /faltas
 ├── frontend/
-│   ├── src/
-│   │   ├── pages/       # Inicio, Partida, Jugadores
-│   │   ├── components/  # Bola, SelectorBolas, …
-│   │   ├── api/         # client.js
-│   │   └── hooks/       # useApi, …
-│   └── vite.config.js
-├── billar.db            # Base de datos SQLite (se crea al arrancar)
-└── CLAUDE.md
+│   └── src/
+│       ├── pages/       # Inicio, Jugadores, NuevaPartida, Partida, Estadisticas, Sugerencias
+│       └── components/  # Bola, SelectorBolas, BolasEquipo, FormularioTurno,
+│                        # HistorialTurnos, ResultadoBanner, Nav
+├── billar.db
+├── CLAUDE.md
+└── README.md
 ```
 
 ---
 
 ## Base de datos
 
-SQLite en `billar.db` en la raíz del proyecto. Se crea automáticamente al arrancar el backend. No requiere configuración adicional.
-
-Para resetear todos los datos:
+SQLite en `billar.db`, se crea automáticamente. Para resetear:
 
 ```bash
-rm billar.db
+rm billar.db   # Linux/macOS
+del billar.db  # Windows
 ```
 
-El servidor recreará la base de datos vacía en el próximo arranque.
+El servidor recrea la base de datos vacía en el próximo arranque.

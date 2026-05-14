@@ -100,3 +100,25 @@ class Turno(SQLModel, table=True):
     @faltas_ids.setter
     def faltas_ids(self, value: list[int]):
         self.faltas_ids_json = json.dumps(value if value is not None else [])
+
+
+class Torneo(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    nombre: str
+    modalidad: str = Field(default="bola8")  # "bola8" | "bola9"
+    estado: str = Field(default="en_curso")  # "en_curso" | "finalizado"
+    fecha: datetime = Field(default_factory=datetime.now)
+    fecha_fin: Optional[datetime] = Field(default=None)
+
+
+class TorneoJugador(SQLModel, table=True):
+    torneo_id: Optional[int] = Field(default=None, foreign_key="torneo.id", primary_key=True)
+    jugador_id: Optional[int] = Field(default=None, foreign_key="jugador.id", primary_key=True)
+
+
+class TorneoEnfrentamiento(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    torneo_id: int = Field(foreign_key="torneo.id", index=True)
+    jugador1_id: int = Field(foreign_key="jugador.id")
+    jugador2_id: int = Field(foreign_key="jugador.id")
+    partida_id: Optional[int] = Field(default=None, foreign_key="partida.id")

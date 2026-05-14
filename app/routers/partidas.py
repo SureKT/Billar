@@ -8,7 +8,7 @@ from sqlmodel import Session, select, func
 from pydantic import BaseModel
 from typing import Optional
 
-from app.models import Partida, PartidaJugador, Jugador, Turno
+from app.models import Partida, PartidaJugador, Jugador, Turno, TorneoEnfrentamiento, Torneo
 from app.database import get_session
 from app import events
 
@@ -49,9 +49,29 @@ class PartidaResumen(BaseModel):
     bola_en_mano: bool
     equipo1_jugadores: list[int]
     equipo2_jugadores: list[int]
+    torneo_id: Optional[int] = None
+    torneo_nombre: Optional[str] = None
 
 
-def _build_resumen(session: Session, partida: Partida, numero: Optional[int] = None) -> PartidaResumen:
+def _build_torneo_map(session: Session) -> dict:
+    """Returns {partida_id: (torneo_id, torneo_nombre)} for all linked enfrentamientos."""
+    enfs = session.exec(
+        select(TorneoEnfrentamiento).where(TorneoEnfrentamiento.partida_id.isnot(None))
+    ).all()
+    result = {}
+    for enf in enfs:
+        torneo = session.get(Torneo, enf.torneo_id)
+        if torneo:
+            result[enf.partida_id] = (torneo.id, torneo.nombre)
+    return result
+
+
+def _build_resumen(
+    session: Session,
+    partida: Partida,
+    numero: Optional[int] = None,
+    torneo_info: Optional[tuple] = None,
+) -> PartidaResumen:
     pjs = session.exec(
         select(PartidaJugador)
         .where(PartidaJugador.partida_id == partida.id)
@@ -79,6 +99,8 @@ def _build_resumen(session: Session, partida: Partida, numero: Optional[int] = N
         bola_en_mano=partida.bola_en_mano,
         equipo1_jugadores=eq1,
         equipo2_jugadores=eq2,
+        torneo_id=torneo_info[0] if torneo_info else None,
+        torneo_nombre=torneo_info[1] if torneo_info else None,
     )
 
 
@@ -176,7 +198,8 @@ def listar_partidas(session: Session = Depends(get_session)):
     partidas = session.exec(select(Partida).order_by(Partida.fecha.desc())).all()
     ids_ordenados = session.exec(select(Partida.id).order_by(Partida.id)).all()
     numero_map = {pid: i + 1 for i, pid in enumerate(ids_ordenados)}
-    return [_build_resumen(session, p, numero_map[p.id]) for p in partidas]
+    torneo_map = _build_torneo_map(session)
+    return [_build_resumen(session, p, numero_map[p.id], torneo_map.get(p.id)) for p in partidas]
 
 
 @router.post("", response_model=PartidaResumen, status_code=201)
@@ -223,7 +246,8 @@ def obtener_partida(partida_id: int, session: Session = Depends(get_session)):
     partida = session.get(Partida, partida_id)
     if not partida:
         raise HTTPException(status_code=404, detail="Partida no encontrada")
-    return _build_resumen(session, partida)
+    torneo_map = _build_torneo_map(session)
+    return _build_resumen(session, partida, torneo_info=torneo_map.get(partida_id))
 
 
 @router.get("/{partida_id}/estado")
@@ -312,10 +336,20 @@ def eliminar_partida(partida_id: int, session: Session = Depends(get_session)):
     partida = session.get(Partida, partida_id)
     if not partida:
         raise HTTPException(status_code=404, detail="Partida no encontrada")
-    # Eliminar turnos y participaciones primero
+    enfs = session.exec(select(TorneoEnfrentamiento).where(TorneoEnfrentamiento.partida_id == partida_id)).all()
+    for enf in enfs:
+        torneo = session.get(Torneo, enf.torneo_id)
+        if torneo and torneo.estado == "finalizado":
+            raise HTTPException(
+                status_code=409,
+                detail="No se puede eliminar una partida de un torneo finalizado. Elimina el torneo si quieres borrar sus resultados."
+            )
     for t in session.exec(select(Turno).where(Turno.partida_id == partida_id)).all():
         session.delete(t)
     for pj in session.exec(select(PartidaJugador).where(PartidaJugador.partida_id == partida_id)).all():
         session.delete(pj)
+    for enf in enfs:
+        enf.partida_id = None
+        session.add(enf)
     session.delete(partida)
     session.commit()

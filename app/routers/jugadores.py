@@ -36,6 +36,8 @@ class JugadorStats(BaseModel):
     bolas_por_turno_reciente: Optional[float] = None  # últimas 5 partidas; None = sin datos
     color: Optional[str] = None
     activo: bool = True
+    racha_mejor: int = 0          # best ever consecutive win streak
+    duracion_promedio_min: Optional[float] = None  # avg finished-game duration in minutes
 
 
 class H2HRecord(BaseModel):
@@ -101,6 +103,25 @@ def _calcular_stats(session: Session, jugador: Jugador) -> JugadorStats:
             racha += 1 if gano else -1
         else:
             break
+
+    # Best ever win streak (chronological order)
+    racha_mejor = 0
+    streak_temp = 0
+    for _, gano in reversed(resultados):   # resultados sorted desc → reversed = asc
+        if gano:
+            streak_temp += 1
+            racha_mejor = max(racha_mejor, streak_temp)
+        else:
+            streak_temp = 0
+
+    # Average game duration (only finished games with fecha_fin)
+    duraciones_min = []
+    for pid in partida_ids:
+        p = session.get(Partida, pid)
+        if p and p.fecha_fin:
+            mins = (p.fecha_fin - p.fecha).total_seconds() / 60
+            duraciones_min.append(mins)
+    duracion_promedio_min = round(sum(duraciones_min) / len(duraciones_min), 1) if duraciones_min else None
 
     turnos = session.exec(select(Turno).where(Turno.jugador_id == jugador.id)).all()
     # Excluir bola blanca (0) de todos los conteos de bolas
@@ -169,6 +190,8 @@ def _calcular_stats(session: Session, jugador: Jugador) -> JugadorStats:
         bolas_por_turno_reciente=bolas_por_turno_reciente,
         color=jugador.color,
         activo=jugador.activo,
+        racha_mejor=racha_mejor,
+        duracion_promedio_min=duracion_promedio_min,
     )
 
 

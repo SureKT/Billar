@@ -49,4 +49,12 @@ export const api = {
   // Catálogos
   getBolas: () => request('GET', '/bolas'),
   getFaltas: () => request('GET', '/faltas'),
+
+  // Torneos
+  getTorneos: () => request('GET', '/torneos'),
+  getTorneo: (id) => request('GET', `/torneos/${id}`),
+  crearTorneo: (datos) => request('POST', '/torneos', datos),
+  jugarEnfrentamiento: (torneoId, enfId, primerJugadorId) => request('POST', `/torneos/${torneoId}/enfrentamientos/${enfId}/jugar`, { primer_jugador_id: primerJugadorId ?? null }),
+  finalizarTorneo: (id) => request('PATCH', `/torneos/${id}/finalizar`),
+  eliminarTorneo: (id, eliminarPartidas = false) => request('DELETE', `/torneos/${id}`, { eliminar_partidas: eliminarPartidas }),
 }

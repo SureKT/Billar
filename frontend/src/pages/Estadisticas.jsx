@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useApi } from '../hooks/useApi'
 import { api } from '../api/client'
+import { SkeletonList } from '../components/Skeleton'
 
 const FALTAS_INTERNAS = ['Bola 8 ilegal', 'Tres faltas consecutivas', 'Blanca dentro (Scratch)']
 
@@ -157,10 +158,11 @@ function BarraWin({ ganadas, jugadas, color }) {
   )
 }
 
-function FilaRanking({ pos, j, esTop }) {
+function FilaRanking({ pos, j, esTop, forma = [] }) {
   const p = pct(j.partidas_ganadas, j.partidas_jugadas)
   const barColor = p >= 60 ? '#4ade80' : p >= 40 ? '#fbbf24' : '#f87171'
   const medallas = ['🥇', '🥈', '🥉']
+  const recent = forma.slice(-5)
 
   return (
     <div style={{
@@ -178,11 +180,24 @@ function FilaRanking({ pos, j, esTop }) {
           display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {j.nombre}
         </span>
-        <span style={{ fontSize: '11px', color: 'var(--text-dim)' }}>
-          {j.partidas_ganadas} W · {j.partidas_jugadas - j.partidas_ganadas} L · {j.partidas_jugadas} Partidas
-        </span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
+          <span style={{ fontSize: '11px', color: 'var(--text-dim)' }}>
+            {j.partidas_ganadas}W · {j.partidas_jugadas - j.partidas_ganadas}L
+          </span>
+          {recent.length > 0 && (
+            <div style={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+              {recent.map((r, i) => (
+                <div key={i} style={{
+                  width: 6, height: 6, borderRadius: '50%',
+                  background: r === 'W' ? '#4ade80' : '#f87171',
+                  opacity: 0.5 + (i / recent.length) * 0.5,
+                }} />
+              ))}
+            </div>
+          )}
+        </div>
       </div>
-      <div style={{ width: 120, flexShrink: 0 }}>
+      <div style={{ width: 100, flexShrink: 0 }}>
         <BarraWin ganadas={j.partidas_ganadas} jugadas={j.partidas_jugadas} color={barColor} />
       </div>
     </div>
@@ -222,7 +237,7 @@ export default function Estadisticas() {
   const { data: faltas,  loading: loadingFaltas } = useApi(api.getFaltas)
   const [filtro, setFiltro] = useState('todas')
 
-  if (loadingStats || loadingPart || loadingFaltas) return <div className="spinner" />
+  if (loadingStats || loadingPart || loadingFaltas) return <SkeletonList n={5} />
 
   const jugadoresConPartidas = (stats ?? []).filter(j => j.partidas_jugadas > 0)
   const todasPartidas = partidas ?? []
@@ -288,6 +303,23 @@ export default function Estadisticas() {
   const rachaPos     = [...jugadoresConPartidas].filter(j => j.racha_actual > 0).sort((a, b) => b.racha_actual - a.racha_actual)[0]
   const masEficiente = [...jugadoresConPartidas].filter(j => j.bolas_por_turno > 0).sort((a, b) => b.bolas_por_turno - a.bolas_por_turno)[0]
 
+  // Duration helpers
+  function nombresPartida(p) {
+    return [...p.equipo1_jugadores, ...p.equipo2_jugadores]
+      .map(id => (stats ?? []).find(s => s.id === id)?.nombre ?? `#${id}`)
+      .join(' · ')
+  }
+  function durMs(p) { return new Date(p.fecha_fin) - new Date(p.fecha) }
+  function fmtMin(ms) {
+    const m = Math.floor(ms / 60_000), s = Math.floor((ms % 60_000) / 1_000)
+    return `${m}' ${String(s).padStart(2,'0')}"`
+  }
+
+  const rachaHistorica = [...jugadoresConPartidas].filter(j => j.racha_mejor > 1).sort((a,b) => b.racha_mejor - a.racha_mejor)[0]
+  const conDur = finalizadas.filter(p => p.fecha_fin)
+  const masRapida = conDur.length > 0 ? conDur.reduce((m,p) => durMs(p) < durMs(m) ? p : m) : null
+  const masLenta  = conDur.length > 0 ? conDur.reduce((m,p) => durMs(p) > durMs(m) ? p : m) : null
+
   // Datos para gráficas
   const COLORES_FALLBACK = ['#3b82f6','#06b6d4','#8b5cf6','#10b981','#f59e0b','#ef4444','#ec4899','#84cc16']
 
@@ -302,6 +334,16 @@ export default function Estadisticas() {
     .sort((a, b) => b.bolas_por_turno - a.bolas_por_turno)
     .slice(0, 8)
     .map((j, i) => ({ label: j.nombre, value: j.bolas_por_turno, playerColor: j.color ?? COLORES_FALLBACK[i % COLORES_FALLBACK.length] }))
+
+  const grafDuracion = [...jugadoresConPartidas]
+    .filter(j => j.duracion_promedio_min != null)
+    .sort((a, b) => b.duracion_promedio_min - a.duracion_promedio_min)
+    .slice(0, 8)
+    .map((j, i) => ({
+      label: j.nombre,
+      value: Math.round(j.duracion_promedio_min),
+      playerColor: j.color ?? COLORES_FALLBACK[i % COLORES_FALLBACK.length],
+    }))
 
   // Evolución mensual de partidas (últimos 8 meses con actividad)
   const evolucion = (() => {
@@ -321,6 +363,15 @@ export default function Estadisticas() {
       .slice(-8)
       .map(([, v]) => v)
   })()
+
+  const formaMap = {}
+  for (const p of [...finalizadas].sort((a, b) => new Date(a.fecha) - new Date(b.fecha))) {
+    if (!p.ganador_equipo) continue
+    const ganadores = p.ganador_equipo === 1 ? p.equipo1_jugadores : p.equipo2_jugadores
+    const perdedores = p.ganador_equipo === 1 ? p.equipo2_jugadores : p.equipo1_jugadores
+    for (const id of ganadores) { if (!formaMap[id]) formaMap[id] = []; formaMap[id].push('W') }
+    for (const id of perdedores) { if (!formaMap[id]) formaMap[id] = []; formaMap[id].push('L') }
+  }
 
   const sinDatos = todasPartidas.length === 0
 
@@ -391,6 +442,24 @@ export default function Estadisticas() {
                   valor={`${rachaPos.racha_actual} seguidas`}
                 />
               )}
+              {rachaHistorica && (
+                <RecordCard emoji="📈" titulo="Racha histórica"
+                  nombre={rachaHistorica.nombre}
+                  valor={`${rachaHistorica.racha_mejor} victorias seguidas`}
+                />
+              )}
+              {masRapida && (
+                <RecordCard emoji="⚡" titulo="Partida más rápida"
+                  nombre={nombresPartida(masRapida)}
+                  valor={fmtMin(durMs(masRapida))}
+                />
+              )}
+              {masLenta && masLenta !== masRapida && (
+                <RecordCard emoji="🐢" titulo="Partida más larga"
+                  nombre={nombresPartida(masLenta)}
+                  valor={fmtMin(durMs(masLenta))}
+                />
+              )}
             </div>
           )}
 
@@ -409,6 +478,17 @@ export default function Estadisticas() {
               <GraficaHorizontal datos={grafEficiencia} />
               <p style={{ fontSize: '10px', color: 'var(--text-dim)', marginTop: 8 }}>
                 Media de bolas metidas por turno jugado, a mayor valor más preciso
+              </p>
+            </div>
+          )}
+
+          {/* ── Gráfica: duración media por jugador ── */}
+          {grafDuracion.length > 1 && (
+            <div className="card" style={{ padding: '12px' }}>
+              <SeccionTitulo>Duración media por jugador (min)</SeccionTitulo>
+              <GraficaHorizontal datos={grafDuracion} />
+              <p style={{ fontSize: '10px', color: 'var(--text-dim)', marginTop: 8 }}>
+                Minutos de media por partida finalizada con hora de fin registrada
               </p>
             </div>
           )}
@@ -454,7 +534,7 @@ export default function Estadisticas() {
                 </p>
               ) : (
                 rankingFiltrado.map((j, i) => (
-                  <FilaRanking key={j.id} pos={i + 1} j={j} esTop={i === 0} />
+                  <FilaRanking key={j.id} pos={i + 1} j={j} esTop={i === 0} forma={formaMap[j.id] ?? []} />
                 ))
               )}
             </div>

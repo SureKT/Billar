@@ -2,6 +2,8 @@ import { useState, useRef } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useApi } from '../hooks/useApi'
 import { api } from '../api/client'
+import Sugerencias from './Sugerencias'
+import { SkeletonList } from '../components/Skeleton'
 
 function RachaChip({ racha }) {
   if (!racha) return null
@@ -209,6 +211,7 @@ export default function NuevaPartida() {
   const loading = jLoading || sLoading
   const statsMap = Object.fromEntries((statsData ?? []).map(s => [s.id, s]))
   const { state: prefill } = useLocation()
+  const [tab, setTab] = useState('manual')
   const [modalidad, setModalidad] = useState(prefill?.modalidad ?? 'bola8')
   const [equipo1, setEquipo1] = useState(prefill?.equipo1 ?? [])
   const [equipo2, setEquipo2] = useState(prefill?.equipo2 ?? [])
@@ -258,15 +261,36 @@ export default function NuevaPartida() {
     }
   }
 
-  if (loading) return <div className="spinner" />
+  if (loading) return <SkeletonList n={3} />
 
   // Solo jugadores activos en la pantalla de nueva partida
   const jList = (jugadores || []).filter(j => j.activo !== false)
   const listo = equipo1.length > 0 && equipo2.length > 0
 
+  const Tabs = () => (
+    <div style={{ display: 'flex', gap: 6, marginBottom: 4 }}>
+      {[['manual','Manual'],['mix','🎲 Mix']].map(([v,l]) => (
+        <button key={v} onClick={() => setTab(v)} style={{
+          padding: '6px 16px', borderRadius: 20, fontSize: 13, fontWeight: 700, cursor: 'pointer',
+          border: tab === v ? '1.5px solid var(--accent)' : '1px solid var(--border)',
+          background: tab === v ? 'var(--accent-bg)' : 'var(--surface2)',
+          color: tab === v ? 'var(--accent)' : 'var(--text-dim)',
+          transition: 'all .15s',
+        }}>{l}</button>
+      ))}
+    </div>
+  )
+
+  if (tab === 'mix') return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--gap)' }}>
+      <Tabs />
+      <Sugerencias />
+    </div>
+  )
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--gap)' }}>
-      <h2 style={{ fontSize: '20px' }}>Nueva partida</h2>
+      <Tabs />
 
       {/* Modalidad */}
       <div className="card">
@@ -274,7 +298,7 @@ export default function NuevaPartida() {
           Modalidad
         </p>
         <div style={{ display: 'flex', gap: 8 }}>
-          {[['bola8', 'Bola 8'], ['bola9', 'Bola 9']].map(([val, label]) => (
+          {[['bola8', '⚫ Bola 8'], ['bola9', '🟡 Bola 9']].map(([val, label]) => (
             <button
               key={val}
               onClick={() => setModalidad(val)}

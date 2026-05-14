@@ -82,6 +82,7 @@ function JugadorCard({ j, onReload, todosStats }) {
   const [modo, setModo] = useState(null) // null | 'editar' | 'eliminar'
   const [nombreEdit, setNombreEdit] = useState(j.nombre)
   const [recursivoOk, setRecursivoOk] = useState(false)
+  const [confirmEliminar2, setConfirmEliminar2] = useState(false)
   const [cargando, setCargando] = useState(false)
   const [error, setError] = useState(null)
   const [mostrarUltimas, setMostrarUltimas] = useState(false)
@@ -142,17 +143,30 @@ function JugadorCard({ j, onReload, todosStats }) {
 
   async function toggleActivo() {
     const nuevo = !activoLocal
-    setActivoLocal(nuevo)   // respuesta visual inmediata, sin reload
+    setActivoLocal(nuevo)
     try {
       await api.toggleActivoJugador(j.id)
+      onReload()
     } catch {
-      setActivoLocal(!nuevo) // revertir si falla
+      setActivoLocal(!nuevo)
     }
   }
 
   function cancelar() {
     setModo(null); setNombreEdit(j.nombre)
-    setRecursivoOk(false); setError(null)
+    setRecursivoOk(false); setConfirmEliminar2(false); setError(null)
+  }
+
+  function handleExpand() {
+    const next = !expandido
+    setExpandido(next)
+    if (next && ultimas === null && !cargandoUltimas) {
+      setCargandoUltimas(true)
+      api.getUltimasPartidas(j.id)
+        .then(d => setUltimas(d))
+        .catch(() => setUltimas([]))
+        .finally(() => setCargandoUltimas(false))
+    }
   }
 
   return (
@@ -170,7 +184,7 @@ function JugadorCard({ j, onReload, todosStats }) {
           />
         ) : (
           <button
-            onClick={() => setExpandido(v => !v)}
+            onClick={handleExpand}
             style={{ display: 'flex', alignItems: 'center', gap: 7, background: 'none', border: 'none', cursor: 'pointer', flex: 1, textAlign: 'left', padding: 0, minWidth: 0 }}
           >
             {j.color && (
@@ -298,12 +312,12 @@ function JugadorCard({ j, onReload, todosStats }) {
           )}
           {error && <p style={{ fontSize: '12px', color: '#fca5a5' }}>{error}</p>}
           <button
-            className="btn btn-danger btn-full"
-            onClick={confirmarEliminar}
+            className={`btn btn-full ${confirmEliminar2 ? '' : 'btn-danger'}`}
+            onClick={() => confirmEliminar2 ? confirmarEliminar() : setConfirmEliminar2(true)}
             disabled={cargando || (tienePartidas && !recursivoOk)}
-            style={{ padding: '10px' }}
+            style={{ padding: '10px', ...(confirmEliminar2 ? { background: '#dc2626', color: '#fff', border: 'none', transition: 'background .15s' } : {}) }}
           >
-            {cargando ? 'Eliminando…' : 'Eliminar jugador'}
+            {cargando ? 'Eliminando…' : confirmEliminar2 ? '⚠ Confirmar eliminación' : 'Eliminar jugador'}
           </button>
         </div>
       )}
@@ -329,6 +343,16 @@ function JugadorCard({ j, onReload, todosStats }) {
               sub={j.partidas_jugadas > 0 ? j.bolas_por_turno : null}
             />
           </div>
+          {j.duracion_promedio_min != null && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 6 }}>
+              <span style={{ fontSize: '11px', color: 'var(--text-dim)' }}>Media partida:</span>
+              <span style={{ fontSize: '11px', fontWeight: 700, color: '#c4b5fd' }}>
+                {j.duracion_promedio_min >= 60
+                  ? `${Math.floor(j.duracion_promedio_min / 60)}h ${Math.round(j.duracion_promedio_min % 60)}'`
+                  : `${Math.round(j.duracion_promedio_min)}'`}
+              </span>
+            </div>
+          )}
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <div style={{ flex: 1 }}>
               <WinRate ganadas={j.partidas_ganadas} jugadas={j.partidas_jugadas} />
@@ -342,6 +366,19 @@ function JugadorCard({ j, onReload, todosStats }) {
               </span>
             )}
           </div>
+
+          {/* Sparkline dots */}
+          {ultimas && ultimas.length > 0 && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 4, flexWrap: 'wrap' }}>
+              <span style={{ fontSize: '10px', color: 'var(--text-dim)', marginRight: 2, flexShrink: 0 }}>Forma:</span>
+              {[...ultimas].reverse().slice(0, 12).map((p, i) => (
+                <div key={i} style={{
+                  width: 9, height: 9, borderRadius: '50%', flexShrink: 0,
+                  background: p.gano ? '#16a34a' : 'var(--team2)', opacity: 0.85,
+                }} title={p.gano ? 'Victoria' : 'Derrota'} />
+              ))}
+            </div>
+          )}
 
           {/* Tendencia bolas por turno */}
           {j.bolas_por_turno_reciente != null && j.partidas_jugadas >= 2 && (
@@ -508,6 +545,7 @@ export default function Jugadores() {
   const [error, setError] = useState(null)
   const [guardando, setGuardando] = useState(false)
   const [orden, setOrden] = useState('nombre')
+  const [inactivosExpand, setInactivosExpand] = useState(false)
 
   async function crear(e) {
     e.preventDefault()
@@ -547,7 +585,7 @@ export default function Jugadores() {
         {error && <p style={{ color: 'var(--accent)', fontSize: '13px', marginTop: 8 }}>{error}</p>}
       </div>
 
-      {loading && <div className="spinner" />}
+      {loading && !stats && <div className="spinner" />}
       {stats?.length === 0 && <p className="empty">Sin jugadores. ¡Añade el primero!</p>}
 
       {/* Ordenar */}
@@ -572,9 +610,45 @@ export default function Jugadores() {
         </div>
       )}
 
-      {[...(stats ?? [])].sort(ORDENES.find(o => o.key === orden)?.fn).map(j => (
-        <JugadorCard key={j.id} j={j} onReload={reload} todosStats={stats ?? []} />
-      ))}
+      {(() => {
+        const sorter = ORDENES.find(o => o.key === orden)?.fn
+        const activos   = [...(stats ?? [])].filter(j => j.activo).sort(sorter)
+        const inactivos = [...(stats ?? [])].filter(j => !j.activo).sort(sorter)
+        return (
+          <>
+            {activos.map(j => (
+              <JugadorCard key={j.id} j={j} onReload={reload} todosStats={stats ?? []} />
+            ))}
+            {inactivos.length > 0 && (
+              <div>
+                <button
+                  onClick={() => setInactivosExpand(v => !v)}
+                  style={{
+                    width: '100%', display: 'flex', alignItems: 'center', gap: 8,
+                    background: 'none', border: 'none', cursor: 'pointer', padding: '4px 0', marginBottom: 6,
+                  }}
+                >
+                  <span style={{ fontSize: 10, color: 'var(--text-dim)', lineHeight: 1 }}>
+                    {inactivosExpand ? '▼' : '▶'}
+                  </span>
+                  <span style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.06em', color: 'var(--text-dim)' }}>
+                    Inactivos
+                  </span>
+                  <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
+                  <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>{inactivos.length}</span>
+                </button>
+                {inactivosExpand && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--gap)' }}>
+                    {inactivos.map(j => (
+                      <JugadorCard key={j.id} j={j} onReload={reload} todosStats={stats ?? []} />
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </>
+        )
+      })()}
     </div>
   )
 }

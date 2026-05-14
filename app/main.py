@@ -7,7 +7,7 @@ from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.database import init_db
-from app.routers import jugadores, partidas, turnos, catalogos
+from app.routers import jugadores, partidas, turnos, catalogos, torneos
 from app import events
 
 STATIC_DIR = Path(__file__).parent / "static"
@@ -34,6 +34,7 @@ app.include_router(jugadores.router)
 app.include_router(partidas.router)
 app.include_router(turnos.router)
 app.include_router(catalogos.router)
+app.include_router(torneos.router)
 
 ASSETS_DIR = STATIC_DIR / "assets"
 
