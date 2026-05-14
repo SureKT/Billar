@@ -53,14 +53,15 @@ function EquipoChip({ jugadores, color }) {
   )
 }
 
-function BadgeInteracciones({ enfrentamientos, interacciones }) {
-  if (enfrentamientos === 0 && interacciones === 0) {
+function BadgeInteracciones({ enfrentamientos, partidas_juntos, formato }) {
+  const esEquipo = formato === 2
+  if (enfrentamientos === 0 && partidas_juntos === 0) {
     return (
       <span style={{
         fontSize: '10px', fontWeight: 700, padding: '2px 7px',
         borderRadius: 10, background: 'rgba(134,239,172,.15)',
         color: '#86efac', border: '1px solid rgba(134,239,172,.3)',
-      }}>⚡ Sin historial</span>
+      }}>⚡ Sin historial {esEquipo ? '2v2' : '1v1'}</span>
     )
   }
   if (enfrentamientos === 0) {
@@ -69,7 +70,7 @@ function BadgeInteracciones({ enfrentamientos, interacciones }) {
         fontSize: '10px', fontWeight: 700, padding: '2px 7px',
         borderRadius: 10, background: 'rgba(251,191,36,.1)',
         color: '#fbbf24', border: '1px solid rgba(251,191,36,.25)',
-      }}>🆕 Primer duelo</span>
+      }}>🆕 Primer duelo {esEquipo ? '2v2' : '1v1'}</span>
     )
   }
   return (
@@ -78,12 +79,13 @@ function BadgeInteracciones({ enfrentamientos, interacciones }) {
       padding: '2px 7px', borderRadius: 10,
       background: 'var(--surface2)', border: '1px solid var(--border)',
     }}>
-      ⚔ {enfrentamientos}x enfrentados
+      ⚔ {enfrentamientos}x {esEquipo ? 'estos equipos' : 'directos'}
     </span>
   )
 }
 
-function SugerenciaCard({ sug, modalidad, index, onCrear, creando }) {
+function SugerenciaCard({ sug, modalidad, formato, index, onCrear, creando }) {
+  const esEquipo = formato === 2
   return (
     <div style={{
       background: 'var(--surface)', border: '1px solid var(--border)',
@@ -98,7 +100,8 @@ function SugerenciaCard({ sug, modalidad, index, onCrear, creando }) {
         </span>
         <BadgeInteracciones
           enfrentamientos={sug.enfrentamientos}
-          interacciones={sug.interacciones_totales}
+          partidas_juntos={sug.partidas_juntos}
+          formato={formato}
         />
       </div>
 
@@ -111,11 +114,20 @@ function SugerenciaCard({ sug, modalidad, index, onCrear, creando }) {
         <EquipoChip jugadores={sug.equipo2} color="var(--team2)" />
       </div>
 
-      {/* Detalle interacciones */}
-      {sug.interacciones_totales > 0 && (
+      {/* Detalle histórico */}
+      {(sug.enfrentamientos > 0 || sug.partidas_juntos > 0) && (
         <p style={{ fontSize: '11px', color: 'var(--text-dim)', margin: 0 }}>
-          {sug.interacciones_totales} partida{sug.interacciones_totales !== 1 ? 's' : ''} juntos
-          {sug.enfrentamientos > 0 && `, ${sug.enfrentamientos} como rivales`}
+          {esEquipo ? (
+            <>
+              {sug.enfrentamientos > 0
+                ? `${sug.enfrentamientos} vez${sug.enfrentamientos !== 1 ? 'ces' : ''} estos equipos exactos`
+                : 'Nunca estos equipos exactos'}
+              {sug.partidas_juntos > sug.enfrentamientos &&
+                ` · ${sug.partidas_juntos} partida${sug.partidas_juntos !== 1 ? 's' : ''} juntos en 2v2`}
+            </>
+          ) : (
+            `${sug.enfrentamientos} duelo${sug.enfrentamientos !== 1 ? 's' : ''} directo${sug.enfrentamientos !== 1 ? 's' : ''} 1v1`
+          )}
         </p>
       )}
 
@@ -140,8 +152,8 @@ export default function Sugerencias() {
   const [error, setError] = useState(null)
 
   const { data: sugerencias, loading } = useApi(
-    () => api.getSugerencias(formato),
-    [formato],
+    () => api.getSugerencias(formato, modalidad),
+    [formato, modalidad],
   )
 
   async function handleCrear(sug) {
@@ -209,6 +221,7 @@ export default function Sugerencias() {
               key={i}
               sug={sug}
               modalidad={modalidad}
+              formato={formato}
               index={i}
               onCrear={handleCrear}
               creando={creando === sug}

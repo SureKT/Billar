@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session, select
 from pydantic import BaseModel
 
-from app.models import Jugador, Turno, Partida, PartidaJugador
+from app.models import Jugador, Turno, Partida, PartidaJugador, Falta
 from app.database import get_session
 
 router = APIRouter(prefix="/api/jugadores", tags=["jugadores"])
@@ -31,7 +31,11 @@ class JugadorStats(BaseModel):
     racha_actual: int  # positivo = racha ganadora, negativo = perdedora, 0 = sin partidas
     falta_frecuente_bola8_id: Optional[int] = None
     falta_frecuente_bola9_id: Optional[int] = None
+    falta_frecuente_bola8_nombre: Optional[str] = None
+    falta_frecuente_bola9_nombre: Optional[str] = None
+    bolas_por_turno_reciente: Optional[float] = None  # últimas 5 partidas; None = sin datos
     color: Optional[str] = None
+    activo: bool = True
 
 
 class H2HRecord(BaseModel):
@@ -99,9 +103,10 @@ def _calcular_stats(session: Session, jugador: Jugador) -> JugadorStats:
             break
 
     turnos = session.exec(select(Turno).where(Turno.jugador_id == jugador.id)).all()
-    bolas_metidas = sum(len(t.bolas_metidas) for t in turnos)
+    # Excluir bola blanca (0) de todos los conteos de bolas
+    bolas_metidas = sum(sum(1 for b in t.bolas_metidas if b != 0) for t in turnos)
     turnos_bm = sum(1 for t in turnos if t.bola_en_mano)
-    bolas_desde_bm = sum(len(t.bolas_metidas) for t in turnos if t.bola_en_mano)
+    bolas_desde_bm = sum(sum(1 for b in t.bolas_metidas if b != 0) for t in turnos if t.bola_en_mano)
 
     # Falta más frecuente por modalidad (se construye sobre partidas ya cargadas)
     modalidad_por_partida = {}
@@ -121,6 +126,28 @@ def _calcular_stats(session: Session, jugador: Jugador) -> JugadorStats:
         c = falta_count[mod]
         return c.most_common(1)[0][0] if c else None
 
+    def falta_nombre(fid: Optional[int]) -> Optional[str]:
+        if fid is None:
+            return None
+        f = session.get(Falta, fid)
+        return f.nombre if f else None
+
+    # Tendencia: bolas por turno en las últimas 5 partidas finalizadas
+    partidas_fin = sorted(
+        [session.get(Partida, pid) for pid in partida_ids
+         if session.get(Partida, pid) and session.get(Partida, pid).ganador_equipo],
+        key=lambda p: p.fecha, reverse=True,
+    )
+    ultimas_5_ids = {p.id for p in partidas_fin[:5]}
+    bolas_por_turno_reciente: Optional[float] = None
+    if len(ultimas_5_ids) >= 2:
+        t_rec = [t for t in turnos if t.partida_id in ultimas_5_ids]
+        b_rec = sum(sum(1 for b in t.bolas_metidas if b != 0) for t in t_rec)
+        bolas_por_turno_reciente = round(b_rec / len(t_rec), 2) if t_rec else 0.0
+
+    fid8 = top_falta("bola8")
+    fid9 = top_falta("bola9")
+
     return JugadorStats(
         id=jugador.id,
         nombre=jugador.nombre,
@@ -135,14 +162,19 @@ def _calcular_stats(session: Session, jugador: Jugador) -> JugadorStats:
         turnos_con_bola_en_mano=turnos_bm,
         bolas_metidas_con_bola_en_mano=bolas_desde_bm,
         racha_actual=racha,
-        falta_frecuente_bola8_id=top_falta("bola8"),
-        falta_frecuente_bola9_id=top_falta("bola9"),
+        falta_frecuente_bola8_id=fid8,
+        falta_frecuente_bola9_id=fid9,
+        falta_frecuente_bola8_nombre=falta_nombre(fid8),
+        falta_frecuente_bola9_nombre=falta_nombre(fid9),
+        bolas_por_turno_reciente=bolas_por_turno_reciente,
         color=jugador.color,
+        activo=jugador.activo,
     )
 
 
 @router.get("", response_model=list[Jugador])
 def listar_jugadores(session: Session = Depends(get_session)):
+    # Devuelve siempre todos (activos e inactivos) — la pantalla de gestión los necesita todos
     return session.exec(select(Jugador).order_by(Jugador.nombre)).all()
 
 
@@ -174,8 +206,11 @@ def editar_jugador(jugador_id: int, datos: JugadorCreate, session: Session = Dep
 
 
 @router.get("/stats", response_model=list[JugadorStats])
-def stats_todos(session: Session = Depends(get_session)):
-    jugadores = session.exec(select(Jugador).order_by(Jugador.nombre)).all()
+def stats_todos(incluir_inactivos: bool = False, session: Session = Depends(get_session)):
+    q = select(Jugador).order_by(Jugador.nombre)
+    if not incluir_inactivos:
+        q = q.where(Jugador.activo == True)  # noqa: E712
+    jugadores = session.exec(q).all()
     return [_calcular_stats(session, j) for j in jugadores]
 
 
@@ -284,6 +319,18 @@ def ultimas_partidas(jugador_id: int, session: Session = Depends(get_session)):
 
     result.sort(key=lambda x: x.fecha, reverse=True)
     return result[:5]
+
+
+@router.patch("/{jugador_id}/activo", response_model=Jugador)
+def toggle_activo(jugador_id: int, session: Session = Depends(get_session)):
+    jugador = session.get(Jugador, jugador_id)
+    if not jugador:
+        raise HTTPException(status_code=404, detail="Jugador no encontrado")
+    jugador.activo = not jugador.activo
+    session.add(jugador)
+    session.commit()
+    session.refresh(jugador)
+    return jugador
 
 
 @router.delete("/{jugador_id}", status_code=204)

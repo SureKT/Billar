@@ -1,5 +1,3 @@
-import { BolaPool } from '../Bola'
-
 const TEAM = {
   1: { color: 'var(--team1)', bg: 'rgba(59,130,246,.09)', border: 'rgba(59,130,246,.38)' },
   2: { color: 'var(--team2)', bg: 'rgba(233,69,96,.09)',  border: 'rgba(233,69,96,.38)'  },
@@ -74,15 +72,7 @@ export default function BolasEquipo({
         })}
       </div>
 
-      {/* Bolas pendientes (solo bola8) */}
-      {!esBola9 && (pendientes.length === 0 && grupo
-        ? <p style={{ fontSize: '11px', color: '#86efac' }}>¡Listas!</p>
-        : (
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
-            {pendientes.map(n => <BolaPool key={n} numero={n} size={26} />)}
-          </div>
-        )
-      )}
+
     </div>
   )
 }

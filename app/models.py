@@ -9,6 +9,7 @@ class Jugador(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     nombre: str = Field(index=True, unique=True)
     color: Optional[str] = Field(default=None)  # hex, p.ej. "#3b82f6"
+    activo: bool = Field(default=True)           # False → oculto en mix/stats/nueva partida
 
     turnos: list["Turno"] = Relationship(back_populates="jugador")
 
@@ -29,7 +30,7 @@ class PartidaJugador(SQLModel, table=True):
 class Partida(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     modalidad: str = Field(default="bola8")  # "bola8" | "bola9"
-    fecha: datetime = Field(default_factory=datetime.utcnow)
+    fecha: datetime = Field(default_factory=datetime.now)
     fecha_fin: Optional[datetime] = Field(default=None)   # se rellena al finalizar
     estado: str = Field(default="en_curso")  # "en_curso" | "finalizada"
     ganador_equipo: Optional[int] = Field(default=None)  # 1 o 2
@@ -37,6 +38,10 @@ class Partida(SQLModel, table=True):
     # Grupos asignados (null hasta que se asignen)
     equipo1_grupo: Optional[str] = Field(default=None)  # "lisas" | "rayadas"
     equipo2_grupo: Optional[str] = Field(default=None)
+
+    # Nombres de equipo (opcionales)
+    equipo1_nombre: Optional[str] = Field(default=None)
+    equipo2_nombre: Optional[str] = Field(default=None)
 
     # Siguiente turno
     siguiente_jugador_id: Optional[int] = Field(default=None, foreign_key="jugador.id")
@@ -65,7 +70,8 @@ class Turno(SQLModel, table=True):
     numero: int             # orden dentro de la partida (1-based)
     repite: bool = Field(default=False)
     bola_en_mano: bool = Field(default=False)  # si este turno tenía bola en mano disponible
-    bolas_metidas_json: str = Field(default="[]")  # JSON list de números de bola
+    bolas_metidas_json: str = Field(default="[]")   # JSON list de números de bola
+    faltas_ids_json: str = Field(default="[]")       # JSON list de IDs de falta (todas las del turno)
 
     partida: Optional[Partida] = Relationship(back_populates="turnos")
     jugador: Optional[Jugador] = Relationship(back_populates="turnos")
@@ -82,3 +88,15 @@ class Turno(SQLModel, table=True):
     @bolas_metidas.setter
     def bolas_metidas(self, value: list[int]):
         self.bolas_metidas_json = json.dumps(value if value is not None else [])
+
+    @property
+    def faltas_ids(self) -> list[int]:
+        try:
+            result = json.loads(self.faltas_ids_json or "[]")
+            return result if isinstance(result, list) else []
+        except (json.JSONDecodeError, TypeError):
+            return []
+
+    @faltas_ids.setter
+    def faltas_ids(self, value: list[int]):
+        self.faltas_ids_json = json.dumps(value if value is not None else [])

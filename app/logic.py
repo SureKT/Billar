@@ -7,10 +7,10 @@ from app.models import Partida, Turno, Falta, PartidaJugador
 
 
 def _finalizar(partida: Partida, ganador: int) -> None:
-    """Marca la partida como finalizada y registra la hora de fin."""
+    """Marca la partida como finalizada y registra la hora de fin (hora local)."""
     partida.estado = "finalizada"
     partida.ganador_equipo = ganador
-    partida.fecha_fin = datetime.utcnow()
+    partida.fecha_fin = datetime.now()
 
 
 def _jugadores_equipo(session: Session, partida_id: int, equipo: int) -> list[int]:
@@ -179,8 +179,16 @@ def _evaluar_bola8(session: Session, partida: Partida, turno: Turno) -> dict:
         partida.bola_en_mano = False
         return resultado
 
-    # Bola 8 metida (sin blanca — si hay blanca lo maneja el router antes)
+    # Bola 8 metida (turno normal, post-break)
     if 8 in bolas:
+        # 8 + blanca en el mismo turno → pierde siempre, independientemente de pendientes
+        if 0 in bolas:
+            turno.falta_id = _get_falta_id(session, "Bola 8 ilegal") or turno.falta_id
+            _finalizar(partida, equipo_rival)
+            resultado["partida_finalizada"] = True
+            resultado["ganador_equipo"] = equipo_rival
+            return resultado
+        # Sin blanca: gana o pierde según bolas pendientes
         # Sin grupos asignados: meter la 8 fuera del break siempre es ilegal
         # (_bolas_pendientes_equipo devolvería [] porque grupo=None, lo que
         #  se interpretaría erróneamente como "sin pendientes → gana")

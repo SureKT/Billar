@@ -135,7 +135,7 @@ const TEAM_COLOR = {
   2: { main: 'var(--team2)', bg: 'rgba(233,69,96,.14)',  border: 'var(--team2)'  },
 }
 
-function SelectorEquipo({ titulo, teamNum, jugadores, seleccionados, onChange, excluidos, statsMap }) {
+function SelectorEquipo({ titulo, teamNum, nombre, onNombreChange, jugadores, seleccionados, onChange, excluidos, statsMap }) {
   const tc = TEAM_COLOR[teamNum]
 
   function toggle(id) {
@@ -149,7 +149,24 @@ function SelectorEquipo({ titulo, teamNum, jugadores, seleccionados, onChange, e
   return (
     <div className="card" style={{ borderLeft: `3px solid ${tc.main}` }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-        <p style={{ fontWeight: 700, fontSize: '15px', color: tc.main }}>{titulo}</p>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4, width: '60%', minWidth: 0,
+          borderBottom: `1.5px ${nombre ? 'solid' : 'dashed'} ${nombre ? tc.main : 'var(--text-dim)'}`,
+          transition: 'border-color .15s',
+        }}>
+          <input
+            value={nombre}
+            onChange={e => onNombreChange(e.target.value)}
+            placeholder={titulo}
+            maxLength={24}
+            style={{
+              flex: 1, minWidth: 0,
+              fontWeight: 700, fontSize: '15px', color: tc.main,
+              background: 'none', outline: 'none', padding: '0 0 3px 0',
+              border: 'none',
+            }}
+          />
+          <span style={{ color: 'var(--text-dim)', fontSize: '13px', flexShrink: 0, paddingBottom: 2, pointerEvents: 'none' }}>✎</span>
+        </div>
         <span style={{ fontSize: '13px', color: seleccionados.length > 0 ? '#86efac' : 'var(--text-dim)' }}>
           {seleccionados.length === 0 ? 'Sin jugadores' : `${seleccionados.length} jugador${seleccionados.length > 1 ? 'es' : ''}`}
         </span>
@@ -195,6 +212,8 @@ export default function NuevaPartida() {
   const [modalidad, setModalidad] = useState(prefill?.modalidad ?? 'bola8')
   const [equipo1, setEquipo1] = useState(prefill?.equipo1 ?? [])
   const [equipo2, setEquipo2] = useState(prefill?.equipo2 ?? [])
+  const [nombre1, setNombre1] = useState('')
+  const [nombre2, setNombre2] = useState('')
   const [primerJugador, setPrimerJugador] = useState(prefill?.equipo1?.[0] ?? null)
   const [error, setError] = useState(null)
   const [creando, setCreando] = useState(false)
@@ -229,6 +248,8 @@ export default function NuevaPartida() {
         equipo1: { jugador_ids: equipo1 },
         equipo2: { jugador_ids: equipo2 },
         primer_jugador_id: primerJugador,
+        equipo1_nombre: nombre1.trim() || null,
+        equipo2_nombre: nombre2.trim() || null,
       })
       navigate(`/partida/${p.id}`)
     } catch (err) {
@@ -239,7 +260,8 @@ export default function NuevaPartida() {
 
   if (loading) return <div className="spinner" />
 
-  const jList = jugadores || []
+  // Solo jugadores activos en la pantalla de nueva partida
+  const jList = (jugadores || []).filter(j => j.activo !== false)
   const listo = equipo1.length > 0 && equipo2.length > 0
 
   return (
@@ -282,6 +304,7 @@ export default function NuevaPartida() {
         <>
           <SelectorEquipo
             titulo="Equipo 1" teamNum={1}
+            nombre={nombre1} onNombreChange={setNombre1}
             jugadores={jList}
             seleccionados={equipo1}
             onChange={setEquipo1Safe}
@@ -290,6 +313,7 @@ export default function NuevaPartida() {
           />
           <SelectorEquipo
             titulo="Equipo 2" teamNum={2}
+            nombre={nombre2} onNombreChange={setNombre2}
             jugadores={jList}
             seleccionados={equipo2}
             onChange={setEquipo2Safe}

@@ -11,23 +11,5 @@ set IP=%IP: =%
 :: Arrancar servidor en ventana minimizada
 start /min "Billar - Servidor" cmd /k "cd /d "%~dp0" && python -m uvicorn app.main:app --host 0.0.0.0 --port 8000"
 
-:: Esperar a que arranque y abrir navegador
-timeout /t 2 /nobreak >nul
+:: Abrir navegador
 start http://localhost:8000
-
-:: Info — esta ventana se queda abierta
-echo.
-echo  ==========================================
-echo    BILLAR  -  Servidor activo
-echo  ==========================================
-echo.
-echo  Local:   http://localhost:8000
-if not "%IP%"=="" (
-  echo  Movil:   http://%IP%:8000
-)
-echo.
-echo  Para parar: cierra la ventana minimizada
-echo              "Billar - Servidor".
-echo  ==========================================
-echo.
-pause

@@ -15,6 +15,7 @@ class TurnoCreate(BaseModel):
     jugador_id: int
     bolas_metidas: list[int] = []  # números de bola (0-15)
     falta_id: Optional[int] = None
+    falta_ids: list[int] = []      # todas las faltas del turno (para stats)
     bola_en_mano: bool = False
 
 
@@ -121,6 +122,12 @@ def registrar_turno(
         repite=False,
     )
     turno.bolas_metidas = datos.bolas_metidas
+    # Guardar todas las faltas del turno (falta_ids incluye las automáticas del frontend)
+    # Si el frontend envía la lista completa la usamos; si no, derivamos de falta_id
+    todas_faltas = list(dict.fromkeys(datos.falta_ids))  # dedup preservando orden
+    if falta_id and falta_id not in todas_faltas:
+        todas_faltas.insert(0, falta_id)
+    turno.faltas_ids = todas_faltas
 
     session.add(turno)
     session.flush()
@@ -147,6 +154,229 @@ def registrar_turno(
         siguiente_jugador_id=resultado["siguiente_jugador_id"],
         bola_en_mano_siguiente=resultado["bola_en_mano_siguiente"],
     )
+
+
+class TurnoInsertar(BaseModel):
+    despues_de_numero: int   # 0 = antes del primer turno
+    jugador_id: int
+    bolas_metidas: list[int] = []
+    falta_id: Optional[int] = None
+    bola_en_mano: bool = False
+
+
+@router.post("/{partida_id}/turnos/insertar", response_model=list[TurnoResponse])
+def insertar_turno(
+    partida_id: int,
+    datos: TurnoInsertar,
+    session: Session = Depends(get_session),
+):
+    """Inserta un turno entre dos existentes, renumera los posteriores y hace replay."""
+    partida = session.get(Partida, partida_id)
+    if not partida:
+        raise HTTPException(status_code=404, detail="Partida no encontrada")
+    if not session.get(Jugador, datos.jugador_id):
+        raise HTTPException(status_code=404, detail="Jugador no encontrado")
+    for b in datos.bolas_metidas:
+        if not session.get(Bola, b):
+            raise HTTPException(status_code=400, detail=f"Bola {b} no existe")
+
+    # Renumerar todos los turnos con numero > despues_de_numero
+    turnos_posteriores = session.exec(
+        select(Turno)
+        .where(Turno.partida_id == partida_id, Turno.numero > datos.despues_de_numero)
+        .order_by(Turno.numero.desc())   # desc para evitar colisiones de unique constraint
+    ).all()
+    for t in turnos_posteriores:
+        t.numero += 1
+        session.add(t)
+    session.flush()
+
+    # Crear el nuevo turno
+    nuevo = Turno(
+        partida_id=partida_id,
+        jugador_id=datos.jugador_id,
+        falta_id=datos.falta_id,
+        numero=datos.despues_de_numero + 1,
+        bola_en_mano=datos.bola_en_mano,
+        repite=False,
+    )
+    nuevo.bolas_metidas = datos.bolas_metidas
+    nuevo.faltas_ids = [datos.falta_id] if datos.falta_id else []
+    session.add(nuevo)
+    session.flush()
+
+    # Resetear partida y hacer replay completo
+    primer_jugador = session.exec(
+        select(PartidaJugador)
+        .where(PartidaJugador.partida_id == partida_id)
+        .order_by(PartidaJugador.orden)
+    ).first()
+
+    partida.estado = "en_curso"
+    partida.ganador_equipo = None
+    partida.fecha_fin = None
+    partida.equipo1_grupo = None
+    partida.equipo2_grupo = None
+    partida.siguiente_jugador_id = primer_jugador.jugador_id if primer_jugador else None
+    partida.bola_en_mano = False
+
+    todos_turnos = session.exec(
+        select(Turno).where(Turno.partida_id == partida_id).order_by(Turno.numero)
+    ).all()
+    for t in todos_turnos:
+        evaluar_turno(session, partida, t)
+
+    session.add(partida)
+    session.commit()
+    events.broadcast(partida_id)
+
+    # Devolver todos los turnos actualizados
+    turnos_final = session.exec(
+        select(Turno).where(Turno.partida_id == partida_id).order_by(Turno.numero)
+    ).all()
+    return [TurnoResponse(
+        id=t.id, partida_id=t.partida_id, jugador_id=t.jugador_id,
+        falta_id=t.falta_id, numero=t.numero, repite=t.repite,
+        bola_en_mano=t.bola_en_mano, bolas_metidas=t.bolas_metidas,
+    ) for t in turnos_final]
+
+
+class TurnoEdit(BaseModel):
+    bolas_metidas: list[int]
+    falta_id: Optional[int] = None
+
+
+@router.post("/{partida_id}/turnos/{turno_id}/editar", response_model=TurnoResponse)
+def editar_turno(
+    partida_id: int,
+    turno_id: int,
+    datos: TurnoEdit,
+    session: Session = Depends(get_session),
+):
+    """Edita bolas y falta de un turno ya registrado y recalcula el estado completo por replay."""
+    partida = session.get(Partida, partida_id)
+    if not partida:
+        raise HTTPException(status_code=404, detail="Partida no encontrada")
+
+    turno = session.get(Turno, turno_id)
+    if not turno or turno.partida_id != partida_id:
+        raise HTTPException(status_code=404, detail="Turno no encontrado")
+
+    # Validar bolas
+    for b in datos.bolas_metidas:
+        if not session.get(Bola, b):
+            raise HTTPException(status_code=400, detail=f"Bola {b} no existe")
+
+    # Aplicar los cambios al turno
+    turno.bolas_metidas = datos.bolas_metidas
+    turno.falta_id = datos.falta_id
+    turno.faltas_ids = [datos.falta_id] if datos.falta_id else []
+
+    # Obtener todos los turnos en orden
+    todos_turnos = session.exec(
+        select(Turno).where(Turno.partida_id == partida_id).order_by(Turno.numero)
+    ).all()
+
+    # Resetear partida al estado inicial
+    primer_jugador = session.exec(
+        select(PartidaJugador)
+        .where(PartidaJugador.partida_id == partida_id)
+        .order_by(PartidaJugador.orden)
+    ).first()
+
+    partida.estado = "en_curso"
+    partida.ganador_equipo = None
+    partida.fecha_fin = None
+    partida.equipo1_grupo = None
+    partida.equipo2_grupo = None
+    partida.siguiente_jugador_id = primer_jugador.jugador_id if primer_jugador else None
+    partida.bola_en_mano = False
+
+    # Replay completo con todos los turnos
+    ultimo_resultado = {}
+    for t in todos_turnos:
+        ultimo_resultado = evaluar_turno(session, partida, t)
+
+    session.add(partida)
+    session.commit()
+    session.refresh(turno)
+    events.broadcast(partida_id)
+
+    partida2 = session.get(Partida, partida_id)
+    turno_resultado = {
+        "grupos_asignados":       ultimo_resultado.get("grupos_asignados", False),
+        "partida_finalizada":     partida2.estado == "finalizada",
+        "ganador_equipo":         partida2.ganador_equipo,
+        "siguiente_jugador_id":   partida2.siguiente_jugador_id,
+        "bola_en_mano_siguiente": partida2.bola_en_mano,
+    }
+
+    return TurnoResponse(
+        id=turno.id,
+        partida_id=turno.partida_id,
+        jugador_id=turno.jugador_id,
+        falta_id=turno.falta_id,
+        numero=turno.numero,
+        repite=turno.repite,
+        bola_en_mano=turno.bola_en_mano,
+        bolas_metidas=turno.bolas_metidas,
+        **turno_resultado,
+    )
+
+
+@router.post("/{partida_id}/turnos/{turno_id}/eliminar", status_code=204)
+def eliminar_turno(
+    partida_id: int,
+    turno_id: int,
+    session: Session = Depends(get_session),
+):
+    """Elimina un turno concreto, renumera los posteriores y recalcula por replay."""
+    partida = session.get(Partida, partida_id)
+    if not partida:
+        raise HTTPException(status_code=404, detail="Partida no encontrada")
+
+    turno = session.get(Turno, turno_id)
+    if not turno or turno.partida_id != partida_id:
+        raise HTTPException(status_code=404, detail="Turno no encontrado")
+
+    numero_eliminado = turno.numero
+    session.delete(turno)
+    session.flush()
+
+    # Renumerar turnos posteriores (asc para evitar colisiones de unique constraint)
+    posteriores = session.exec(
+        select(Turno)
+        .where(Turno.partida_id == partida_id, Turno.numero > numero_eliminado)
+        .order_by(Turno.numero.asc())
+    ).all()
+    for t in posteriores:
+        t.numero -= 1
+        session.add(t)
+    session.flush()
+
+    # Resetear y replay
+    primer_jugador = session.exec(
+        select(PartidaJugador)
+        .where(PartidaJugador.partida_id == partida_id)
+        .order_by(PartidaJugador.orden)
+    ).first()
+
+    partida.estado = "en_curso"
+    partida.ganador_equipo = None
+    partida.fecha_fin = None
+    partida.equipo1_grupo = None
+    partida.equipo2_grupo = None
+    partida.siguiente_jugador_id = primer_jugador.jugador_id if primer_jugador else None
+    partida.bola_en_mano = False
+
+    for t in session.exec(
+        select(Turno).where(Turno.partida_id == partida_id).order_by(Turno.numero)
+    ).all():
+        evaluar_turno(session, partida, t)
+
+    session.add(partida)
+    session.commit()
+    events.broadcast(partida_id)
 
 
 @router.delete("/{partida_id}/turnos/ultimo", status_code=204)

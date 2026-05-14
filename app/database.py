@@ -4,7 +4,7 @@ DATABASE_URL = "sqlite:///./billar.db"
 engine = create_engine(DATABASE_URL, echo=False, connect_args={"check_same_thread": False})
 
 FALTAS = [
-    {"nombre": "Blanca dentro (Scratch)",       "penalizacion": "bola_en_mano"},
+    {"nombre": "Blanca dentro (Scratch)",        "penalizacion": "bola_en_mano"},
     {"nombre": "No toca objetivo legal",         "penalizacion": "bola_en_mano"},
     {"nombre": "Falta de banda",                 "penalizacion": "bola_en_mano"},
     {"nombre": "Bola fuera de mesa",             "penalizacion": "bola_en_mano"},
@@ -30,6 +30,10 @@ def _migrate():
         for stmt in [
             "ALTER TABLE partida ADD COLUMN fecha_fin DATETIME",
             "ALTER TABLE jugador ADD COLUMN color TEXT",
+            "ALTER TABLE jugador ADD COLUMN activo INTEGER NOT NULL DEFAULT 1",
+            "ALTER TABLE turno ADD COLUMN faltas_ids_json TEXT NOT NULL DEFAULT '[]'",
+            "ALTER TABLE partida ADD COLUMN equipo1_nombre TEXT",
+            "ALTER TABLE partida ADD COLUMN equipo2_nombre TEXT",
         ]:
             try:
                 conn.execute(text(stmt))

@@ -41,7 +41,7 @@ function StatBox({ label, value, color, sub }) {
   )
 }
 
-function ModalidadChip({ label, ganadas, jugadas, color }) {
+function ModalidadChip({ label, ganadas, jugadas, color, falta }) {
   const p = jugadas === 0 ? 0 : Math.round((ganadas / jugadas) * 100)
   return (
     <div style={{
@@ -60,6 +60,11 @@ function ModalidadChip({ label, ganadas, jugadas, color }) {
       <div style={{ height: 4, borderRadius: 2, background: 'var(--border)', overflow: 'hidden' }}>
         <div style={{ height: '100%', width: `${p}%`, background: color, borderRadius: 2, transition: 'width .4s ease' }} />
       </div>
+      {falta && (
+        <span style={{ fontSize: '10px', color: '#fca5a5', marginTop: 1 }}>
+          ⚠ {falta}
+        </span>
+      )}
     </div>
   )
 }
@@ -72,6 +77,7 @@ function JugadorCard({ j, onReload, todosStats }) {
   const coloresTomados = new Set(
     (todosStats ?? []).filter(s => s.id !== j.id && s.color).map(s => s.color)
   )
+  const [activoLocal, setActivoLocal] = useState(j.activo)
   const [expandido, setExpandido] = useState(false)
   const [modo, setModo] = useState(null) // null | 'editar' | 'eliminar'
   const [nombreEdit, setNombreEdit] = useState(j.nombre)
@@ -134,13 +140,23 @@ function JugadorCard({ j, onReload, todosStats }) {
     } catch (e) { setError(e.message); setCargando(false) }
   }
 
+  async function toggleActivo() {
+    const nuevo = !activoLocal
+    setActivoLocal(nuevo)   // respuesta visual inmediata, sin reload
+    try {
+      await api.toggleActivoJugador(j.id)
+    } catch {
+      setActivoLocal(!nuevo) // revertir si falla
+    }
+  }
+
   function cancelar() {
     setModo(null); setNombreEdit(j.nombre)
     setRecursivoOk(false); setError(null)
   }
 
   return (
-    <div className="card">
+    <div className="card" style={{ opacity: activoLocal ? 1 : 0.55, transition: 'opacity .2s' }}>
       {/* Cabecera */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: (modo || expandido) ? 12 : 0 }}>
         {modo === 'editar' ? (
@@ -173,6 +189,22 @@ function JugadorCard({ j, onReload, todosStats }) {
         <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
           {modo === null && (
             <>
+              <div
+                onClick={toggleActivo}
+                title={activoLocal ? 'Desactivar jugador' : 'Activar jugador'}
+                style={{
+                  width: 36, height: 20, borderRadius: 10, flexShrink: 0,
+                  background: activoLocal ? 'var(--accent)' : 'var(--border)',
+                  position: 'relative', transition: 'background .2s', cursor: 'pointer',
+                }}
+              >
+                <div style={{
+                  width: 16, height: 16, borderRadius: 8, background: '#fff',
+                  position: 'absolute', top: 2,
+                  left: activoLocal ? 18 : 2,
+                  transition: 'left .2s',
+                }} />
+              </div>
               <button className="btn btn-ghost" style={{ padding: '5px 10px', fontSize: '12px' }}
                 onClick={() => setModo('editar')}>Editar</button>
               <button className="btn btn-ghost" style={{ padding: '5px 10px', fontSize: '12px' }}
@@ -311,6 +343,24 @@ function JugadorCard({ j, onReload, todosStats }) {
             )}
           </div>
 
+          {/* Tendencia bolas por turno */}
+          {j.bolas_por_turno_reciente != null && j.partidas_jugadas >= 2 && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
+              <span style={{ fontSize: '11px', color: 'var(--text-dim)' }}>Tendencia:</span>
+              {j.bolas_por_turno_reciente > j.bolas_por_turno ? (
+                <span style={{ fontSize: '11px', fontWeight: 700, color: '#86efac' }}>
+                  ▲ mejorando ({j.bolas_por_turno_reciente} vs {j.bolas_por_turno} global)
+                </span>
+              ) : j.bolas_por_turno_reciente < j.bolas_por_turno ? (
+                <span style={{ fontSize: '11px', fontWeight: 700, color: '#fca5a5' }}>
+                  ▼ bajando ({j.bolas_por_turno_reciente} vs {j.bolas_por_turno} global)
+                </span>
+              ) : (
+                <span style={{ fontSize: '11px', color: 'var(--text-dim)' }}>→ estable</span>
+              )}
+            </div>
+          )}
+
           {/* Desglose por modalidad */}
           {(j.partidas_jugadas_bola8 > 0 || j.partidas_jugadas_bola9 > 0) && (
             <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
@@ -320,6 +370,7 @@ function JugadorCard({ j, onReload, todosStats }) {
                   ganadas={j.partidas_ganadas_bola8}
                   jugadas={j.partidas_jugadas_bola8}
                   color="#93c5fd"
+                  falta={j.falta_frecuente_bola8_nombre}
                 />
               )}
               {j.partidas_jugadas_bola9 > 0 && (
@@ -328,6 +379,7 @@ function JugadorCard({ j, onReload, todosStats }) {
                   ganadas={j.partidas_ganadas_bola9}
                   jugadas={j.partidas_jugadas_bola9}
                   color="#c4b5fd"
+                  falta={j.falta_frecuente_bola9_nombre}
                 />
               )}
             </div>
@@ -451,7 +503,7 @@ const ORDENES = [
 ]
 
 export default function Jugadores() {
-  const { data: stats, loading, reload } = useApi(api.getAllStats)
+  const { data: stats, loading, reload } = useApi(() => api.getAllStats(true))
   const [nombre, setNombre] = useState('')
   const [error, setError] = useState(null)
   const [guardando, setGuardando] = useState(false)

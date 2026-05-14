@@ -21,14 +21,16 @@ export const api = {
   editarJugador: (id, nombre) => request('PUT', `/jugadores/${id}`, { nombre }),
   eliminarJugador: (id) => request('DELETE', `/jugadores/${id}`),
   getStatsJugador: (id) => request('GET', `/jugadores/${id}/stats`),
-  getAllStats: () => request('GET', '/jugadores/stats'),
+  getAllStats: (incluirInactivos = false) =>
+    request('GET', `/jugadores/stats${incluirInactivos ? '?incluir_inactivos=true' : ''}`),
   getH2H: (id) => request('GET', `/jugadores/${id}/h2h`),
   getUltimasPartidas: (id) => request('GET', `/jugadores/${id}/ultimas-partidas`),
   editarColorJugador: (id, color) => request('PATCH', `/jugadores/${id}/color`, { color }),
+  toggleActivoJugador: (id) => request('PATCH', `/jugadores/${id}/activo`),
 
   // Partidas
-  getSugerencias: (jugadoresPorEquipo = 1) =>
-    request('GET', `/partidas/sugerencias?jugadores_por_equipo=${jugadoresPorEquipo}`),
+  getSugerencias: (jugadoresPorEquipo = 1, modalidad = 'bola8') =>
+    request('GET', `/partidas/sugerencias?jugadores_por_equipo=${jugadoresPorEquipo}&modalidad=${modalidad}`),
   getPartidas: () => request('GET', '/partidas'),
   getPartida: (id) => request('GET', `/partidas/${id}`),
   getEstadoPartida: (id) => request('GET', `/partidas/${id}/estado`),
@@ -40,6 +42,9 @@ export const api = {
   getTurnos: (partidaId) => request('GET', `/partidas/${partidaId}/turnos`),
   registrarTurno: (partidaId, datos) => request('POST', `/partidas/${partidaId}/turnos`, datos),
   deshacerUltimoTurno: (partidaId) => request('DELETE', `/partidas/${partidaId}/turnos/ultimo`),
+  editarTurno: (partidaId, turnoId, datos) => request('POST', `/partidas/${partidaId}/turnos/${turnoId}/editar`, datos),
+  eliminarTurno: (partidaId, turnoId) => request('POST', `/partidas/${partidaId}/turnos/${turnoId}/eliminar`),
+  insertarTurno: (partidaId, datos) => request('POST', `/partidas/${partidaId}/turnos/insertar`, datos),
 
   // Catálogos
   getBolas: () => request('GET', '/bolas'),

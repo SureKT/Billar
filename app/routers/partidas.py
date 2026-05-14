@@ -4,7 +4,7 @@ from datetime import datetime
 from itertools import combinations
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
-from sqlmodel import Session, select
+from sqlmodel import Session, select, func
 from pydantic import BaseModel
 from typing import Optional
 
@@ -24,6 +24,8 @@ class PartidaCreate(BaseModel):
     equipo1: EquipoInput
     equipo2: EquipoInput
     primer_jugador_id: Optional[int] = None
+    equipo1_nombre: Optional[str] = None
+    equipo2_nombre: Optional[str] = None
 
 
 class TiemposUpdate(BaseModel):
@@ -33,6 +35,7 @@ class TiemposUpdate(BaseModel):
 
 class PartidaResumen(BaseModel):
     id: int
+    numero: int
     modalidad: str
     fecha: datetime
     fecha_fin: Optional[datetime]
@@ -40,13 +43,15 @@ class PartidaResumen(BaseModel):
     ganador_equipo: Optional[int]
     equipo1_grupo: Optional[str]
     equipo2_grupo: Optional[str]
+    equipo1_nombre: Optional[str] = None
+    equipo2_nombre: Optional[str] = None
     siguiente_jugador_id: Optional[int]
     bola_en_mano: bool
     equipo1_jugadores: list[int]
     equipo2_jugadores: list[int]
 
 
-def _build_resumen(session: Session, partida: Partida) -> PartidaResumen:
+def _build_resumen(session: Session, partida: Partida, numero: Optional[int] = None) -> PartidaResumen:
     pjs = session.exec(
         select(PartidaJugador)
         .where(PartidaJugador.partida_id == partida.id)
@@ -54,8 +59,13 @@ def _build_resumen(session: Session, partida: Partida) -> PartidaResumen:
     ).all()
     eq1 = [p.jugador_id for p in pjs if p.equipo == 1]
     eq2 = [p.jugador_id for p in pjs if p.equipo == 2]
+    if numero is None:
+        numero = session.exec(
+            select(func.count(Partida.id)).where(Partida.id <= partida.id)
+        ).one()
     return PartidaResumen(
         id=partida.id,
+        numero=numero,
         modalidad=partida.modalidad,
         fecha=partida.fecha,
         fecha_fin=partida.fecha_fin,
@@ -63,6 +73,8 @@ def _build_resumen(session: Session, partida: Partida) -> PartidaResumen:
         ganador_equipo=partida.ganador_equipo,
         equipo1_grupo=partida.equipo1_grupo,
         equipo2_grupo=partida.equipo2_grupo,
+        equipo1_nombre=partida.equipo1_nombre,
+        equipo2_nombre=partida.equipo2_nombre,
         siguiente_jugador_id=partida.siguiente_jugador_id,
         bola_en_mano=partida.bola_en_mano,
         equipo1_jugadores=eq1,
@@ -79,41 +91,44 @@ class SugerenciaJugador(BaseModel):
 class Sugerencia(BaseModel):
     equipo1: list[SugerenciaJugador]
     equipo2: list[SugerenciaJugador]
-    enfrentamientos: int        # veces que estos jugadores se han enfrentado (equipos cruzados)
-    interacciones_totales: int  # veces que han jugado en la misma partida (cualquier combo)
+    enfrentamientos: int   # partidas en este formato donde estos equipos específicos se enfrentaron
+    partidas_juntos: int   # total partidas en este formato donde estos jugadores coincidieron
 
 
 @router.get("/sugerencias", response_model=list[Sugerencia])
 def sugerencias_partidas(
     jugadores_por_equipo: int = 1,
+    modalidad: str = "bola8",
     session: Session = Depends(get_session),
 ):
-    """Devuelve matchups sugeridos basados en los enfrentamientos históricos más bajos."""
-    jugadores = session.exec(select(Jugador).order_by(Jugador.nombre)).all()
+    """Devuelve matchups sugeridos basados en enfrentamientos históricos del mismo formato y modalidad."""
+    jugadores = session.exec(
+        select(Jugador).where(Jugador.activo == True).order_by(Jugador.nombre)  # noqa: E712
+    ).all()
     if len(jugadores) < jugadores_por_equipo * 2:
         return []
 
-    # Matrices de interacción
-    confrontaciones: dict = defaultdict(lambda: defaultdict(int))  # equipos opuestos
-    interacciones: dict = defaultdict(lambda: defaultdict(int))     # misma partida, cualquier equipo
+    # Contadores separados por formato — solo se cuentan partidas de la modalidad solicitada
+    enf_1v1: dict = defaultdict(lambda: defaultdict(int))
+    enf_2v2: dict = defaultdict(int)
+    juntos_2v2: dict = defaultdict(int)
 
-    partidas = session.exec(select(Partida)).all()
+    partidas = session.exec(select(Partida).where(Partida.modalidad == modalidad)).all()
     for partida in partidas:
         pjs = session.exec(
             select(PartidaJugador).where(PartidaJugador.partida_id == partida.id)
         ).all()
         eq1 = [p.jugador_id for p in pjs if p.equipo == 1]
         eq2 = [p.jugador_id for p in pjs if p.equipo == 2]
-        todos = eq1 + eq2
 
-        for a, b in combinations(sorted(todos), 2):
-            interacciones[a][b] += 1
-            interacciones[b][a] += 1
-
-        for a in eq1:
-            for b in eq2:
-                confrontaciones[a][b] += 1
-                confrontaciones[b][a] += 1
+        if len(eq1) == 1 and len(eq2) == 1:
+            a, b = eq1[0], eq2[0]
+            enf_1v1[a][b] += 1
+            enf_1v1[b][a] += 1
+        elif len(eq1) == 2 and len(eq2) == 2:
+            key = tuple(sorted([tuple(sorted(eq1)), tuple(sorted(eq2))]))
+            enf_2v2[key] += 1
+            juntos_2v2[frozenset(eq1 + eq2)] += 1
 
     jug_map = {j.id: j for j in jugadores}
     jug_ids = [j.id for j in jugadores]
@@ -126,11 +141,8 @@ def sugerencias_partidas(
             if key in seen:
                 continue
             seen.add(key)
-            candidatos.append((
-                confrontaciones[a][b],
-                interacciones[a][b],
-                [a], [b],
-            ))
+            enf = enf_1v1[a][b]
+            candidatos.append((enf, enf, [a], [b]))  # partidas_juntos == enfrentamientos en 1v1
     else:
         for t1 in combinations(jug_ids, jugadores_por_equipo):
             restantes = [j for j in jug_ids if j not in t1]
@@ -141,19 +153,20 @@ def sugerencias_partidas(
                 if key in seen:
                     continue
                 seen.add(key)
-                enf = sum(confrontaciones[a][b] for a in t1s for b in t2s)
-                intr = sum(interacciones[a][b] for a in t1s for b in t2s)
-                candidatos.append((enf, intr, list(t1s), list(t2s)))
+                key_2v2 = tuple(sorted([t1s, t2s]))
+                enf = enf_2v2.get(key_2v2, 0)
+                juntos = juntos_2v2.get(frozenset(list(t1s) + list(t2s)), 0)
+                candidatos.append((enf, juntos, list(t1s), list(t2s)))
 
     candidatos.sort(key=lambda x: (x[0], x[1]))
 
     result = []
-    for enf, intr, t1_ids, t2_ids in candidatos[:6]:
+    for enf, juntos, t1_ids, t2_ids in candidatos[:6]:
         result.append(Sugerencia(
             equipo1=[SugerenciaJugador(id=i, nombre=jug_map[i].nombre, color=jug_map[i].color) for i in t1_ids],
             equipo2=[SugerenciaJugador(id=i, nombre=jug_map[i].nombre, color=jug_map[i].color) for i in t2_ids],
             enfrentamientos=enf,
-            interacciones_totales=intr,
+            partidas_juntos=juntos,
         ))
     return result
 
@@ -161,7 +174,9 @@ def sugerencias_partidas(
 @router.get("", response_model=list[PartidaResumen])
 def listar_partidas(session: Session = Depends(get_session)):
     partidas = session.exec(select(Partida).order_by(Partida.fecha.desc())).all()
-    return [_build_resumen(session, p) for p in partidas]
+    ids_ordenados = session.exec(select(Partida.id).order_by(Partida.id)).all()
+    numero_map = {pid: i + 1 for i, pid in enumerate(ids_ordenados)}
+    return [_build_resumen(session, p, numero_map[p.id]) for p in partidas]
 
 
 @router.post("", response_model=PartidaResumen, status_code=201)
@@ -177,7 +192,11 @@ def crear_partida(datos: PartidaCreate, session: Session = Depends(get_session))
         if not session.get(Jugador, jid):
             raise HTTPException(status_code=404, detail=f"Jugador {jid} no encontrado")
 
-    partida = Partida(modalidad=datos.modalidad)
+    partida = Partida(
+        modalidad=datos.modalidad,
+        equipo1_nombre=datos.equipo1_nombre or None,
+        equipo2_nombre=datos.equipo2_nombre or None,
+    )
     session.add(partida)
     session.flush()
 

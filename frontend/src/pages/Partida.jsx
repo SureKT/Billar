@@ -19,10 +19,26 @@ export default function Partida() {
   const [confirmarBorrar, setConfirmarBorrar] = useState(false)
   const [flash, setFlash]             = useState(null)
   const [editandoTiempos, setEditandoTiempos] = useState(false)
+  const [editandoTurnos, setEditandoTurnos] = useState(false)
   const [fechaEdit, setFechaEdit]     = useState('')
   const [fechaFinEdit, setFechaFinEdit] = useState('')
   const [guardandoTiempos, setGuardandoTiempos] = useState(false)
+  const [duracionActiva, setDuracionActiva] = useState('')
   const wakeLockRef = useRef(null)
+
+  // ── Cronómetro partida activa ─────────────────────────────────────────────────
+  useEffect(() => {
+    if (!partida || partida.estado !== 'en_curso') { setDuracionActiva(''); return }
+    function tick() {
+      const ms = Date.now() - new Date(partida.fecha).getTime()
+      const min = Math.floor(ms / 60_000)
+      const seg = Math.floor((ms % 60_000) / 1_000)
+      setDuracionActiva(`${min}' ${String(seg).padStart(2, '0')}"`)
+    }
+    tick()
+    const t = setInterval(tick, 1000)
+    return () => clearInterval(t)
+  }, [partida?.fecha, partida?.estado])
 
   // ── Auto-detect faltas según bolas seleccionadas ─────────────────────────────
   useEffect(() => {
@@ -127,6 +143,7 @@ export default function Partida() {
         jugador_id:   partida.siguiente_jugador_id,
         bolas_metidas: bolas,
         falta_id:     faltaEfectivaId,
+        falta_ids:    todasFaltasIds,
         bola_en_mano: partida.bola_en_mano,
       })
       setBolas([])
@@ -186,8 +203,8 @@ export default function Partida() {
     setGuardandoTiempos(true)
     try {
       const datos = {}
-      if (fechaEdit)    datos.fecha     = new Date(fechaEdit).toISOString()
-      if (fechaFinEdit) datos.fecha_fin = new Date(fechaFinEdit).toISOString()
+      if (fechaEdit)    datos.fecha     = fechaEdit       // ya es hora local, no convertir a UTC
+      if (fechaFinEdit) datos.fecha_fin = fechaFinEdit
       await api.actualizarTiempos(id, datos)
       setEditandoTiempos(false)
       await reload()
@@ -226,13 +243,18 @@ export default function Partida() {
           >‹</button>
           <h2 style={{ fontSize: '17px', fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
             {partida.modalidad === 'bola8' ? 'Bola 8' : 'Bola 9'}
-            <span style={{ color: 'var(--text-dim)', fontWeight: 400 }}> · #{id}</span>
+            <span style={{ color: 'var(--text-dim)', fontWeight: 400 }}> · #{partida?.numero ?? id}</span>
           </h2>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2, flexShrink: 0, marginLeft: 8 }}>
           <span className={`badge ${finalizada ? 'badge-fin' : 'badge-curso'}`}>
             {finalizada ? 'Finalizada' : 'En curso'}
           </span>
+          {!finalizada && duracionActiva && (
+            <span style={{ fontSize: '11px', color: 'var(--text-dim)', fontWeight: 600 }}>
+              ⏱ {duracionActiva}
+            </span>
+          )}
           {!finalizada && ultimoReload && (
             <span style={{ fontSize: '9px', color: 'var(--text-dim)', letterSpacing: '.03em' }}>
               sync {ultimoReload.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
@@ -244,7 +266,7 @@ export default function Partida() {
       {/* Estado de equipos */}
       <div style={{ display: 'flex', gap: 8 }}>
         <BolasEquipo
-          titulo="Equipo 1" teamNum={1}
+          titulo={partida.equipo1_nombre || 'Equipo 1'} teamNum={1}
           pendientes={pendientesEq1}
           grupo={partida.equipo1_grupo}
           esActivo={!finalizada && equipoActual === 1}
@@ -254,7 +276,7 @@ export default function Partida() {
           modalidad={partida.modalidad}
         />
         <BolasEquipo
-          titulo="Equipo 2" teamNum={2}
+          titulo={partida.equipo2_nombre || 'Equipo 2'} teamNum={2}
           pendientes={pendientesEq2}
           grupo={partida.equipo2_grupo}
           esActivo={!finalizada && equipoActual === 2}
@@ -297,88 +319,109 @@ export default function Partida() {
         />
       )}
 
-      {/* Historial de turnos */}
-      <HistorialTurnos
-        turnos={turnos}
-        jugadores={jugadores}
-        faltas={faltas}
-        equipo1Jugadores={partida.equipo1_jugadores}
-        equipo2Jugadores={partida.equipo2_jugadores}
-      />
+      {/* Historial + acciones — gap uniforme */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        <HistorialTurnos
+          turnos={turnos}
+          jugadores={jugadores}
+          faltas={faltas}
+          equipo1Jugadores={partida.equipo1_jugadores}
+          equipo2Jugadores={partida.equipo2_jugadores}
+          partida={partida}
+          onReload={reload}
+          modoEdicion={editandoTurnos}
+        />
 
-      {/* Editar tiempos */}
-      {!editandoTiempos ? (
-        <button
-          className="btn btn-ghost btn-full"
-          onClick={abrirEditarTiempos}
-          style={{ color: 'var(--text-dim)', fontSize: '13px' }}
-        >
-          ✎ Editar tiempos
-        </button>
-      ) : (
-        <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <p style={{ fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.05em', color: 'var(--text-dim)' }}>
-            Editar tiempos
-          </p>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-              <span style={{ fontSize: '11px', color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '.04em' }}>Inicio</span>
-              <input
-                type="datetime-local"
-                value={fechaEdit}
-                onChange={e => setFechaEdit(e.target.value)}
-                style={{ fontSize: '14px' }}
-              />
-            </label>
-            <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-              <span style={{ fontSize: '11px', color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '.04em' }}>Fin</span>
-              <input
-                type="datetime-local"
-                value={fechaFinEdit}
-                onChange={e => setFechaFinEdit(e.target.value)}
-                style={{ fontSize: '14px' }}
-              />
-            </label>
-          </div>
-          <div style={{ display: 'flex', gap: 8 }}>
+        {/* Botones de edición — fila */}
+        {!editandoTiempos && (
+          <div style={{ display: 'flex', gap: 6 }}>
             <button
-              className="btn btn-primary btn-full"
-              onClick={guardarTiempos}
-              disabled={guardandoTiempos}
+              className="btn btn-ghost btn-full"
+              onClick={abrirEditarTiempos}
+              style={{ color: 'var(--text-dim)', fontSize: '13px' }}
             >
-              {guardandoTiempos ? 'Guardando…' : 'Guardar'}
+              ✎ Editar tiempos
             </button>
             <button
               className="btn btn-ghost btn-full"
-              onClick={() => setEditandoTiempos(false)}
-              disabled={guardandoTiempos}
+              onClick={() => setEditandoTurnos(v => !v)}
+              style={{
+                fontSize: '13px',
+                color: editandoTurnos ? 'var(--accent)' : 'var(--text-dim)',
+                borderColor: editandoTurnos ? 'var(--accent)' : undefined,
+              }}
             >
-              Cancelar
+              {editandoTurnos ? '✓ Listo' : '✎ Editar turnos'}
             </button>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Eliminar partida */}
-      {!confirmarBorrar ? (
-        <button
-          className="btn btn-ghost btn-full"
-          onClick={() => setConfirmarBorrar(true)}
-          style={{ marginTop: 4, color: 'var(--text-dim)', fontSize: '13px' }}
-        >
-          🗑 Eliminar partida
-        </button>
-      ) : (
-        <div className="card" style={{ marginTop: 4, display: 'flex', flexDirection: 'column', gap: 10 }}>
-          <p style={{ fontSize: '13px', color: '#fca5a5', textAlign: 'center' }}>
-            ¿Eliminar esta partida? No se puede deshacer.
-          </p>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <button className="btn btn-danger btn-full" onClick={eliminar}>Sí, eliminar</button>
-            <button className="btn btn-ghost btn-full" onClick={() => setConfirmarBorrar(false)}>Cancelar</button>
+        {/* Editar tiempos (expandido) */}
+        {editandoTiempos && (
+          <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <p style={{ fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.05em', color: 'var(--text-dim)' }}>
+              Editar tiempos
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <span style={{ fontSize: '11px', color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '.04em' }}>Inicio</span>
+                <input
+                  type="datetime-local"
+                  value={fechaEdit}
+                  onChange={e => setFechaEdit(e.target.value)}
+                  style={{ fontSize: '14px' }}
+                />
+              </label>
+              <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <span style={{ fontSize: '11px', color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '.04em' }}>Fin</span>
+                <input
+                  type="datetime-local"
+                  value={fechaFinEdit}
+                  onChange={e => setFechaFinEdit(e.target.value)}
+                  style={{ fontSize: '14px' }}
+                />
+              </label>
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button
+                className="btn btn-primary btn-full"
+                onClick={guardarTiempos}
+                disabled={guardandoTiempos}
+              >
+                {guardandoTiempos ? 'Guardando…' : 'Guardar'}
+              </button>
+              <button
+                className="btn btn-ghost btn-full"
+                onClick={() => setEditandoTiempos(false)}
+                disabled={guardandoTiempos}
+              >
+                Cancelar
+              </button>
+            </div>
           </div>
-        </div>
-      )}
+        )}
+
+        {/* Eliminar partida */}
+        {!confirmarBorrar ? (
+          <button
+            className="btn btn-ghost btn-full"
+            onClick={() => setConfirmarBorrar(true)}
+            style={{ color: 'var(--text-dim)', fontSize: '13px' }}
+          >
+            ❌ Eliminar partida
+          </button>
+        ) : (
+          <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <p style={{ fontSize: '13px', color: '#fca5a5', textAlign: 'center' }}>
+              ¿Eliminar esta partida? No se puede deshacer.
+            </p>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button className="btn btn-danger btn-full" onClick={eliminar}>Sí, eliminar</button>
+              <button className="btn btn-ghost btn-full" onClick={() => setConfirmarBorrar(false)}>Cancelar</button>
+            </div>
+          </div>
+        )}
+      </div>
 
     </div>
   )

@@ -33,7 +33,7 @@ export default function ResultadoBanner({ partida, turnos, jugadores, onRevancha
 
   for (const t of turnos) {
     const jid = t.jugador_id
-    bolasXJugador[jid]  = (bolasXJugador[jid]  ?? 0) + (t.bolas_metidas?.length ?? 0)
+    bolasXJugador[jid]  = (bolasXJugador[jid]  ?? 0) + (t.bolas_metidas?.filter(b => b !== 0).length ?? 0)
     faltasXJugador[jid] = (faltasXJugador[jid] ?? 0) + (t.falta_id ? 1 : 0)
     turnosXJugador[jid] = (turnosXJugador[jid] ?? 0) + 1
     const eq = partida.equipo1_jugadores.includes(jid) ? 1 : 2
@@ -61,7 +61,9 @@ export default function ResultadoBanner({ partida, turnos, jugadores, onRevancha
       <div style={{ textAlign: 'center' }}>
         <div style={{ fontSize: '28px', marginBottom: 4 }}>🏆</div>
         <p style={{ fontSize: '20px', fontWeight: 800, color: '#fcd34d' }}>
-          Gana Equipo {partida.ganador_equipo}
+          Gana {partida.ganador_equipo === 1
+            ? (partida.equipo1_nombre || 'Equipo 1')
+            : (partida.equipo2_nombre || 'Equipo 2')}
         </p>
         <p style={{ fontSize: '14px', color: 'var(--text-dim)', marginTop: 4 }}>
           {ganadores.map(jid => nombre(jid, jugadores)).join(', ')}
@@ -89,15 +91,15 @@ export default function ResultadoBanner({ partida, turnos, jugadores, onRevancha
 
       {/* ── Stats por jugador ── */}
       <div style={{ background: 'rgba(0,0,0,.2)', borderRadius: 10, overflow: 'hidden' }}>
-        {/* cabecera */}
+        {/* cabecera con iconos + tooltip */}
         <div style={{
           display: 'grid', gridTemplateColumns: '1fr 28px 28px 28px',
           gap: 6, padding: '6px 10px',
           borderBottom: '1px solid rgba(255,255,255,.07)',
         }}>
           <span style={{ fontSize: '10px', color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '.04em' }}>Jugador</span>
-          {['🎱', '⚠', '↩'].map(s => (
-            <span key={s} style={{ fontSize: '11px', textAlign: 'center' }}>{s}</span>
+          {[['🎱','Bolas'],['⚠','Faltas'],['↩','Turnos']].map(([icon, label]) => (
+            <span key={label} title={label} style={{ fontSize: '13px', textAlign: 'center', cursor: 'default' }}>{icon}</span>
           ))}
         </div>
 
@@ -124,7 +126,7 @@ export default function ResultadoBanner({ partida, turnos, jugadores, onRevancha
                     {mvp ? '★ ' : ''}{nombre(jid, jugadores)}
                   </span>
                   <div style={{ display: 'flex', gap: 4, alignItems: 'center', marginTop: 3 }}>
-                    <MiniBar value={bolas}  max={maxBolas}  color={color} />
+                    <MiniBar value={bolas} max={maxBolas} color={color} />
                   </div>
                 </div>
                 <span style={{ fontSize: '13px', fontWeight: 700, textAlign: 'center',
@@ -136,13 +138,6 @@ export default function ResultadoBanner({ partida, turnos, jugadores, onRevancha
               </div>
             )
           })}
-
-        {/* leyenda */}
-        <div style={{ display: 'flex', gap: 12, padding: '6px 10px', justifyContent: 'flex-end' }}>
-          {[['🎱','Bolas'],['⚠','Faltas'],['↩','Turnos']].map(([e,l]) => (
-            <span key={l} style={{ fontSize: '10px', color: 'var(--text-dim)' }}>{e} {l}</span>
-          ))}
-        </div>
       </div>
 
       {/* ── Botones ── */}
