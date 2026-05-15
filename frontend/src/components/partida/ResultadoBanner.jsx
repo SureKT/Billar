@@ -177,8 +177,8 @@ export default function ResultadoBanner({ partida, turnos, jugadores, onRevancha
         <button
           onClick={() => setSharing(true)}
           style={{
-            background: 'rgba(168,85,247,.12)', border: '1px solid rgba(168,85,247,.3)',
-            borderRadius: 8, padding: '9px', fontSize: 13, color: '#a855f7',
+            background: 'rgba(168,85,247,.18)', border: '1px solid rgba(255,255,255,.2)',
+            borderRadius: 8, padding: '9px', fontSize: 13, color: '#fff',
             cursor: 'pointer', width: '100%',
           }}
         >

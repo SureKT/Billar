@@ -45,7 +45,7 @@ export default function ShareCardPartida({ partida, turnos, jugadores }) {
   const sorted = [...todosIds].sort((a, b) => (bolasX[b] ?? 0) - (bolasX[a] ?? 0))
 
   return (
-    <div style={{ background: BG, width: '100%', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
+    <div style={{ background: BG, color: TEXT, width: '100%', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
 
       {/* Header */}
       <div style={{

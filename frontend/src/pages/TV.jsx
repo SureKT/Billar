@@ -107,7 +107,7 @@ function HistorialEquipo({ jugadoresIds, jugadoresAll, turnos, faltas, color, es
             <div style={{ display: 'flex', gap: 3, flexWrap: 'wrap', pointerEvents: 'none', alignItems: 'center', flex: 1, minWidth: 0 }}>
               {bolas.length > 0
                 ? bolas.map(b => <BolaPool key={b} numero={b} size={24} />)
-                : <span style={{ fontSize: 13, color: '#334155', letterSpacing: '.04em' }}>sin bolas</span>
+                : <span style={{ fontSize: 13, color: '#334155', letterSpacing: '.04em' }}>Sin bolas</span>
               }
             </div>
 
@@ -117,12 +117,12 @@ function HistorialEquipo({ jugadoresIds, jugadoresAll, turnos, faltas, color, es
                 background: 'rgba(239,68,68,.15)', padding: '2px 7px', borderRadius: 4,
                 flexShrink: 0, whiteSpace: 'nowrap',
               }}>
-                ⚠ {falta.nombre}
+                ⚠ {falta.nombre.charAt(0).toUpperCase() + falta.nombre.slice(1)}
               </span>
             )}
             {t.bola_en_mano && !falta && (
               <span style={{ fontSize: 10, color: '#fbbf24', background: 'rgba(251,191,36,.12)', padding: '2px 7px', borderRadius: 4, flexShrink: 0, whiteSpace: 'nowrap' }}>
-                bola en mano
+                Bola en mano
               </span>
             )}
           </div>
@@ -137,7 +137,7 @@ function HistorialEquipo({ jugadoresIds, jugadoresAll, turnos, faltas, color, es
 function EquipoPanel({ nombre, jugadoresIds, jugadoresAll, grupo, pendientes, esTurno, teamColor, modalidad, turnos, faltas, siguienteJugadorId }) {
   const players = jugadoresIds.map(jid => jugadoresAll.find(j => j.id === jid)).filter(Boolean)
   const esUno = players.length === 1
-  const grupoLabel = grupo === 'lisas' ? 'LISAS · 1-7' : grupo === 'rayadas' ? 'RAYADAS · 9-15' : null
+  const grupoLabel = grupo === 'lisas' ? 'LISAS' : grupo === 'rayadas' ? 'RAYADAS' : null
   const ballColor = grupo === 'lisas' ? '#3b82f6' : grupo === 'rayadas' ? '#f97316' : teamColor
 
   return (
@@ -174,8 +174,9 @@ function EquipoPanel({ nombre, jugadoresIds, jugadoresAll, grupo, pendientes, es
                   <span style={{
                     fontSize: 15, fontWeight: esActivo ? 800 : 600,
                     color: esActivo ? '#f1f5f9' : (esTurno ? '#64748b' : '#334155'),
+                    borderBottom: esActivo ? `2px solid ${teamColor}` : '2px solid transparent',
                   }}>
-                    {esActivo ? '▶ ' : ''}{p.nombre}
+                    {p.nombre}
                   </span>
                 </div>
               )
@@ -193,15 +194,18 @@ function EquipoPanel({ nombre, jugadoresIds, jugadoresAll, grupo, pendientes, es
                 <div style={{ fontSize: 10, fontWeight: 700, color: ballColor, letterSpacing: '.12em', marginBottom: 10 }}>
                   {grupoLabel}
                 </div>
-                <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 12 }}>
-                  <span style={{ fontSize: 44, fontWeight: 900, color: esTurno ? '#f1f5f9' : '#1e293b', lineHeight: 1 }}>
-                    {pendientes.length}
-                  </span>
-                  <span style={{ fontSize: 13, color: '#334155' }}>pendientes</span>
-                </div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, pointerEvents: 'none' }}>
-                  {pendientes.map(b => <BolaPool key={b} numero={b} size={38} />)}
-                </div>
+                {pendientes.length === 0 ? (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <div style={{ pointerEvents: 'none' }}><BolaPool numero={8} size={38} /></div>
+                    <div style={{ fontSize: 16, fontWeight: 800, color: esTurno ? '#fcd34d' : '#475569' }}>
+                      ¡A por la 8!
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, pointerEvents: 'none' }}>
+                    {pendientes.map(b => <BolaPool key={b} numero={b} size={38} />)}
+                  </div>
+                )}
               </>
             ) : (
               <div style={{ fontSize: 13, color: '#1e293b', fontStyle: 'italic' }}>Sin grupo asignado</div>
@@ -307,12 +311,6 @@ function CentroStats({ partida, turnos, estado, jugadores }) {
         </div>
       )}
 
-      {/* B8 ghost ball */}
-      {partida.modalidad === 'bola8' && (
-        <div style={{ pointerEvents: 'none', opacity: 0.12 }}>
-          <BolaPool numero={8} size={56} />
-        </div>
-      )}
     </div>
   )
 }
@@ -425,14 +423,17 @@ function VictoryScreen({ partida, turnos, jugadores, countdown }) {
       <div style={{ textAlign: 'center' }}>
         <div style={{ fontSize: 11, fontWeight: 700, color: '#475569', letterSpacing: '.14em', marginBottom: 8 }}>GANA</div>
         <div style={{ fontSize: 52, fontWeight: 900, color: ganColor, lineHeight: 1, marginBottom: 8 }}>{ganNombre}</div>
-        <div style={{ display: 'flex', gap: 14, justifyContent: 'center' }}>
-          {ganJugadores.map(p => (
-            <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <div style={{ width: 8, height: 8, borderRadius: '50%', background: p.color || ganColor }} />
-              <span style={{ fontSize: 16, fontWeight: 600, color: '#94a3b8' }}>{p.nombre}</span>
-            </div>
-          ))}
-        </div>
+        {/* Only show player list if names differ from team name (avoid "Stasik → ● Stasik") */}
+        {ganJugadores.some(p => p.nombre !== ganNombre) && (
+          <div style={{ display: 'flex', gap: 14, justifyContent: 'center' }}>
+            {ganJugadores.map(p => (
+              <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <div style={{ width: 8, height: 8, borderRadius: '50%', background: p.color || ganColor }} />
+                <span style={{ fontSize: 16, fontWeight: 600, color: '#94a3b8' }}>{p.nombre}</span>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Stats comparison */}
@@ -440,26 +441,30 @@ function VictoryScreen({ partida, turnos, jugadores, countdown }) {
         background: 'rgba(255,255,255,.03)', border: '1px solid rgba(255,255,255,.07)',
         borderRadius: 16, padding: '16px 28px', minWidth: 320,
       }}>
-        {/* Team headers */}
+        {/* Team headers — sub-list only when players differ from team name */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 80px 1fr', gap: 8, marginBottom: 12 }}>
           <div style={{ textAlign: 'left' }}>
             <div style={{ fontSize: 13, fontWeight: 800, color: ganColor }}>{ganNombre}</div>
-            <div style={{ display: 'flex', gap: 6, marginTop: 4 }}>
-              {ganJugadores.map(p => (
-                <span key={p.id} style={{ fontSize: 11, color: '#475569' }}>{p.nombre}</span>
-              ))}
-            </div>
+            {ganJugadores.some(p => p.nombre !== ganNombre) && (
+              <div style={{ display: 'flex', gap: 6, marginTop: 4 }}>
+                {ganJugadores.map(p => (
+                  <span key={p.id} style={{ fontSize: 11, color: '#475569' }}>{p.nombre}</span>
+                ))}
+              </div>
+            )}
           </div>
           <div style={{ textAlign: 'center', fontSize: 10, color: '#334155', letterSpacing: '.08em', alignSelf: 'center' }}>
             {durMin > 0 ? `${durMin}'${String(durSeg).padStart(2,'0')}"` : ''}
           </div>
           <div style={{ textAlign: 'right' }}>
             <div style={{ fontSize: 13, fontWeight: 800, color: perColor }}>{perNombre}</div>
-            <div style={{ display: 'flex', gap: 6, marginTop: 4, justifyContent: 'flex-end' }}>
-              {perJugadores.map(p => (
-                <span key={p.id} style={{ fontSize: 11, color: '#475569' }}>{p.nombre}</span>
-              ))}
-            </div>
+            {perJugadores.some(p => p.nombre !== perNombre) && (
+              <div style={{ display: 'flex', gap: 6, marginTop: 4, justifyContent: 'flex-end' }}>
+                {perJugadores.map(p => (
+                  <span key={p.id} style={{ fontSize: 11, color: '#475569' }}>{p.nombre}</span>
+                ))}
+              </div>
+            )}
           </div>
         </div>
         <div style={{ height: 1, background: 'rgba(255,255,255,.06)', marginBottom: 12 }} />
