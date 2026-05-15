@@ -1,3 +1,17 @@
+import { useState } from 'react'
+import SharePreview from '../SharePreview'
+import ShareCardPartida from '../ShareCardPartida'
+
+function ShareIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ display: 'inline', verticalAlign: 'middle', marginRight: 5 }}>
+      <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
+      <polyline points="16 6 12 2 8 6" />
+      <line x1="12" y1="2" x2="12" y2="15" />
+    </svg>
+  )
+}
+
 const TEAM = {
   1: { color: 'var(--team1)' },
   2: { color: 'var(--team2)' },
@@ -25,6 +39,7 @@ function MiniBar({ value, max, color }) {
 }
 
 export default function ResultadoBanner({ partida, turnos, jugadores, onRevancha, onRepetir, torneoId }) {
+  const [sharing, setSharing] = useState(false)
   // Derivar estadísticas por jugador
   const bolasXJugador  = {}
   const faltasXJugador = {}
@@ -141,18 +156,39 @@ export default function ResultadoBanner({ partida, turnos, jugadores, onRevancha
       </div>
 
       {/* ── Botones ── */}
-      {!torneoId && (
+      {!torneoId ? (
         <div style={{ display: 'flex', gap: 8 }}>
           <button className="btn btn-primary" onClick={onRevancha}
             style={{ flex: 1, padding: '10px', fontSize: '14px' }}>
             ↺ Revancha
           </button>
-          <button className="btn btn-ghost" onClick={onRepetir}
-            style={{ flex: 1, padding: '10px', fontSize: '14px', borderColor: 'var(--border)' }}>
-            = Mismos equipos
+          <button
+            onClick={() => setSharing(true)}
+            style={{
+              flex: 1, padding: '10px', fontSize: '14px',
+              background: 'rgba(168,85,247,.18)', border: '1px solid rgba(255,255,255,.2)',
+              borderRadius: 8, color: '#fff', cursor: 'pointer',
+            }}
+          >
+            <ShareIcon />Compartir
           </button>
         </div>
+      ) : (
+        <button
+          onClick={() => setSharing(true)}
+          style={{
+            background: 'rgba(168,85,247,.12)', border: '1px solid rgba(168,85,247,.3)',
+            borderRadius: 8, padding: '9px', fontSize: 13, color: '#a855f7',
+            cursor: 'pointer', width: '100%',
+          }}
+        >
+          <ShareIcon />Compartir resultado
+        </button>
       )}
+
+      <SharePreview open={sharing} onClose={() => setSharing(false)} filename="billar-resultado">
+        <ShareCardPartida partida={partida} turnos={turnos} jugadores={jugadores} />
+      </SharePreview>
     </div>
   )
 }

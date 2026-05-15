@@ -6,6 +6,7 @@ import Jugadores from './pages/Jugadores'
 import Estadisticas from './pages/Estadisticas'
 import Torneos from './pages/Torneos'
 import TorneoDetalle from './pages/TorneoDetalle'
+import TV from './pages/TV'
 import Nav from './components/Nav'
 import ErrorBoundary from './components/ErrorBoundary'
 import ToastContainer from './components/Toast'
@@ -24,6 +25,7 @@ export default function App() {
             <Route path="/stats" element={<Estadisticas />} />
             <Route path="/torneos" element={<Torneos />} />
             <Route path="/torneo/:id" element={<TorneoDetalle />} />
+            <Route path="/tv" element={<TV />} />
           </Routes>
         </ErrorBoundary>
       </main>

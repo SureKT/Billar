@@ -3,6 +3,8 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { api } from '../api/client'
 import AvatarJugador from '../components/AvatarJugador'
 import { SkeletonList } from '../components/Skeleton'
+import SharePreview from '../components/SharePreview'
+import ShareCardTorneo from '../components/ShareCardTorneo'
 
 const ENF_ORDEN = { null: 0, undefined: 0, en_curso: 1, finalizada: 2 }
 
@@ -102,6 +104,7 @@ export default function TorneoDetalle() {
   const [pickEnf, setPickEnf] = useState(null)
   const [showClasif, setShowClasif] = useState(true)
   const [showEnfs, setShowEnfs] = useState(true)
+  const [sharingTorneo, setSharingTorneo] = useState(false)
 
   const cargar = useCallback(() => {
     api.getTorneo(id).then(setTorneo).catch(e => setError(e.message))
@@ -261,8 +264,29 @@ export default function TorneoDetalle() {
               </div>
             )}
           </div>
+          <button
+            onClick={() => setSharingTorneo(true)}
+            style={{
+              marginTop: 14, width: '100%', padding: '9px',
+              background: 'rgba(168,85,247,.18)', border: '1px solid rgba(255,255,255,.2)',
+              borderRadius: 8, fontSize: 13, color: '#fff',
+              cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+            }}
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
+              <polyline points="16 6 12 2 8 6" />
+              <line x1="12" y1="2" x2="12" y2="15" />
+            </svg>
+            Compartir resultado
+          </button>
         </div>
       )}
+
+      <SharePreview open={sharingTorneo} onClose={() => setSharingTorneo(false)} filename={`torneo-${torneo.nombre}`}>
+        <ShareCardTorneo torneo={torneo} />
+      </SharePreview>
 
       {/* Stats del torneo — solo finalizado */}
       {finalizado && (() => {

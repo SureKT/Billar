@@ -187,8 +187,8 @@ export default function Partida() {
     navigate('/nueva', {
       state: {
         modalidad: partida.modalidad,
-        equipo1:   partida.equipo2_jugadores,
-        equipo2:   partida.equipo1_jugadores,
+        equipo1:   partida.equipo1_jugadores,
+        equipo2:   partida.equipo2_jugadores,
       }
     })
   }

@@ -71,6 +71,20 @@ Soporta **Bola 8** y **Bola 9** con lógica completa y automática.
 - **Ranking** con filtro Bola 8 / Bola 9 / Todas: posición con medallas, win rate, W-L, %
 - **Evolución mensual:** barras apiladas (victorias/derrotas) de los últimos 8 meses
 
+### Torneos
+- Crear torneos Round Robin (todos contra todos) en modalidad Bola 8 o Bola 9
+- Configuración flexible: partidas 1v1 o 2v2, número de jugadores libre
+- Widget en Inicio con torneo activo, progreso y partidas pendientes
+- **Clasificación en tiempo real:** W/L badges, puntos, barra de progreso
+- Secciones colapsables de clasificación y enfrentamientos
+- Picker de quién saca primero al iniciar cada enfrentamiento
+- Navegar directamente desde la partida al torneo de origen
+- **Podio al finalizar:** 1º centro destacado con trofeo, 2º y 3º flanqueando
+- **Panel de estadísticas del torneo:** bolas totales, eficiencia, duración total, jugador más letal, porcentaje perfecto (partidas sin faltas)
+- Revancha y repetir partida ocultos en contexto de torneo
+- Eliminar torneo con opción de conservar o borrar las partidas asociadas
+- Bloqueo de eliminación de partidas pertenecientes a torneos finalizados
+
 ### Sugerencias de partida
 - Modo 1v1 / 2v2 y modalidad Bola 8 / Bola 9
 - Ordenadas por enfrentamientos menos jugados
@@ -156,12 +170,15 @@ billar/
 │       ├── jugadores.py # Stats, H2H, color, activo
 │       ├── partidas.py  # CRUD, sugerencias, SSE eventos
 │       ├── turnos.py    # Registro, edición, inserción, undo
+│       ├── torneos.py   # CRUD, enfrentamientos, clasificación
 │       └── catalogos.py # GET /bolas, GET /faltas
 ├── frontend/
 │   └── src/
-│       ├── pages/       # Inicio, Jugadores, NuevaPartida, Partida, Estadisticas, Sugerencias
+│       ├── pages/       # Inicio, Jugadores, NuevaPartida, Partida, Estadisticas, Sugerencias,
+│       │                # Torneos, TorneoDetalle
 │       └── components/  # Bola, SelectorBolas, BolasEquipo, FormularioTurno,
-│                        # HistorialTurnos, ResultadoBanner, Nav
+│                        # HistorialTurnos, ResultadoBanner, AvatarJugador,
+│                        # Skeleton, Nav
 ├── billar.db
 ├── CLAUDE.md
 └── README.md

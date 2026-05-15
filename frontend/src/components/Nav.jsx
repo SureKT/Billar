@@ -54,6 +54,10 @@ export default function Nav() {
         <span style={{ fontSize: '16px', lineHeight: 1 }}>👤</span>
         Jugadores
       </NavLink>
+      <NavLink to="/tv" style={link}>
+        <span style={{ fontSize: '16px', lineHeight: 1 }}>📺</span>
+        TV
+      </NavLink>
     </nav>
   )
 }
