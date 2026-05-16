@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useApi } from '../hooks/useApi'
 import { api } from '../api/client'
 import { SkeletonList } from '../components/Skeleton'
@@ -232,6 +233,7 @@ function SeccionTitulo({ children }) {
 // ─── página principal ─────────────────────────────────────────────────────────
 
 export default function Estadisticas() {
+  const navigate = useNavigate()
   const { data: stats,   loading: loadingStats }  = useApi(api.getAllStats)
   const { data: partidas, loading: loadingPart }  = useApi(api.getPartidas)
   const { data: faltas,  loading: loadingFaltas } = useApi(api.getFaltas)
@@ -377,7 +379,20 @@ export default function Estadisticas() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--gap)' }}>
-      <h2 style={{ fontSize: '20px' }}>Estadísticas</h2>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <h2 style={{ fontSize: '20px', margin: 0 }}>Estadísticas</h2>
+        <button
+          onClick={() => navigate('/tv')}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 5,
+            padding: '5px 10px', borderRadius: 8, cursor: 'pointer',
+            background: 'rgba(255,255,255,.06)', border: '1px solid var(--border)',
+            color: 'var(--text-dim)', fontSize: 12, fontWeight: 600,
+          }}
+        >
+          📺 TV
+        </button>
+      </div>
 
       {sinDatos ? (
         <div style={{ textAlign: 'center', padding: '60px 20px' }}>

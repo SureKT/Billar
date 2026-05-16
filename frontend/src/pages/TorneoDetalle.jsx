@@ -160,17 +160,16 @@ export default function TorneoDetalle() {
     }
   }
 
+  useEffect(() => {
+    if (torneo?.estado === 'finalizado') { setShowClasif(false); setShowEnfs(false) }
+  }, [torneo?.estado])
+
   if (error) return (
     <div style={{ padding: 24, textAlign: 'center', color: '#ef4444' }}>
       {error}
       <div><button onClick={() => navigate('/torneos')} style={{ marginTop: 12, color: 'var(--accent)', background: 'none', border: 'none', cursor: 'pointer' }}>← Volver</button></div>
     </div>
   )
-
-  // MUST be before any early return
-  useEffect(() => {
-    if (torneo?.estado === 'finalizado') { setShowClasif(false); setShowEnfs(false) }
-  }, [torneo?.estado])
 
   if (!torneo) return <div style={{ maxWidth: 480, margin: '0 auto' }}><SkeletonList n={5} /></div>
 
@@ -247,7 +246,7 @@ export default function TorneoDetalle() {
               <span style={{ fontSize: 20 }}>🏆</span>
               <AvatarJugador nombre={podio[0].nombre} color={podio[0].color} size={44} />
               <span style={{ fontSize: 13, fontWeight: 700, color: '#fbbf24', textAlign: 'center' }}>{podio[0].nombre}</span>
-              <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>{podio[0].puntos}pts · {podio[0].victorias}V</span>
+              <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>{podio[0].puntos}pts · {podio[0].victorias}W</span>
               <div style={{ width: '100%', background: 'rgba(234,179,8,.2)', borderRadius: '6px 6px 0 0', height: 64, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <span style={{ fontSize: 26 }}>🥇</span>
               </div>
@@ -439,9 +438,11 @@ export default function TorneoDetalle() {
         </button>
       ) : (
         <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          <p style={{ fontSize: 13, color: '#fca5a5', textAlign: 'center' }}>
-            ¿Qué quieres eliminar?
-          </p>
+          {!pendingDelete && (
+            <p style={{ fontSize: 13, color: '#fca5a5', textAlign: 'center' }}>
+              ¿Qué quieres eliminar?
+            </p>
+          )}
           {!pendingDelete ? (
             <>
               <button onClick={() => handleEliminar(false)} style={{

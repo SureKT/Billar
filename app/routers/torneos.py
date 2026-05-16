@@ -68,8 +68,13 @@ def _build_clasificacion(session: Session, jugadores: list, enfrentamientos: lis
         stats[enf.jugador1_id]["pj"] += 1
         stats[enf.jugador2_id]["pj"] += 1
 
-        ganador_id = enf.jugador1_id if partida.ganador_equipo == 1 else enf.jugador2_id
-        perdedor_id = enf.jugador2_id if partida.ganador_equipo == 1 else enf.jugador1_id
+        pjs = session.exec(select(PartidaJugador).where(PartidaJugador.partida_id == partida.id)).all()
+        eq1_ids = [pj.jugador_id for pj in pjs if pj.equipo == 1]
+        eq2_ids = [pj.jugador_id for pj in pjs if pj.equipo == 2]
+        eq1 = eq1_ids[0] if eq1_ids else enf.jugador1_id
+        eq2 = eq2_ids[0] if eq2_ids else enf.jugador2_id
+        ganador_id = eq1 if partida.ganador_equipo == 1 else eq2
+        perdedor_id = eq2 if partida.ganador_equipo == 1 else eq1
         stats[ganador_id]["victorias"] += 1
         stats[perdedor_id]["derrotas"] += 1
 
@@ -119,7 +124,12 @@ def _build_resumen(session: Session, torneo: Torneo) -> TorneoResumen:
             if p:
                 partida_estado = p.estado
                 if p.estado == "finalizada" and p.ganador_equipo:
-                    ganador_jugador_id = enf.jugador1_id if p.ganador_equipo == 1 else enf.jugador2_id
+                    pjs = session.exec(select(PartidaJugador).where(PartidaJugador.partida_id == p.id)).all()
+                    eq1_ids = [pj.jugador_id for pj in pjs if pj.equipo == 1]
+                    eq2_ids = [pj.jugador_id for pj in pjs if pj.equipo == 2]
+                    eq1 = eq1_ids[0] if eq1_ids else enf.jugador1_id
+                    eq2 = eq2_ids[0] if eq2_ids else enf.jugador2_id
+                    ganador_jugador_id = eq1 if p.ganador_equipo == 1 else eq2
         enf_resumen.append(EnfrentamientoResumen(
             id=enf.id,
             jugador1_id=enf.jugador1_id,

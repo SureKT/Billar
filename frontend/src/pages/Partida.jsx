@@ -17,7 +17,6 @@ export default function Partida() {
   const [faltasAutoIds, setFaltasAutoIds] = useState(new Set())
   const [registrando, setRegistrando] = useState(false)
   const [confirmarBorrar, setConfirmarBorrar] = useState(false)
-  const [confirmarBorrar2, setConfirmarBorrar2] = useState(false)
   const [flash, setFlash]             = useState(null)
   const [editandoTiempos, setEditandoTiempos] = useState(false)
   const [editandoTurnos, setEditandoTurnos] = useState(false)
@@ -237,8 +236,8 @@ export default function Partida() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--gap)' }}>
 
       {/* Cabecera */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
           <button
             onClick={handleBack}
             style={{
@@ -248,10 +247,27 @@ export default function Partida() {
             }}
             title="Volver a partidas"
           >‹</button>
-          <h2 style={{ fontSize: '17px', fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+          <h2 style={{ fontSize: '17px', fontWeight: 700, whiteSpace: 'nowrap', margin: 0 }}>
             {partida.modalidad === 'bola8' ? 'Bola 8' : 'Bola 9'}
             <span style={{ color: 'var(--text-dim)', fontWeight: 400 }}> · #{partida?.numero ?? id}</span>
           </h2>
+        </div>
+
+        {/* Chip torneo — centro */}
+        <div style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
+          {partida.torneo_id && (
+            <button
+              onClick={() => navigate(`/torneo/${partida.torneo_id}`)}
+              style={{
+                padding: '4px 10px', borderRadius: 6,
+                background: 'rgba(234,179,8,.1)', border: '1px solid rgba(234,179,8,.3)',
+                color: '#fbbf24', fontWeight: 700, fontSize: 11, cursor: 'pointer',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              🏆 {partida.torneo_nombre ? `Ir a ${partida.torneo_nombre}` : 'Ir al torneo'}
+            </button>
+          )}
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2, flexShrink: 0, marginLeft: 8 }}>
           <span className={`badge ${finalizada ? 'badge-fin' : 'badge-curso'}`}>
@@ -260,11 +276,6 @@ export default function Partida() {
           {!finalizada && duracionActiva && (
             <span style={{ fontSize: '11px', color: 'var(--text-dim)', fontWeight: 600 }}>
               ⏱ {duracionActiva}
-            </span>
-          )}
-          {!finalizada && ultimoReload && (
-            <span style={{ fontSize: '9px', color: 'var(--text-dim)', letterSpacing: '.03em' }}>
-              sync {ultimoReload.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
             </span>
           )}
         </div>
@@ -440,20 +451,11 @@ export default function Partida() {
             ❌ Eliminar partida
           </button>
         ) : (
-          <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            <p style={{ fontSize: '13px', color: '#fca5a5', textAlign: 'center' }}>
-              ¿Eliminar esta partida? No se puede deshacer.
-            </p>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button
-                className={`btn ${confirmarBorrar2 ? '' : 'btn-danger'}`}
-                onClick={() => confirmarBorrar2 ? eliminar() : setConfirmarBorrar2(true)}
-                style={{ flex: 1, ...(confirmarBorrar2 ? { background: '#dc2626', color: '#fff', border: 'none' } : {}) }}
-              >
-                {confirmarBorrar2 ? '⚠ Confirmar' : 'Sí, eliminar'}
-              </button>
-              <button className="btn btn-ghost" style={{ flex: 1 }} onClick={() => { setConfirmarBorrar(false); setConfirmarBorrar2(false) }}>Cancelar</button>
-            </div>
+          <div className="card" style={{ display: 'flex', gap: 8 }}>
+            <button className="btn btn-danger" onClick={eliminar} style={{ flex: 1 }}>
+              Confirmar
+            </button>
+            <button className="btn btn-ghost" style={{ flex: 1 }} onClick={() => setConfirmarBorrar(false)}>Cancelar</button>
           </div>
         )}
       </div>

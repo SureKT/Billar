@@ -53,7 +53,7 @@ export default function ShareCardTorneo({ torneo }) {
             Campeón · {winner.nombre}
           </div>
           <div style={{ fontSize: 12, color: DIM, marginTop: 6 }}>
-            {winner.victorias}V · {winner.derrotas}D · {winner.puntos} pts
+            {winner.victorias}W · {winner.derrotas}L · {winner.puntos} pts
           </div>
           <div style={{ fontSize: 11, color: DIM, marginTop: 4 }}>
             {torneo.jugados} partidas jugadas
@@ -62,24 +62,24 @@ export default function ShareCardTorneo({ torneo }) {
       )}
 
       {/* Clasificación table */}
-      <div style={{ padding: '12px 16px' }}>
+      <div style={{ padding: '12px 16px', overflow: 'hidden' }}>
         <div style={{
-          display: 'grid', gridTemplateColumns: '20px 1fr 28px 28px 44px',
+          display: 'grid', gridTemplateColumns: '20px 1fr 28px 28px 36px',
           gap: 4, padding: '0 4px', marginBottom: 6, alignItems: 'center',
         }}>
           <span />
           <span style={{ fontSize: 10, color: DIM, textTransform: 'uppercase', letterSpacing: '.05em' }}>Jugador</span>
-          <span style={{ fontSize: 10, textAlign: 'center', color: DIM }}>V</span>
-          <span style={{ fontSize: 10, textAlign: 'center', color: DIM }}>D</span>
+          <span style={{ fontSize: 10, textAlign: 'center', color: DIM }}>W</span>
+          <span style={{ fontSize: 10, textAlign: 'center', color: DIM }}>L</span>
           <span style={{ fontSize: 10, textAlign: 'right', color: DIM }}>Pts</span>
         </div>
 
         {clasif.map((j, i) => {
-          const barPct = maxPts > 0 ? (j.puntos / maxPts) * 100 : 0
+          const barPct = maxPts > 0 ? j.puntos / maxPts : 0
           const isFirst = i === 0
           return (
             <div key={j.jugador_id} style={{
-              display: 'grid', gridTemplateColumns: '20px 1fr 28px 28px 44px',
+              display: 'grid', gridTemplateColumns: '20px 1fr 28px 28px 36px',
               gap: 4, padding: '7px 4px', alignItems: 'center',
               background: isFirst ? 'rgba(161,130,3,.18)' : 'transparent',
               borderRadius: 6, marginBottom: 2,
@@ -101,10 +101,10 @@ export default function ShareCardTorneo({ torneo }) {
               <span style={{ fontSize: 13, fontWeight: 700, textAlign: 'center', color: j.derrotas > 0 ? '#fca5a5' : DIM }}>
                 {j.derrotas}
               </span>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 3, alignItems: 'flex-end' }}>
-                <span style={{ fontSize: 13, fontWeight: 700, color: isFirst ? GOLD : DIM }}>{j.puntos}</span>
-                <div style={{ width: 36, height: 3, background: 'rgba(255,255,255,.1)', borderRadius: 2, overflow: 'hidden' }}>
-                  <div style={{ height: '100%', width: `${barPct}%`, background: j.color || '#60a5fa', borderRadius: 2 }} />
+              <div style={{ textAlign: 'right' }}>
+                <span style={{ fontSize: 13, fontWeight: 700, color: isFirst ? GOLD : DIM, display: 'block' }}>{j.puntos}</span>
+                <div style={{ height: 3, borderRadius: 2, background: 'rgba(255,255,255,.1)', marginTop: 2, overflow: 'hidden' }}>
+                  <div style={{ height: '100%', width: `${Math.round(barPct * 100)}%`, background: j.color || '#60a5fa', borderRadius: 2 }} />
                 </div>
               </div>
             </div>
