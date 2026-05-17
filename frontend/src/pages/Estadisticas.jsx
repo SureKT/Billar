@@ -234,12 +234,13 @@ function SeccionTitulo({ children }) {
 
 export default function Estadisticas() {
   const navigate = useNavigate()
-  const { data: stats,   loading: loadingStats }  = useApi(api.getAllStats)
+  const [filtro, setFiltro] = useState('todas')
+  const modalidadParam = filtro === 'todas' ? null : filtro
+  const { data: stats,   loading: loadingStats }  = useApi(() => api.getAllStats(false, modalidadParam), [filtro])
   const { data: partidas, loading: loadingPart }  = useApi(api.getPartidas)
   const { data: faltas,  loading: loadingFaltas } = useApi(api.getFaltas)
-  const [filtro, setFiltro] = useState('todas')
 
-  if (loadingStats || loadingPart || loadingFaltas) return <SkeletonList n={5} />
+  if ((loadingPart || loadingFaltas) && !partidas) return <SkeletonList n={5} />
 
   const jugadoresConPartidas = (stats ?? []).filter(j => j.partidas_jugadas > 0)
   const todasPartidas = partidas ?? []
@@ -249,39 +250,18 @@ export default function Estadisticas() {
   const bola9         = todasPartidas.filter(p => p.modalidad === 'bola9')
 
   const totalBolasMetidas = (stats ?? []).reduce((s, j) => s + j.bolas_metidas, 0)
-  const totalFaltas = (faltas ?? []).reduce((s, f) => s + f.frecuencia, 0)
+  const faltaField = filtro === 'bola8' ? 'frecuencia_bola8' : filtro === 'bola9' ? 'frecuencia_bola9' : 'frecuencia'
+  const totalFaltas = (faltas ?? []).reduce((s, f) => s + (f[faltaField] ?? 0), 0)
 
-  // Ranking filtrado
-  const rankingFiltrado = (() => {
-    if (filtro === 'todas') {
-      return [...jugadoresConPartidas].sort((a, b) => winrate(b) - winrate(a) || b.partidas_jugadas - a.partidas_jugadas)
-    }
-    const rel = finalizadas
-      .filter(p => p.modalidad === filtro)
-      .flatMap(p => {
-        const ganador = p.ganador_equipo
-        return [
-          ...p.equipo1_jugadores.map(id => ({ id, gano: ganador === 1 })),
-          ...p.equipo2_jugadores.map(id => ({ id, gano: ganador === 2 })),
-        ]
-      })
-    const mapa = {}
-    for (const { id, gano } of rel) {
-      if (!mapa[id]) mapa[id] = { jugadas: 0, ganadas: 0 }
-      mapa[id].jugadas++
-      if (gano) mapa[id].ganadas++
-    }
-    return Object.entries(mapa)
-      .map(([id, v]) => {
-        const j = (stats ?? []).find(s => s.id === Number(id))
-        return j ? { ...j, partidas_jugadas: v.jugadas, partidas_ganadas: v.ganadas } : null
-      })
-      .filter(Boolean)
-      .sort((a, b) => winrate(b) - winrate(a) || b.partidas_jugadas - a.partidas_jugadas)
-  })()
+  // Partidas filtradas por modalidad (para counts y records)
+  const finalizadasFiltradas = filtro === 'todas' ? finalizadas : finalizadas.filter(p => p.modalidad === filtro)
+  const todasFiltradas       = filtro === 'todas' ? todasPartidas : todasPartidas.filter(p => p.modalidad === filtro)
+  const enCursoFiltradas     = filtro === 'todas' ? enCurso : enCurso.filter(p => p.modalidad === filtro)
 
-  // Duración media
-  const conDuracion = finalizadas.filter(p => p.fecha_fin)
+  const rankingFiltrado = [...jugadoresConPartidas].sort((a, b) => winrate(b) - winrate(a) || b.partidas_jugadas - a.partidas_jugadas)
+
+  // Duración media (filtrada)
+  const conDuracion = finalizadasFiltradas.filter(p => p.fecha_fin)
   const duracionMedia = (() => {
     if (conDuracion.length === 0) return null
     const ms = conDuracion.reduce((s, p) => s + (new Date(p.fecha_fin) - new Date(p.fecha)), 0) / conDuracion.length
@@ -290,18 +270,18 @@ export default function Estadisticas() {
     return { str: `${min}' ${String(seg).padStart(2, '0')}"` }
   })()
 
-  const faltasPorPartida = finalizadas.length > 0
-    ? (totalFaltas / finalizadas.length).toFixed(1) : null
+  const faltasPorPartida = finalizadasFiltradas.length > 0
+    ? (totalFaltas / finalizadasFiltradas.length).toFixed(1) : null
 
-  // Faltas más frecuentes
+  // Faltas más frecuentes (filtradas por modalidad)
   const faltasOrdenadas = (faltas ?? [])
-    .filter(f => !FALTAS_INTERNAS.includes(f.nombre) && f.frecuencia > 0)
-    .sort((a, b) => b.frecuencia - a.frecuencia)
+    .filter(f => !FALTAS_INTERNAS.includes(f.nombre) && (f[faltaField] ?? 0) > 0)
+    .sort((a, b) => (b[faltaField] ?? 0) - (a[faltaField] ?? 0))
     .slice(0, 6)
 
   // Records
   const mejorWinRate = [...jugadoresConPartidas].sort((a, b) => winrate(b) - winrate(a))[0]
-  const masBolas     = [...(stats ?? [])].sort((a, b) => b.bolas_metidas - a.bolas_metidas)[0]
+  const masBolas     = [...jugadoresConPartidas].sort((a, b) => b.bolas_metidas - a.bolas_metidas)[0]
   const rachaPos     = [...jugadoresConPartidas].filter(j => j.racha_actual > 0).sort((a, b) => b.racha_actual - a.racha_actual)[0]
   const masEficiente = [...jugadoresConPartidas].filter(j => j.bolas_por_turno > 0).sort((a, b) => b.bolas_por_turno - a.bolas_por_turno)[0]
 
@@ -318,7 +298,7 @@ export default function Estadisticas() {
   }
 
   const rachaHistorica = [...jugadoresConPartidas].filter(j => j.racha_mejor > 1).sort((a,b) => b.racha_mejor - a.racha_mejor)[0]
-  const conDur = finalizadas.filter(p => p.fecha_fin)
+  const conDur = conDuracion  // already filtered
   const masRapida = conDur.length > 0 ? conDur.reduce((m,p) => durMs(p) < durMs(m) ? p : m) : null
   const masLenta  = conDur.length > 0 ? conDur.reduce((m,p) => durMs(p) > durMs(m) ? p : m) : null
 
@@ -349,9 +329,9 @@ export default function Estadisticas() {
 
   // Evolución mensual de partidas (últimos 8 meses con actividad)
   const evolucion = (() => {
-    if (finalizadas.length === 0) return []
+    if (finalizadasFiltradas.length === 0) return []
     const porMes = {}
-    for (const p of finalizadas) {
+    for (const p of finalizadasFiltradas) {
       const d = new Date(p.fecha)
       const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
       const label = d.toLocaleDateString('es-ES', { month: 'short', year: '2-digit' })
@@ -367,7 +347,7 @@ export default function Estadisticas() {
   })()
 
   const formaMap = {}
-  for (const p of [...finalizadas].sort((a, b) => new Date(a.fecha) - new Date(b.fecha))) {
+  for (const p of [...finalizadasFiltradas].sort((a, b) => new Date(a.fecha) - new Date(b.fecha))) {
     if (!p.ganador_equipo) continue
     const ganadores = p.ganador_equipo === 1 ? p.equipo1_jugadores : p.equipo2_jugadores
     const perdedores = p.ganador_equipo === 1 ? p.equipo2_jugadores : p.equipo1_jugadores
@@ -375,23 +355,40 @@ export default function Estadisticas() {
     for (const id of perdedores) { if (!formaMap[id]) formaMap[id] = []; formaMap[id].push('L') }
   }
 
-  const sinDatos = todasPartidas.length === 0
+  const sinDatos = todasFiltradas.length === 0
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--gap)' }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <h2 style={{ fontSize: '20px', margin: 0 }}>Estadísticas</h2>
+      <div style={{
+        position: 'sticky', top: 'var(--nav-height)', zIndex: 50,
+        background: 'var(--bg)', padding: '6px 16px 6px', margin: '0 -16px',
+        display: 'flex', alignItems: 'center', gap: 8,
+      }}>
+        <h2 style={{ fontSize: '20px', margin: 0, flexShrink: 0 }}>Estadísticas</h2>
         <button
           onClick={() => navigate('/tv')}
           style={{
-            display: 'flex', alignItems: 'center', gap: 5,
-            padding: '5px 10px', borderRadius: 8, cursor: 'pointer',
+            padding: '3px 8px', borderRadius: 6, cursor: 'pointer',
             background: 'rgba(255,255,255,.06)', border: '1px solid var(--border)',
-            color: 'var(--text-dim)', fontSize: 12, fontWeight: 600,
+            color: 'var(--text-dim)', fontSize: 11, fontWeight: 600, flexShrink: 0,
           }}
         >
           📺 TV
         </button>
+        <div style={{ flex: 1 }} />
+        <div style={{ display: 'flex', gap: 4 }}>
+          {['todas', 'bola8', 'bola9'].map(f => (
+            <button key={f} onClick={() => setFiltro(f)} style={{
+              padding: '5px 12px', borderRadius: 20, fontSize: '12px', fontWeight: 600,
+              border: filtro === f ? '1.5px solid var(--accent)' : '1px solid var(--border)',
+              background: filtro === f ? 'var(--accent-bg)' : 'var(--surface2)',
+              color: filtro === f ? 'var(--accent)' : 'var(--text-dim)',
+              transition: 'all .15s', cursor: 'pointer',
+            }}>
+              {f === 'todas' ? 'Todas' : f === 'bola8' ? 'Bola 8' : 'Bola 9'}
+            </button>
+          ))}
+        </div>
       </div>
 
       {sinDatos ? (
@@ -403,30 +400,30 @@ export default function Estadisticas() {
         <>
           {/* ── Cifras globales ── */}
           <div className="card" style={{ padding: '12px' }}>
-            <SeccionTitulo>Resumen global</SeccionTitulo>
+            <SeccionTitulo>Resumen {filtro === 'todas' ? 'global' : filtro === 'bola8' ? 'Bola 8' : 'Bola 9'}</SeccionTitulo>
             <div style={{ display: 'flex', gap: 6 }}>
-              <ContadorCard label="Partidas"    value={todasPartidas.length} />
-              <ContadorCard label="Finalizadas" value={finalizadas.length} color="#86efac" />
-              <ContadorCard label="En curso"    value={enCurso.length}     color="#fbbf24" />
-              <ContadorCard label="Bolas"       value={totalBolasMetidas}  color="#93c5fd" />
+              <ContadorCard label="Partidas"    value={todasFiltradas.length} />
+              <ContadorCard label="Finalizadas" value={finalizadasFiltradas.length} color="#86efac" />
+              <ContadorCard label="En curso"    value={enCursoFiltradas.length}     color="#fbbf24" />
+              <ContadorCard label="Jugadores"   value={(stats ?? []).length} />
             </div>
             <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
-              <ContadorCard label="Bola 8" value={bola8.length}
-                sub={`${Math.round((bola8.length / todasPartidas.length) * 100)}%`} />
-              <ContadorCard label="Bola 9" value={bola9.length}
-                sub={`${Math.round((bola9.length / todasPartidas.length) * 100)}%`} />
+              {filtro === 'todas' && (
+                <>
+                  <ContadorCard label="Bola 8" value={bola8.length}
+                    sub={todasPartidas.length > 0 ? `${Math.round((bola8.length / todasPartidas.length) * 100)}%` : undefined} />
+                  <ContadorCard label="Bola 9" value={bola9.length}
+                    sub={todasPartidas.length > 0 ? `${Math.round((bola9.length / todasPartidas.length) * 100)}%` : undefined} />
+                </>
+              )}
               {duracionMedia != null
                 ? <ContadorCard label="Duración media" value={duracionMedia.str} color="#c4b5fd" compact />
-                : <ContadorCard label="Jugadores" value={(stats ?? []).length} />}
+                : null}
               <ContadorCard label="Total faltas" value={totalFaltas} color="#f97316" />
-            </div>
-            {faltasPorPartida != null && (
-              <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
+              {faltasPorPartida != null && (
                 <ContadorCard label="Faltas / partida" value={faltasPorPartida} color="#fb923c" />
-                <ContadorCard label="Jugadores" value={(stats ?? []).length} />
-                <div style={{ flex: 2 }} />
-              </div>
-            )}
+              )}
+            </div>
           </div>
 
           {/* ── Records ── */}
@@ -513,7 +510,7 @@ export default function Estadisticas() {
             <div className="card" style={{ padding: '12px' }}>
               <SeccionTitulo>Faltas más frecuentes</SeccionTitulo>
               <GraficaHorizontal
-                datos={faltasOrdenadas.map(f => ({ label: f.nombre, value: f.frecuencia }))}
+                datos={faltasOrdenadas.map(f => ({ label: f.nombre, value: f[faltaField] ?? 0 }))}
                 color={() => '#f97316'}
                 labelAbove
               />
@@ -526,22 +523,8 @@ export default function Estadisticas() {
               <div style={{
                 padding: '12px 14px 10px',
                 borderBottom: '1px solid var(--border)',
-                display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8,
               }}>
                 <p style={{ fontSize: '13px', fontWeight: 700 }}>Ranking</p>
-                <div style={{ display: 'flex', gap: 4 }}>
-                  {['todas', 'bola8', 'bola9'].map(f => (
-                    <button key={f} onClick={() => setFiltro(f)} style={{
-                      padding: '4px 10px', borderRadius: 20, fontSize: '11px', fontWeight: 600,
-                      border: filtro === f ? '1.5px solid var(--accent)' : '1px solid var(--border)',
-                      background: filtro === f ? 'var(--accent-bg)' : 'var(--surface2)',
-                      color: filtro === f ? 'var(--accent)' : 'var(--text-dim)',
-                      transition: 'all .15s', cursor: 'pointer',
-                    }}>
-                      {f === 'todas' ? 'Todas' : f === 'bola8' ? 'B8' : 'B9'}
-                    </button>
-                  ))}
-                </div>
               </div>
               {rankingFiltrado.length === 0 ? (
                 <p style={{ padding: '16px 14px', fontSize: '13px', color: 'var(--text-dim)' }}>

@@ -218,7 +218,11 @@ export default function Inicio() {
         const jugadoresConPartidas = (jugadores ?? []).filter(j => idsEnPartidas.has(j.id))
         const hayJugadores = jugadoresConPartidas.length >= 2
         return (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <div style={{
+            position: 'sticky', top: 'var(--nav-height)', zIndex: 50,
+            background: 'var(--bg)', padding: '10px 16px 6px', margin: '0 -16px',
+            display: 'flex', flexDirection: 'column', gap: 6,
+          }}>
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
               <ChipFiltro label="Todas"       activo={filtroEstado === 'todas'}      onClick={() => setFiltroEstado('todas')} />
               <ChipFiltro label="En curso"    activo={filtroEstado === 'en_curso'}   onClick={() => setFiltroEstado('en_curso')} />

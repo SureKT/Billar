@@ -91,6 +91,9 @@ function JugadorCard({ j, onReload, todosStats }) {
   const [mostrarH2H, setMostrarH2H] = useState(false)
   const [h2h, setH2H] = useState(null)
   const [cargandoH2H, setCargandoH2H] = useState(false)
+  const [mostrarTorneos, setMostrarTorneos] = useState(false)
+  const [torneos, setTorneos] = useState(null)
+  const [cargandoTorneos, setCargandoTorneos] = useState(false)
 
   async function elegirColor(color) {
     const nuevo = j.color === color ? null : color  // tap mismo color → quitar
@@ -118,6 +121,16 @@ function JugadorCard({ j, onReload, todosStats }) {
     try { setH2H(await api.getH2H(j.id)) }
     catch { setH2H([]) }
     finally { setCargandoH2H(false) }
+  }
+
+  async function toggleTorneos() {
+    if (mostrarTorneos) { setMostrarTorneos(false); return }
+    setMostrarTorneos(true)
+    if (torneos !== null) return
+    setCargandoTorneos(true)
+    try { setTorneos(await api.getTorneosJugador(j.id)) }
+    catch { setTorneos([]) }
+    finally { setCargandoTorneos(false) }
   }
 
   const tienePartidas = j.partidas_jugadas > 0
@@ -280,9 +293,9 @@ function JugadorCard({ j, onReload, todosStats }) {
         }}>
           {tienePartidas ? (
             <>
-              <p style={{ fontSize: '13px', color: '#fca5a5' }}>
-                Este jugador tiene <strong>{j.partidas_jugadas}</strong> partida{j.partidas_jugadas > 1 ? 's' : ''} registrada{j.partidas_jugadas > 1 ? 's' : ''}.
-                Se eliminarán también sus turnos y participaciones.
+              <p style={{ fontSize: '13px', color: '#fca5a5', lineHeight: 1.5 }}>
+                Este jugador tiene <strong>{j.partidas_jugadas}</strong> partida{j.partidas_jugadas > 1 ? 's' : ''} registrada{j.partidas_jugadas > 1 ? 's' : ''}.{' '}
+                Se borrarán sus turnos y se eliminará de las partidas — <strong>las partidas en sí se conservan</strong> en el historial.
               </p>
               <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', userSelect: 'none' }}>
                 <div
@@ -306,8 +319,9 @@ function JugadorCard({ j, onReload, todosStats }) {
               </label>
             </>
           ) : (
-            <p style={{ fontSize: '13px', color: 'var(--text-dim)' }}>
-              ¿Eliminar a <strong style={{ color: 'var(--text)' }}>{j.nombre}</strong>?
+            <p style={{ fontSize: '13px', color: 'var(--text-dim)', lineHeight: 1.5 }}>
+              ¿Eliminar a <strong style={{ color: 'var(--text)' }}>{j.nombre}</strong>?{' '}
+              Sin partidas registradas, no se perderán datos.
             </p>
           )}
           {error && <p style={{ fontSize: '12px', color: '#fca5a5' }}>{error}</p>}
@@ -476,6 +490,59 @@ function JugadorCard({ j, onReload, todosStats }) {
             </div>
           )}
 
+          {/* Torneos */}
+          <div style={{ marginTop: 10 }}>
+            <button
+              onClick={toggleTorneos}
+              style={{
+                background: 'none', border: 'none', padding: 0, cursor: 'pointer',
+                fontSize: '11px', color: 'var(--text-dim)', fontWeight: 600,
+                textTransform: 'uppercase', letterSpacing: '.04em',
+                display: 'flex', alignItems: 'center', gap: 4,
+              }}
+            >
+              {mostrarTorneos ? '▲' : '▼'} Torneos
+            </button>
+            {mostrarTorneos && (
+              <div style={{ marginTop: 8 }}>
+                {cargandoTorneos && <div style={{ fontSize: '12px', color: 'var(--text-dim)' }}>Cargando…</div>}
+                {torneos?.length === 0 && !cargandoTorneos && (
+                  <p style={{ fontSize: '12px', color: 'var(--text-dim)' }}>Sin torneos</p>
+                )}
+                {torneos?.map(t => {
+                  const gano = t.posicion === 1
+                  const podio = t.posicion <= 3
+                  const medal = t.posicion === 1 ? '🥇' : t.posicion === 2 ? '🥈' : t.posicion === 3 ? '🥉' : `#${t.posicion}`
+                  return (
+                    <div key={t.id} style={{
+                      display: 'flex', alignItems: 'center', gap: 8,
+                      padding: '7px 0', borderBottom: '1px solid var(--border)',
+                    }}>
+                      <span style={{ fontSize: t.posicion <= 3 ? '15px' : '11px', minWidth: 22, textAlign: 'center', color: 'var(--text-dim)', fontWeight: 700 }}>{medal}</span>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: '12px', fontWeight: 700, color: gano ? '#fcd34d' : podio ? 'var(--text)' : 'var(--text-dim)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {t.nombre}
+                        </div>
+                        <div style={{ fontSize: '10px', color: 'var(--text-dim)', marginTop: 1 }}>
+                          {t.victorias}W · {t.derrotas}L · {t.puntos}pts · {t.total_jugadores} jugadores
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2, flexShrink: 0 }}>
+                        <span style={{
+                          fontSize: '10px', fontWeight: 700, padding: '2px 6px', borderRadius: 4,
+                          background: 'var(--surface2)', color: 'var(--text-dim)', border: '1px solid var(--border)',
+                        }}>
+                          {t.modalidad === 'bola8' ? 'B8' : 'B9'}
+                        </span>
+                        <span style={{ fontSize: '10px', color: 'var(--text-dim)' }}>{fechaCorta(t.fecha)}</span>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+
           {/* Cara a cara */}
           {j.partidas_jugadas > 0 && (
             <div style={{ marginTop: 10 }}>
@@ -590,7 +657,11 @@ export default function Jugadores() {
 
       {/* Ordenar */}
       {stats?.length > 1 && (
-        <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+        <div style={{
+          position: 'sticky', top: 'var(--nav-height)', zIndex: 50,
+          background: 'var(--bg)', padding: '10px 16px 6px', margin: '0 -16px',
+          display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap',
+        }}>
           <span style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.05em', color: 'var(--text-dim)' }}>
             Ordenar:
           </span>

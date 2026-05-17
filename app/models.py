@@ -70,6 +70,7 @@ class Turno(SQLModel, table=True):
     numero: int             # orden dentro de la partida (1-based)
     repite: bool = Field(default=False)
     bola_en_mano: bool = Field(default=False)  # si este turno tenía bola en mano disponible
+    es_respot: bool = Field(default=False)           # bola9: 9+blanca simultáneas → respot
     bolas_metidas_json: str = Field(default="[]")   # JSON list de números de bola
     faltas_ids_json: str = Field(default="[]")       # JSON list de IDs de falta (todas las del turno)
 

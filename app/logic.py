@@ -276,6 +276,7 @@ def _evaluar_bola9(session: Session, partida: Partida, turno: Turno) -> dict:
     # Se evalúa ANTES que la falta genérica para poder quitar la 9 de bolas_metidas.
     if 9 in bolas and 0 in bolas:
         turno.bolas_metidas = [b for b in bolas if b != 9]   # la 9 vuelve a la mesa
+        turno.es_respot = True
         turno.falta_id = turno.falta_id or _get_falta_id(session, "Blanca dentro (Scratch)")
         turno.repite = False
         sig = _siguiente_jugador(session, partida, turno.jugador_id)

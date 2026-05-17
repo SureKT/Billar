@@ -21,10 +21,16 @@ export const api = {
   editarJugador: (id, nombre) => request('PUT', `/jugadores/${id}`, { nombre }),
   eliminarJugador: (id) => request('DELETE', `/jugadores/${id}`),
   getStatsJugador: (id) => request('GET', `/jugadores/${id}/stats`),
-  getAllStats: (incluirInactivos = false) =>
-    request('GET', `/jugadores/stats${incluirInactivos ? '?incluir_inactivos=true' : ''}`),
+  getAllStats: (incluirInactivos = false, modalidad = null) => {
+    const params = new URLSearchParams()
+    if (incluirInactivos) params.set('incluir_inactivos', 'true')
+    if (modalidad) params.set('modalidad', modalidad)
+    const qs = params.toString()
+    return request('GET', `/jugadores/stats${qs ? `?${qs}` : ''}`)
+  },
   getH2H: (id) => request('GET', `/jugadores/${id}/h2h`),
   getUltimasPartidas: (id) => request('GET', `/jugadores/${id}/ultimas-partidas`),
+  getTorneosJugador: (id) => request('GET', `/jugadores/${id}/torneos`),
   editarColorJugador: (id, color) => request('PATCH', `/jugadores/${id}/color`, { color }),
   toggleActivoJugador: (id) => request('PATCH', `/jugadores/${id}/activo`),
 

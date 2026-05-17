@@ -467,11 +467,11 @@ export default function TorneoDetalle() {
               </button>
             </>
           ) : (
-            <button onClick={handleEliminar} className="btn btn-danger btn-full" style={{ padding: '10px' }}>
+            <button onClick={handleEliminar} className="btn btn-danger btn-full" style={{ padding: '10px', fontSize: 13 }}>
               ⚠ Confirmar: eliminar {pendingDelete.eliminarPartidas ? 'torneo y partidas' : 'solo el torneo'}
             </button>
           )}
-          <button className="btn btn-ghost btn-full" onClick={() => { setConfirmDelete(false); setPendingDelete(null) }}>Cancelar</button>
+          <button className="btn btn-ghost btn-full" style={{ fontSize: 13 }} onClick={() => { setConfirmDelete(false); setPendingDelete(null) }}>Cancelar</button>
         </div>
       )}
 

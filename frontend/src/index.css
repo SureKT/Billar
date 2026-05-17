@@ -11,6 +11,7 @@
   --text-dim: #6b7280;
   --radius: 12px;
   --gap: 12px;
+  --nav-height: 62px; /* updated dynamically by Nav.jsx on scroll */
   /* Colores de equipo */
   --team1: #3b82f6;
   --team2: #e94560;

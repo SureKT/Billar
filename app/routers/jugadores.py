@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session, select
 from pydantic import BaseModel
 
-from app.models import Jugador, Turno, Partida, PartidaJugador, Falta
+from app.models import Jugador, Turno, Partida, PartidaJugador, Falta, Torneo, TorneoJugador, TorneoEnfrentamiento
 from app.database import get_session
 
 router = APIRouter(prefix="/api/jugadores", tags=["jugadores"])
@@ -55,11 +55,21 @@ class PartidaResumenJugador(BaseModel):
     rival_nombres: list[str]
 
 
-def _calcular_stats(session: Session, jugador: Jugador) -> JugadorStats:
+def _calcular_stats(session: Session, jugador: Jugador, modalidad: Optional[str] = None) -> JugadorStats:
     participaciones = session.exec(
         select(PartidaJugador).where(PartidaJugador.jugador_id == jugador.id)
     ).all()
-    partida_ids = [p.partida_id for p in participaciones]
+    all_partida_ids = [p.partida_id for p in participaciones]
+
+    # Filter by modalidad if requested (filters everything: bolas, rachas, duración)
+    if modalidad:
+        partida_ids = [
+            pid for pid in all_partida_ids
+            if (p := session.get(Partida, pid)) and p.modalidad == modalidad
+        ]
+    else:
+        partida_ids = all_partida_ids
+
     partidas_jugadas = len(partida_ids)
     partidas_ganadas = 0
     partidas_jugadas_bola8 = 0
@@ -123,7 +133,9 @@ def _calcular_stats(session: Session, jugador: Jugador) -> JugadorStats:
             duraciones_min.append(mins)
     duracion_promedio_min = round(sum(duraciones_min) / len(duraciones_min), 1) if duraciones_min else None
 
-    turnos = session.exec(select(Turno).where(Turno.jugador_id == jugador.id)).all()
+    partida_ids_set = set(partida_ids)
+    all_turnos = session.exec(select(Turno).where(Turno.jugador_id == jugador.id)).all()
+    turnos = [t for t in all_turnos if t.partida_id in partida_ids_set]
     # Excluir bola blanca (0) de todos los conteos de bolas
     bolas_metidas = sum(sum(1 for b in t.bolas_metidas if b != 0) for t in turnos)
     turnos_bm = sum(1 for t in turnos if t.bola_en_mano)
@@ -229,12 +241,12 @@ def editar_jugador(jugador_id: int, datos: JugadorCreate, session: Session = Dep
 
 
 @router.get("/stats", response_model=list[JugadorStats])
-def stats_todos(incluir_inactivos: bool = False, session: Session = Depends(get_session)):
+def stats_todos(incluir_inactivos: bool = False, modalidad: Optional[str] = None, session: Session = Depends(get_session)):
     q = select(Jugador).order_by(Jugador.nombre)
     if not incluir_inactivos:
         q = q.where(Jugador.activo == True)  # noqa: E712
     jugadores = session.exec(q).all()
-    return [_calcular_stats(session, j) for j in jugadores]
+    return [_calcular_stats(session, j, modalidad) for j in jugadores]
 
 
 @router.get("/{jugador_id}/stats", response_model=JugadorStats)
@@ -354,6 +366,87 @@ def toggle_activo(jugador_id: int, session: Session = Depends(get_session)):
     session.commit()
     session.refresh(jugador)
     return jugador
+
+
+class TorneoHistorialItem(BaseModel):
+    id: int
+    nombre: str
+    modalidad: str
+    fecha: datetime
+    fecha_fin: Optional[datetime]
+    estado: str
+    posicion: int
+    victorias: int
+    derrotas: int
+    puntos: int
+    total_jugadores: int
+
+
+@router.get("/{jugador_id}/torneos", response_model=list[TorneoHistorialItem])
+def torneos_jugador(jugador_id: int, session: Session = Depends(get_session)):
+    jugador = session.get(Jugador, jugador_id)
+    if not jugador:
+        raise HTTPException(status_code=404, detail="Jugador no encontrado")
+
+    participaciones = session.exec(
+        select(TorneoJugador).where(TorneoJugador.jugador_id == jugador_id)
+    ).all()
+
+    result = []
+    for tj in participaciones:
+        torneo = session.get(Torneo, tj.torneo_id)
+        if not torneo:
+            continue
+
+        tjs = session.exec(select(TorneoJugador).where(TorneoJugador.torneo_id == torneo.id)).all()
+        jugador_ids = [t.jugador_id for t in tjs]
+        enfrentamientos = session.exec(
+            select(TorneoEnfrentamiento).where(TorneoEnfrentamiento.torneo_id == torneo.id)
+        ).all()
+
+        stats = {jid: {"victorias": 0, "derrotas": 0} for jid in jugador_ids}
+        for enf in enfrentamientos:
+            if enf.partida_id is None:
+                continue
+            partida = session.get(Partida, enf.partida_id)
+            if not partida or partida.estado != "finalizada" or not partida.ganador_equipo:
+                continue
+            pjs = session.exec(select(PartidaJugador).where(PartidaJugador.partida_id == partida.id)).all()
+            eq1_ids = [pj.jugador_id for pj in pjs if pj.equipo == 1]
+            eq2_ids = [pj.jugador_id for pj in pjs if pj.equipo == 2]
+            ganador = eq1_ids[0] if (partida.ganador_equipo == 1 and eq1_ids) else (eq2_ids[0] if eq2_ids else None)
+            perdedor = eq2_ids[0] if (partida.ganador_equipo == 1 and eq2_ids) else (eq1_ids[0] if eq1_ids else None)
+            if ganador and ganador in stats:
+                stats[ganador]["victorias"] += 1
+            if perdedor and perdedor in stats:
+                stats[perdedor]["derrotas"] += 1
+
+        clasificacion = sorted(
+            jugador_ids,
+            key=lambda jid: (-stats[jid]["victorias"] * 3, stats[jid]["derrotas"]),
+        )
+        try:
+            posicion = clasificacion.index(jugador_id) + 1
+        except ValueError:
+            posicion = len(jugador_ids)
+
+        s = stats.get(jugador_id, {"victorias": 0, "derrotas": 0})
+        result.append(TorneoHistorialItem(
+            id=torneo.id,
+            nombre=torneo.nombre,
+            modalidad=torneo.modalidad,
+            fecha=torneo.fecha,
+            fecha_fin=torneo.fecha_fin,
+            estado=torneo.estado,
+            posicion=posicion,
+            victorias=s["victorias"],
+            derrotas=s["derrotas"],
+            puntos=s["victorias"] * 3,
+            total_jugadores=len(jugador_ids),
+        ))
+
+    result.sort(key=lambda x: x.fecha, reverse=True)
+    return result
 
 
 @router.delete("/{jugador_id}", status_code=204)

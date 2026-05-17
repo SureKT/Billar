@@ -118,14 +118,17 @@ function InsertarTurno({ despuesDe, partida, jugadores, equipo1Jugadores, equipo
   )
 }
 
-function EditorTurno({ turno, faltas, partida, onGuardar, onCancelar }) {
+function EditorTurno({ turno, faltas, partida, jugadores, equipo1Jugadores, equipo2Jugadores, onGuardar, onCancelar }) {
+  const [jugadorId, setJugadorId] = useState(turno.jugador_id)
   const [bolas, setBolas] = useState([...(turno.bolas_metidas ?? [])])
   const [faltaId, setFaltaId] = useState(turno.falta_id ?? null)
   const [guardando, setGuardando] = useState(false)
   const [error, setError] = useState(null)
 
+  const jugadoresPartida = (jugadores ?? []).filter(j =>
+    (equipo1Jugadores ?? []).includes(j.id) || (equipo2Jugadores ?? []).includes(j.id)
+  )
   const esBola9 = partida?.modalidad === 'bola9'
-  // Bolas disponibles según modalidad
   const bolaIds = esBola9
     ? [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
     : [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
@@ -142,7 +145,7 @@ function EditorTurno({ turno, faltas, partida, onGuardar, onCancelar }) {
     setGuardando(true)
     setError(null)
     try {
-      await onGuardar(turno.id, { bolas_metidas: bolas, falta_id: faltaId })
+      await onGuardar(turno.id, { jugador_id: jugadorId, bolas_metidas: bolas, falta_id: faltaId })
     } catch (e) {
       setError(e.message)
       setGuardando(false)
@@ -155,6 +158,28 @@ function EditorTurno({ turno, faltas, partida, onGuardar, onCancelar }) {
       background: 'var(--surface2)', border: '1px solid var(--border)',
       display: 'flex', flexDirection: 'column', gap: 10,
     }}>
+
+      {/* Selector de jugador */}
+      {jugadoresPartida.length > 1 && (
+        <div>
+          <p style={{ fontSize: '11px', color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '.04em', marginBottom: 6 }}>Jugador</p>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+            {jugadoresPartida.map(j => {
+              const esEq1 = (equipo1Jugadores ?? []).includes(j.id)
+              const col = TEAM_COLOR[esEq1 ? 1 : 2]
+              const sel = jugadorId === j.id
+              return (
+                <button key={j.id} onClick={() => setJugadorId(j.id)} style={{
+                  padding: '5px 12px', borderRadius: 8, fontSize: '13px', fontWeight: 600,
+                  border: sel ? `1.5px solid ${col}` : '1px solid var(--border)',
+                  background: sel ? `${col}22` : 'var(--surface)',
+                  color: sel ? col : 'var(--text-dim)', cursor: 'pointer',
+                }}>{j.nombre}</button>
+              )
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Selector de bolas */}
       <div>
@@ -324,11 +349,20 @@ export default function HistorialTurnos({
                     {t.repite && (
                       <span className="badge" style={{ background: '#1e3a5f', color: '#93c5fd', fontSize: '11px' }}>Repite turno</span>
                     )}
-                    {t.falta_id && (
-                      <span className="badge" style={{ background: 'rgba(127,29,29,.5)', color: '#fca5a5', fontSize: '11px' }}>
-                        {faltas.find(f => f.id === t.falta_id)?.nombre ?? 'falta'}
-                      </span>
-                    )}
+                    {(() => {
+                      const esRespot = !!t.es_respot
+                      if (esRespot) return (
+                        <span className="badge" style={{ background: 'rgba(245,158,11,.18)', border: '1px solid rgba(245,158,11,.35)', color: '#fbbf24', fontSize: '11px' }}>
+                          ⚡ Respot · bola en mano
+                        </span>
+                      )
+                      if (t.falta_id) return (
+                        <span className="badge" style={{ background: 'rgba(127,29,29,.5)', color: '#fca5a5', fontSize: '11px' }}>
+                          {faltas.find(f => f.id === t.falta_id)?.nombre ?? 'falta'}
+                        </span>
+                      )
+                      return null
+                    })()}
                     {t.falta_id && rachaFaltas[t.id] === 2 && (
                       <span className="badge" style={{ background: 'rgba(245,158,11,.18)', color: '#fbbf24', fontSize: '10px' }}>
                         ⚠ 2 seguidas
@@ -392,6 +426,9 @@ export default function HistorialTurnos({
                 {editando && (
                   <EditorTurno
                     turno={t} faltas={faltas} partida={partida}
+                    jugadores={jugadores}
+                    equipo1Jugadores={equipo1Jugadores}
+                    equipo2Jugadores={equipo2Jugadores}
                     onGuardar={handleGuardar}
                     onCancelar={() => setEditandoId(null)}
                   />

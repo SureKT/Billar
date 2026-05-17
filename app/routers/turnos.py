@@ -27,6 +27,7 @@ class TurnoResponse(BaseModel):
     numero: int
     repite: bool
     bola_en_mano: bool
+    es_respot: bool = False
     bolas_metidas: list[int]
     # Resultado de la evaluación
     grupos_asignados: bool = False
@@ -53,6 +54,7 @@ def listar_turnos(partida_id: int, session: Session = Depends(get_session)):
             numero=t.numero,
             repite=t.repite,
             bola_en_mano=t.bola_en_mano,
+            es_respot=t.es_respot,
             bolas_metidas=t.bolas_metidas,
         )
         for t in turnos
@@ -244,6 +246,7 @@ def insertar_turno(
 class TurnoEdit(BaseModel):
     bolas_metidas: list[int]
     falta_id: Optional[int] = None
+    jugador_id: Optional[int] = None
 
 
 @router.post("/{partida_id}/turnos/{turno_id}/editar", response_model=TurnoResponse)
@@ -268,6 +271,8 @@ def editar_turno(
             raise HTTPException(status_code=400, detail=f"Bola {b} no existe")
 
     # Aplicar los cambios al turno
+    if datos.jugador_id is not None:
+        turno.jugador_id = datos.jugador_id
     turno.bolas_metidas = datos.bolas_metidas
     turno.falta_id = datos.falta_id
     turno.faltas_ids = [datos.falta_id] if datos.falta_id else []
