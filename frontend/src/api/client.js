@@ -54,7 +54,10 @@ export const api = {
 
   // Catálogos
   getBolas: () => request('GET', '/bolas'),
-  getFaltas: () => request('GET', '/faltas'),
+  getFaltas: (jugadorIds = null) => {
+    const qs = jugadorIds?.length ? `?jugadores=${jugadorIds.join(',')}` : ''
+    return request('GET', `/faltas${qs}`)
+  },
 
   // Nombres de equipo
   getNombresEquipo: () => request('GET', '/equipos-nombres'),

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useApi } from '../hooks/useApi'
 import { api } from '../api/client'
@@ -238,9 +238,16 @@ export default function Estadisticas() {
   const modalidadParam = filtro === 'todas' ? null : filtro
   const { data: stats,   loading: loadingStats }  = useApi(() => api.getAllStats(false, modalidadParam), [filtro])
   const { data: partidas, loading: loadingPart }  = useApi(api.getPartidas)
-  const { data: faltas,  loading: loadingFaltas } = useApi(api.getFaltas)
+  const [faltas, setFaltas] = useState(null)
 
-  if ((loadingPart || loadingFaltas) && !partidas) return <SkeletonList n={5} />
+  const activeIdsKey = (stats ?? []).map(j => j.id).sort((a, b) => a - b).join(',')
+  useEffect(() => {
+    if (!stats) return
+    const ids = stats.map(j => j.id)
+    api.getFaltas(ids).then(setFaltas).catch(() => {})
+  }, [activeIdsKey])
+
+  if (loadingPart && !partidas) return <SkeletonList n={5} />
 
   const jugadoresConPartidas = (stats ?? []).filter(j => j.partidas_jugadas > 0)
   const activeIds = new Set((stats ?? []).map(j => j.id))

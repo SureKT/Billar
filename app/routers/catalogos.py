@@ -1,8 +1,9 @@
-from fastapi import APIRouter, Depends
+from typing import Optional
+from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
 from sqlmodel import Session, select, func
 
-from app.models import Bola, Falta, Turno, Partida
+from app.models import Bola, Falta, Turno, Partida, PartidaJugador
 from app.database import get_session
 
 router = APIRouter(prefix="/api", tags=["catalogos"])
@@ -17,13 +18,15 @@ class FaltaConFrecuencia(BaseModel):
     frecuencia_bola9: int  # solo en partidas de bola 9
 
 
-def _contar_faltas_por_modalidad(session: Session, modalidad: str) -> dict[int, int]:
-    rows = session.exec(
+def _contar_faltas_por_modalidad(session: Session, modalidad: str, jugador_ids: Optional[list[int]] = None) -> dict[int, int]:
+    q = (
         select(Turno.falta_id, func.count(Turno.id))
         .join(Partida, Turno.partida_id == Partida.id)  # type: ignore[arg-type]
         .where(Turno.falta_id.is_not(None), Partida.modalidad == modalidad)
-        .group_by(Turno.falta_id)
-    ).all()
+    )
+    if jugador_ids is not None:
+        q = q.where(Turno.jugador_id.in_(jugador_ids))
+    rows = session.exec(q.group_by(Turno.falta_id)).all()
     return {falta_id: count for falta_id, count in rows}
 
 
@@ -33,17 +36,23 @@ def listar_bolas(session: Session = Depends(get_session)):
 
 
 @router.get("/faltas", response_model=list[FaltaConFrecuencia])
-def listar_faltas(session: Session = Depends(get_session)):
+def listar_faltas(
+    jugadores: Optional[str] = Query(default=None, description="IDs separados por coma para filtrar"),
+    session: Session = Depends(get_session),
+):
     faltas = session.exec(select(Falta)).all()
 
-    counts_raw = session.exec(
-        select(Turno.falta_id, func.count(Turno.id))
-        .where(Turno.falta_id.is_not(None))
-        .group_by(Turno.falta_id)
-    ).all()
+    jugador_ids: Optional[list[int]] = None
+    if jugadores:
+        jugador_ids = [int(x) for x in jugadores.split(",") if x.strip()]
+
+    q_global = select(Turno.falta_id, func.count(Turno.id)).where(Turno.falta_id.is_not(None))
+    if jugador_ids is not None:
+        q_global = q_global.where(Turno.jugador_id.in_(jugador_ids))
+    counts_raw = session.exec(q_global.group_by(Turno.falta_id)).all()
     counts        = {fid: c for fid, c in counts_raw}
-    counts_bola8  = _contar_faltas_por_modalidad(session, "bola8")
-    counts_bola9  = _contar_faltas_por_modalidad(session, "bola9")
+    counts_bola8  = _contar_faltas_por_modalidad(session, "bola8", jugador_ids)
+    counts_bola9  = _contar_faltas_por_modalidad(session, "bola9", jugador_ids)
 
     return [
         FaltaConFrecuencia(
