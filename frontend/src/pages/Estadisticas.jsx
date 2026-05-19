@@ -18,7 +18,7 @@ function pct(ganadas, jugadas) {
 
 // ─── sub-componentes ──────────────────────────────────────────────────────────
 
-function ContadorCard({ label, value, sub, color, subColor, compact }) {
+function ContadorCard({ label, value, sub, color, compact }) {
   return (
     <div style={{
       flex: 1, background: 'var(--surface2)', borderRadius: 10,
@@ -34,7 +34,7 @@ function ContadorCard({ label, value, sub, color, subColor, compact }) {
         {value}
       </span>
       {sub != null && (
-        <span style={{ fontSize: '10px', color: subColor ?? (color ? `${color}99` : 'var(--accent)'), fontWeight: 600, lineHeight: 1 }}>
+        <span style={{ fontSize: '10px', color: color ? `${color}99` : 'var(--accent)', fontWeight: 600, lineHeight: 1 }}>
           {sub}
         </span>
       )}
@@ -403,12 +403,17 @@ export default function Estadisticas() {
         <>
           {/* ── Cifras globales ── */}
           <div className="card" style={{ padding: '12px' }}>
-            <SeccionTitulo>Resumen {filtro === 'todas' ? 'global' : filtro === 'bola8' ? 'Bola 8' : 'Bola 9'}</SeccionTitulo>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+              <SeccionTitulo style={{ margin: 0 }}>Resumen {filtro === 'todas' ? 'global' : filtro === 'bola8' ? 'Bola 8' : 'Bola 9'}</SeccionTitulo>
+              <span style={{ fontSize: '11px', color: 'var(--text-dim)', fontWeight: 600 }}>
+                {(stats ?? []).length} jugador{(stats ?? []).length !== 1 ? 'es' : ''} activo{(stats ?? []).length !== 1 ? 's' : ''}
+              </span>
+            </div>
             <div style={{ display: 'flex', gap: 6 }}>
               <ContadorCard label="Partidas"    value={todasFiltradas.length} />
               <ContadorCard label="Finalizadas" value={finalizadasFiltradas.length} color="#86efac" />
               <ContadorCard label="En curso"    value={enCursoFiltradas.length}     color="#fbbf24" />
-              <ContadorCard label="Jugadores"   value={(stats ?? []).length} sub="activos" subColor="var(--text-dim)" />
+              <ContadorCard label="Jugadores"   value={(stats ?? []).length} />
             </div>
             <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
               {filtro === 'todas' && (
@@ -491,9 +496,6 @@ export default function Estadisticas() {
             <div className="card" style={{ padding: '12px' }}>
               <SeccionTitulo>Eficiencia · bolas por turno</SeccionTitulo>
               <GraficaHorizontal datos={grafEficiencia} />
-              <p style={{ fontSize: '10px', color: 'var(--text-dim)', marginTop: 8 }}>
-                Media de bolas metidas por turno jugado, a mayor valor más preciso
-              </p>
             </div>
           )}
 
@@ -502,9 +504,6 @@ export default function Estadisticas() {
             <div className="card" style={{ padding: '12px' }}>
               <SeccionTitulo>Duración media por jugador (min)</SeccionTitulo>
               <GraficaHorizontal datos={grafDuracion} />
-              <p style={{ fontSize: '10px', color: 'var(--text-dim)', marginTop: 8 }}>
-                Minutos de media por partida finalizada con hora de fin registrada
-              </p>
             </div>
           )}
 
