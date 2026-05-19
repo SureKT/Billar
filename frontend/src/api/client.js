@@ -56,6 +56,12 @@ export const api = {
   getBolas: () => request('GET', '/bolas'),
   getFaltas: () => request('GET', '/faltas'),
 
+  // Nombres de equipo
+  getNombresEquipo: () => request('GET', '/equipos-nombres'),
+  lookupNombreEquipo: (ids) => request('GET', `/equipos-nombres/lookup?jugadores=${ids.sort((a,b)=>a-b).join(',')}`),
+  upsertNombreEquipo: (jugadores_ids, nombre) => request('POST', '/equipos-nombres', { jugadores_ids, nombre }),
+  eliminarNombreEquipo: (id) => request('DELETE', `/equipos-nombres/${id}`),
+
   // Torneos
   getTorneos: () => request('GET', '/torneos'),
   getTorneo: (id) => request('GET', `/torneos/${id}`),

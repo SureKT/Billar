@@ -103,6 +103,12 @@ class Turno(SQLModel, table=True):
         self.faltas_ids_json = json.dumps(value if value is not None else [])
 
 
+class NombreEquipo(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    jugadores_key: str = Field(unique=True)  # sorted IDs joined by comma e.g. "1,3"
+    nombre: str
+
+
 class Torneo(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     nombre: str

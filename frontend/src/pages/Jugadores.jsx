@@ -2,6 +2,62 @@ import { useState } from 'react'
 import { useApi } from '../hooks/useApi'
 import { api } from '../api/client'
 
+function NombresEquipoSection({ statsMap }) {
+  const { data: nombres, reload } = useApi(api.getNombresEquipo)
+  const [confirmDel, setConfirmDel] = useState(null)
+  const [expanded, setExpanded] = useState(false)
+
+  if (!nombres || nombres.length === 0) return null
+
+  return (
+    <div style={{ marginTop: 8 }}>
+      <button
+        onClick={() => setExpanded(v => !v)}
+        style={{
+          width: '100%', display: 'flex', alignItems: 'center', gap: 8,
+          background: 'none', border: 'none', cursor: 'pointer', padding: '4px 0', marginBottom: 6,
+        }}
+      >
+        <span style={{ fontSize: 10, color: 'var(--text-dim)', lineHeight: 1 }}>{expanded ? '▼' : '▶'}</span>
+        <span style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.06em', color: 'var(--text-dim)' }}>
+          Nombres de equipo
+        </span>
+        <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
+        <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>{nombres.length}</span>
+      </button>
+      {expanded && (
+        <div className="card" style={{ padding: '8px 12px', display: 'flex', flexDirection: 'column', gap: 2 }}>
+          {nombres.map(ne => {
+            const jugadores = ne.jugadores_key.split(',').map(id => statsMap[parseInt(id)]?.nombre ?? `#${id}`)
+            return (
+              <div key={ne.id} style={{
+                display: 'flex', alignItems: 'center', gap: 10,
+                padding: '8px 0', borderBottom: '1px solid var(--border-dim)',
+              }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>{ne.nombre}</div>
+                  <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 2 }}>{jugadores.join(' · ')}</div>
+                </div>
+                {confirmDel === ne.id ? (
+                  <span style={{ display: 'flex', gap: 4 }}>
+                    <button onClick={async () => { await api.eliminarNombreEquipo(ne.id); setConfirmDel(null); reload() }}
+                      style={{ background: 'none', border: 'none', color: '#f87171', cursor: 'pointer', fontSize: 14, padding: '0 4px' }}>✓</button>
+                    <button onClick={() => setConfirmDel(null)}
+                      style={{ background: 'none', border: 'none', color: 'var(--text-dim)', cursor: 'pointer', fontSize: 14, padding: '0 4px' }}>✕</button>
+                  </span>
+                ) : (
+                  <button onClick={() => setConfirmDel(ne.id)}
+                    style={{ background: 'none', border: 'none', color: 'var(--text-dim)', cursor: 'pointer', fontSize: 16, padding: '0 4px', lineHeight: 1 }}>✕</button>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+}
+
 const PALETA = [
   '#3b82f6', '#ef4444', '#22c55e', '#f59e0b',
   '#a855f7', '#ec4899', '#14b8a6', '#f97316',
@@ -720,6 +776,8 @@ export default function Jugadores() {
           </>
         )
       })()}
+
+      <NombresEquipoSection statsMap={Object.fromEntries((stats ?? []).map(s => [s.id, s]))} />
     </div>
   )
 }

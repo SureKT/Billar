@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useApi } from '../hooks/useApi'
 import { api } from '../api/client'
@@ -222,6 +222,17 @@ export default function NuevaPartida() {
   const [creando, setCreando] = useState(false)
   const navigate = useNavigate()
 
+  // Auto-fill team name from saved combos
+  useEffect(() => {
+    if (equipo1.length === 0) return
+    api.lookupNombreEquipo(equipo1).then(ne => { if (ne) setNombre1(ne.nombre) }).catch(() => {})
+  }, [equipo1.join(',')])
+
+  useEffect(() => {
+    if (equipo2.length === 0) return
+    api.lookupNombreEquipo(equipo2).then(ne => { if (ne) setNombre2(ne.nombre) }).catch(() => {})
+  }, [equipo2.join(',')])
+
   function setEquipo1Safe(ids) {
     setEquipo1(ids)
     setPrimerJugador(prev => {
@@ -246,14 +257,19 @@ export default function NuevaPartida() {
     setError(null)
     setCreando(true)
     try {
+      const n1 = nombre1.trim()
+      const n2 = nombre2.trim()
       const p = await api.crearPartida({
         modalidad,
         equipo1: { jugador_ids: equipo1 },
         equipo2: { jugador_ids: equipo2 },
         primer_jugador_id: primerJugador,
-        equipo1_nombre: nombre1.trim() || null,
-        equipo2_nombre: nombre2.trim() || null,
+        equipo1_nombre: n1 || null,
+        equipo2_nombre: n2 || null,
       })
+      // Persist team names for future auto-fill
+      if (n1) api.upsertNombreEquipo(equipo1, n1).catch(() => {})
+      if (n2) api.upsertNombreEquipo(equipo2, n2).catch(() => {})
       navigate(`/partida/${p.id}`)
     } catch (err) {
       setError(err.message)

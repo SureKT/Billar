@@ -34,6 +34,7 @@ def _migrate():
             "ALTER TABLE turno ADD COLUMN faltas_ids_json TEXT NOT NULL DEFAULT '[]'",
             "ALTER TABLE partida ADD COLUMN equipo1_nombre TEXT",
             "ALTER TABLE partida ADD COLUMN equipo2_nombre TEXT",
+            "CREATE TABLE IF NOT EXISTS nombreequipo (id INTEGER PRIMARY KEY AUTOINCREMENT, jugadores_key TEXT UNIQUE NOT NULL, nombre TEXT NOT NULL)",
         ]:
             try:
                 conn.execute(text(stmt))
