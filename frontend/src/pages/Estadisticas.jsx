@@ -18,7 +18,7 @@ function pct(ganadas, jugadas) {
 
 // ─── sub-componentes ──────────────────────────────────────────────────────────
 
-function ContadorCard({ label, value, sub, color, compact }) {
+function ContadorCard({ label, value, sub, color, subColor, compact }) {
   return (
     <div style={{
       flex: 1, background: 'var(--surface2)', borderRadius: 10,
@@ -34,7 +34,7 @@ function ContadorCard({ label, value, sub, color, compact }) {
         {value}
       </span>
       {sub != null && (
-        <span style={{ fontSize: '10px', color: color ? `${color}99` : 'var(--accent)', fontWeight: 600, lineHeight: 1 }}>
+        <span style={{ fontSize: '10px', color: subColor ?? (color ? `${color}99` : 'var(--accent)'), fontWeight: 600, lineHeight: 1 }}>
           {sub}
         </span>
       )}
@@ -408,7 +408,7 @@ export default function Estadisticas() {
               <ContadorCard label="Partidas"    value={todasFiltradas.length} />
               <ContadorCard label="Finalizadas" value={finalizadasFiltradas.length} color="#86efac" />
               <ContadorCard label="En curso"    value={enCursoFiltradas.length}     color="#fbbf24" />
-              <ContadorCard label="Jugadores"   value={(stats ?? []).length} />
+              <ContadorCard label="Jugadores"   value={(stats ?? []).length} sub="activos" subColor="var(--text-dim)" />
             </div>
             <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
               {filtro === 'todas' && (
