@@ -406,7 +406,7 @@ export default function Estadisticas() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
               <SeccionTitulo style={{ margin: 0 }}>Resumen {filtro === 'todas' ? 'global' : filtro === 'bola8' ? 'Bola 8' : 'Bola 9'}</SeccionTitulo>
               <span style={{ fontSize: '11px', color: 'var(--text-dim)', fontWeight: 600 }}>
-                {(stats ?? []).length} jugador{(stats ?? []).length !== 1 ? 'es' : ''} activo{(stats ?? []).length !== 1 ? 's' : ''}
+                {(stats ?? []).length} Jugador{(stats ?? []).length !== 1 ? 'es' : ''} activo{(stats ?? []).length !== 1 ? 's' : ''}
               </span>
             </div>
             <div style={{ display: 'flex', gap: 6 }}>
