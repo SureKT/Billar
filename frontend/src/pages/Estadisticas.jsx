@@ -243,7 +243,10 @@ export default function Estadisticas() {
   if ((loadingPart || loadingFaltas) && !partidas) return <SkeletonList n={5} />
 
   const jugadoresConPartidas = (stats ?? []).filter(j => j.partidas_jugadas > 0)
-  const todasPartidas = partidas ?? []
+  const activeIds = new Set((stats ?? []).map(j => j.id))
+  const todasPartidas = (partidas ?? []).filter(p =>
+    [...(p.equipo1_jugadores ?? []), ...(p.equipo2_jugadores ?? [])].some(id => activeIds.has(id))
+  )
   const finalizadas   = todasPartidas.filter(p => p.estado === 'finalizada')
   const enCurso       = todasPartidas.filter(p => p.estado === 'en_curso')
   const bola8         = todasPartidas.filter(p => p.modalidad === 'bola8')
@@ -287,8 +290,8 @@ export default function Estadisticas() {
 
   // Duration helpers
   function nombresPartida(p) {
-    return [...p.equipo1_jugadores, ...p.equipo2_jugadores]
-      .map(id => (stats ?? []).find(s => s.id === id)?.nombre ?? `#${id}`)
+    return [...(p.equipo1_jugadores ?? []), ...(p.equipo2_jugadores ?? [])]
+      .map(id => (stats ?? []).find(s => s.id === id)?.nombre ?? `J${id}`)
       .join(' · ')
   }
   function durMs(p) { return new Date(p.fecha_fin) - new Date(p.fecha) }
