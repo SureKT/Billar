@@ -37,6 +37,8 @@ export const api = {
   // Partidas
   getSugerencias: (jugadoresPorEquipo = 1, modalidad = 'bola8') =>
     request('GET', `/partidas/sugerencias?jugadores_por_equipo=${jugadoresPorEquipo}&modalidad=${modalidad}`),
+  getSugerenciaSaque: (jugadorIds) =>
+    request('GET', `/partidas/sugerencia-saque?jugadores=${jugadorIds.sort((a, b) => a - b).join(',')}`),
   getPartidas: () => request('GET', '/partidas'),
   getPartida: (id) => request('GET', `/partidas/${id}`),
   getEstadoPartida: (id) => request('GET', `/partidas/${id}/estado`),

@@ -218,9 +218,26 @@ export default function NuevaPartida() {
   const [nombre1, setNombre1] = useState('')
   const [nombre2, setNombre2] = useState('')
   const [primerJugador, setPrimerJugador] = useState(prefill?.equipo1?.[0] ?? null)
+  const [ultimoSaqueId, setUltimoSaqueId] = useState(null)
   const [error, setError] = useState(null)
   const [creando, setCreando] = useState(false)
   const navigate = useNavigate()
+
+  // Sugerencia de quién saca: el que NO sacó la última vez
+  const todosIdsKey = [...equipo1, ...equipo2].sort((a, b) => a - b).join(',')
+  useEffect(() => {
+    if (equipo1.length === 0 || equipo2.length === 0) { setUltimoSaqueId(null); return }
+    const ids = [...equipo1, ...equipo2]
+    api.getSugerenciaSaque(ids)
+      .then(({ ultimo_saque_id }) => {
+        setUltimoSaqueId(ultimo_saque_id)
+        if (ultimo_saque_id) {
+          const sugerido = ids.find(id => id !== ultimo_saque_id)
+          if (sugerido) setPrimerJugador(sugerido)
+        }
+      })
+      .catch(() => setUltimoSaqueId(null))
+  }, [todosIdsKey])
 
   // Auto-fill team name from saved combos
   useEffect(() => {
@@ -364,14 +381,22 @@ export default function NuevaPartida() {
           {/* ¿Quién saca? — solo si ambos equipos tienen jugadores */}
           {equipo1.length > 0 && equipo2.length > 0 && (
             <div className="card">
-              <p style={{ fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.05em', color: 'var(--text-dim)', marginBottom: 10 }}>
-                ¿Quién saca?
-              </p>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 10 }}>
+                <p style={{ fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.05em', color: 'var(--text-dim)', margin: 0 }}>
+                  ¿Quién saca?
+                </p>
+                {ultimoSaqueId && (
+                  <span style={{ fontSize: '11px', color: 'var(--text-dim)' }}>
+                    última vez: {jList.find(j => j.id === ultimoSaqueId)?.nombre ?? `#${ultimoSaqueId}`}
+                  </span>
+                )}
+              </div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                 {[...equipo1, ...equipo2].map(id => {
                   const j = jList.find(j => j.id === id)
                   const sel = primerJugador === id
                   const enEq2 = equipo2.includes(id)
+                  const esUltimo = ultimoSaqueId === id
                   return (
                     <button
                       key={id}
@@ -382,6 +407,7 @@ export default function NuevaPartida() {
                         background: sel ? 'var(--accent-bg)' : 'var(--surface2)',
                         color: sel ? 'var(--accent)' : 'var(--text-dim)',
                         transition: 'background .15s, border-color .15s',
+                        opacity: esUltimo && !sel ? 0.5 : 1,
                       }}
                     >
                       {sel ? '✓ ' : ''}{j?.nombre}

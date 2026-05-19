@@ -193,6 +193,44 @@ def sugerencias_partidas(
     return result
 
 
+@router.get("/sugerencia-saque")
+def sugerencia_saque(jugadores: str, session: Session = Depends(get_session)):
+    """Dado un conjunto de jugadores, devuelve quién sacó en la última partida finalizada con esa combinación exacta."""
+    ids = {int(x) for x in jugadores.split(",") if x.strip()}
+    if not ids:
+        return {"ultimo_saque_id": None}
+
+    # Partidas que contienen AL MENOS uno de esos jugadores
+    pjs = session.exec(
+        select(PartidaJugador).where(PartidaJugador.jugador_id.in_(list(ids)))
+    ).all()
+
+    # Agrupar por partida_id y verificar coincidencia exacta de jugadores
+    from collections import defaultdict
+    partida_players: dict[int, set] = defaultdict(set)
+    for pj in pjs:
+        partida_players[pj.partida_id].add(pj.jugador_id)
+
+    matching = [pid for pid, player_set in partida_players.items() if player_set == ids]
+    if not matching:
+        return {"ultimo_saque_id": None}
+
+    # Última partida finalizada de esa combinación
+    partidas = [session.get(Partida, pid) for pid in matching]
+    finished = [p for p in partidas if p and p.estado == "finalizada"]
+    if not finished:
+        return {"ultimo_saque_id": None}
+
+    latest = max(finished, key=lambda p: p.fecha)
+
+    # Turno número 1 = quien sacó
+    turno1 = session.exec(
+        select(Turno).where(Turno.partida_id == latest.id, Turno.numero == 1)
+    ).first()
+
+    return {"ultimo_saque_id": turno1.jugador_id if turno1 else None}
+
+
 @router.get("", response_model=list[PartidaResumen])
 def listar_partidas(session: Session = Depends(get_session)):
     partidas = session.exec(select(Partida).order_by(Partida.fecha.desc())).all()
