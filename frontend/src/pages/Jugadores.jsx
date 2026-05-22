@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useApi } from '../hooks/useApi'
 import { api } from '../api/client'
 
@@ -130,6 +131,7 @@ function fechaCorta(isoStr) {
 }
 
 function JugadorCard({ j, onReload, todosStats }) {
+  const navigate = useNavigate()
   const coloresTomados = new Set(
     (todosStats ?? []).filter(s => s.id !== j.id && s.color).map(s => s.color)
   )
@@ -514,9 +516,11 @@ function JugadorCard({ j, onReload, todosStats }) {
                     <p style={{ fontSize: '12px', color: 'var(--text-dim)' }}>Sin partidas finalizadas</p>
                   )}
                   {ultimas?.map(p => (
-                    <div key={p.id} style={{
+                    <button key={p.id} onClick={() => navigate(`/partida/${p.id}`)} style={{
                       display: 'flex', alignItems: 'center', gap: 8,
                       padding: '6px 0', borderBottom: '1px solid var(--border)',
+                      width: '100%', background: 'none', border: 'none', borderBottom: '1px solid var(--border)',
+                      cursor: 'pointer', textAlign: 'left',
                     }}>
                       <span style={{
                         fontSize: '11px', fontWeight: 700, minWidth: 22, textAlign: 'center',
@@ -539,7 +543,7 @@ function JugadorCard({ j, onReload, todosStats }) {
                       <span style={{ fontSize: '11px', color: 'var(--text-dim)', flexShrink: 0 }}>
                         {fechaCorta(p.fecha)}
                       </span>
-                    </div>
+                    </button>
                   ))}
                 </div>
               )}

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useApi } from '../hooks/useApi'
 import { api } from '../api/client'
 import { SkeletonList } from '../components/Skeleton'
@@ -234,7 +234,13 @@ function SeccionTitulo({ children }) {
 
 export default function Estadisticas() {
   const navigate = useNavigate()
-  const [filtro, setFiltro] = useState('todas')
+  const [searchParams, setSearchParams] = useSearchParams()
+  const [filtro, setFiltroState] = useState(searchParams.get('filtro') ?? 'todas')
+
+  function setFiltro(val) {
+    setFiltroState(val)
+    setSearchParams(val === 'todas' ? {} : { filtro: val }, { replace: true })
+  }
   const modalidadParam = filtro === 'todas' ? null : filtro
   const { data: stats,   loading: loadingStats }  = useApi(() => api.getAllStats(false, modalidadParam), [filtro])
   const { data: partidas, loading: loadingPart }  = useApi(api.getPartidas)
