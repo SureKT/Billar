@@ -138,17 +138,6 @@ export default function FormularioTurno({
 
       {/* Selector de bolas */}
       <div>
-        <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', minHeight: 34, marginBottom: 8 }}>
-          {bolas.length > 0 && (
-            <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
-              {bolas.map(n => <BolaPool key={n} numero={n} size={26} />)}
-              <button
-                onClick={() => setBolas([])}
-                style={{ background: 'none', border: 'none', color: 'var(--text-dim)', fontSize: '18px', cursor: 'pointer', lineHeight: 1 }}
-              >×</button>
-            </div>
-          )}
-        </div>
         <SelectorBolas
           seleccionadas={bolas}
           onChange={setBolas}
