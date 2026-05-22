@@ -14,6 +14,7 @@ FALTAS = [
     {"nombre": "Doble golpe",                    "penalizacion": "bola_en_mano"},
     {"nombre": "Bola 8 ilegal",                  "penalizacion": "pierde_partida"},
     {"nombre": "Tres faltas consecutivas",       "penalizacion": "pierde_partida"},
+    {"nombre": "Tronera incorrecta",             "penalizacion": "pierde_partida"},
 ]
 
 
@@ -61,16 +62,12 @@ def _seed_datos_base():
             bolas += [Bola(numero=n, tipo="rayada") for n in range(9, 16)]
             session.add_all(bolas)
 
-        # Faltas: si el catálogo no coincide, lo reemplaza
-        existentes = session.exec(select(Falta)).all()
-        nombres_actuales = {f.nombre for f in existentes}
-        nombres_esperados = {f["nombre"] for f in FALTAS}
-
-        if nombres_actuales != nombres_esperados:
-            for f in existentes:
-                session.delete(f)
-            session.flush()
-            for f in FALTAS:
-                session.add(Falta(nombre=f["nombre"], penalizacion=f["penalizacion"]))
+        # Faltas: upsert por nombre — preserva IDs para no romper falta_id en turnos existentes
+        existentes = {f.nombre: f for f in session.exec(select(Falta)).all()}
+        for fdata in FALTAS:
+            if fdata["nombre"] in existentes:
+                existentes[fdata["nombre"]].penalizacion = fdata["penalizacion"]
+            else:
+                session.add(Falta(nombre=fdata["nombre"], penalizacion=fdata["penalizacion"]))
 
         session.commit()
