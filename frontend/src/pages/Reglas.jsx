@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 
 function Seccion({ titulo, children, defaultOpen = false }) {
   const [open, setOpen] = useState(defaultOpen)
@@ -220,7 +220,8 @@ function ModoBola9() {
 
 export default function Reglas() {
   const navigate = useNavigate()
-  const [modo, setModo] = useState('bola8')
+  const [searchParams] = useSearchParams()
+  const [modo, setModo] = useState(searchParams.get('modo') === 'bola9' ? 'bola9' : 'bola8')
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--gap)' }}>
