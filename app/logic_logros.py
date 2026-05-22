@@ -75,7 +75,7 @@ CATALOGO: list[LogroCatalogo] = [
     LogroCatalogo(id="en_racha",         nombre="En racha",         descripcion="Victorias consecutivas",                                     icono="🔥", niveles=NIVELES_RACHA),
     LogroCatalogo(id="artillero",        nombre="Artillero",        descripcion="Bolas metidas en total",                                     icono="🎳", niveles=NIVELES_ARTILLERO),
     LogroCatalogo(id="limpio",           nombre="Limpio",           descripcion="Ganar una partida de Bola 8 sin ninguna falta",              icono="🧼", niveles=[]),
-    LogroCatalogo(id="golden_break",     nombre="Golden Break",     descripcion="Ganar metiendo la 8 en el saque",                           icono="💥", niveles=[]),
+    LogroCatalogo(id="golden_break",     nombre="Golden Break",     descripcion="Ganar metiendo la 9 en el saque",                           icono="💥", niveles=[]),
     LogroCatalogo(id="relampago",        nombre="Relámpago",        descripcion="Ganar en menos de 5 minutos",                               icono="⚡", niveles=[]),
     LogroCatalogo(id="tirador",          nombre="Tirador",          descripcion="Promedio ≥1.5 bolas/turno en una partida ganada",           icono="🎯", niveles=[]),
     LogroCatalogo(id="campeon",          nombre="Campeón",          descripcion="Ganar un torneo",                                           icono="🥇", niveles=[]),
@@ -111,6 +111,10 @@ def _turno_tiene_falta(t: Turno) -> bool:
     return bool(t.falta_id) or bool(t.faltas_ids)
 
 
+# Approximation: awards "won tournament" to any player who won all their
+# own enfrentamientos in a finalizado torneo. Works correctly for
+# elimination-style tournaments. May award incorrectly in round-robin
+# formats where overall ranking determines the winner.
 def _torneos_ganados(jugador_id: int, session: Session) -> int:
     tj_rows = session.exec(
         select(TorneoJugador).where(TorneoJugador.jugador_id == jugador_id)
@@ -213,7 +217,10 @@ def calcular_logros(jugador_id: int, session: Session) -> list[LogroEstado]:
     # --- Métricas base ---
     total_partidas = len(partidas_all)
     total_victorias = len(victorias)
-    total_bolas = sum(len(t.bolas_metidas) for t in mis_turnos)
+    total_bolas = sum(
+        sum(1 for b in t.bolas_metidas if b != 0)
+        for t in mis_turnos
+    )
 
     # --- Racha máxima ---
     racha = 0
@@ -256,13 +263,13 @@ def calcular_logros(jugador_id: int, session: Session) -> list[LogroEstado]:
 
     r["limpio"] = len(limpias_bola8) >= 1
 
-    # Golden Break: turno 1 del jugador tiene la 8, y ganó esa partida
+    # Golden Break: turno 1 del jugador tiene la 9, y ganó esa partida (bola9)
     golden = False
     for p in victorias:
-        if p.modalidad != "bola8":
+        if p.modalidad != "bola9":
             continue
         break_t = next((t for t in turnos_por_partida.get(p.id, []) if t.numero == 1), None)
-        if break_t and 8 in break_t.bolas_metidas:
+        if break_t and 9 in break_t.bolas_metidas:
             golden = True
             break
     r["golden_break"] = golden
@@ -356,6 +363,8 @@ def calcular_logros(jugador_id: int, session: Session) -> list[LogroEstado]:
         rival_grupo  = p.equipo1_grupo if rival_equipo == 1 else p.equipo2_grupo
         rival_bolas  = set(range(1, 8)) if rival_grupo == "lisas" else set(range(9, 16))
         rival_ids    = {pj.jugador_id for pj in pj_por_partida.get(p.id, []) if pj.equipo == rival_equipo}
+        if not rival_ids:
+            continue
         rival_metio  = any(
             bool(set(t.bolas_metidas) & rival_bolas)
             for t in todos_turnos_por_partida.get(p.id, [])
