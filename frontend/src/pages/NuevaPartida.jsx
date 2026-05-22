@@ -332,7 +332,7 @@ export default function NuevaPartida() {
             Modalidad
           </p>
           <Link to="/reglas" style={{ fontSize: 11, color: 'var(--text-dim)', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 3 }}>
-            <span>ℹ</span><span>Ver reglas</span>
+            <span style={{ color: 'var(--accent)', fontSize: 13 }}>ℹ</span><span>Ver reglas</span>
           </Link>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
