@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { useNavigate, useLocation } from 'react-router-dom'
+import { useNavigate, useLocation, Link } from 'react-router-dom'
 import { useApi } from '../hooks/useApi'
 import { api } from '../api/client'
 import Sugerencias from './Sugerencias'
@@ -327,9 +327,14 @@ export default function NuevaPartida() {
 
       {/* Modalidad */}
       <div className="card">
-        <p style={{ fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.05em', color: 'var(--text-dim)', marginBottom: 10 }}>
-          Modalidad
-        </p>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+          <p style={{ fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.05em', color: 'var(--text-dim)', margin: 0 }}>
+            Modalidad
+          </p>
+          <Link to="/reglas" style={{ fontSize: 11, color: 'var(--text-dim)', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 3 }}>
+            <span>ℹ</span><span>Ver reglas</span>
+          </Link>
+        </div>
         <div style={{ display: 'flex', gap: 8 }}>
           {[['bola8', '⚫ Bola 8'], ['bola9', '🟡 Bola 9']].map(([val, label]) => (
             <button
