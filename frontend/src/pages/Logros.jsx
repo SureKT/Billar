@@ -73,11 +73,13 @@ export default function Logros() {
 
   useEffect(() => {
     if (!jugadorId) { setLogros(null); return }
+    let cancelled = false
     setCargando(true)
     api.getLogrosJugador(jugadorId)
-      .then(setLogros)
-      .catch(() => setLogros(null))
-      .finally(() => setCargando(false))
+      .then(data => { if (!cancelled) setLogros(data) })
+      .catch(() => { if (!cancelled) setLogros(null) })
+      .finally(() => { if (!cancelled) setCargando(false) })
+    return () => { cancelled = true }
   }, [jugadorId])
 
   const lista = logros ?? catalogo?.map(c => ({ ...c, desbloqueado: false, niveles_desbloqueados: [] }))
@@ -134,9 +136,13 @@ export default function Logros() {
         <div style={{ textAlign: 'center', color: 'var(--text-dim)', padding: 32, fontSize: 13 }}>
           Calculando…
         </div>
+      ) : !lista ? (
+        <div style={{ textAlign: 'center', color: 'var(--text-dim)', padding: 32, fontSize: 13 }}>
+          Cargando…
+        </div>
       ) : (
         <div>
-          {lista?.map(logro => <LogroRow key={logro.id} logro={logro} />)}
+          {lista.map(logro => <LogroRow key={logro.id} logro={logro} />)}
         </div>
       )}
     </div>

@@ -6,8 +6,8 @@ import pytest
 from sqlmodel import Session
 
 from app.logic_logros import calcular_logros, CATALOGO
-from app.models import Partida, PartidaJugador, Turno, Falta
-from tests.conftest import get_jugador, crear_partida
+from app.models import Partida, PartidaJugador, Turno
+from tests.conftest import get_jugador
 
 
 def _get_logro(logros, logro_id):
