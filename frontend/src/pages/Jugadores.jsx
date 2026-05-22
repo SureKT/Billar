@@ -637,7 +637,7 @@ function JugadorCard({ j, onReload, todosStats }) {
             {mostrarLogros && (
               <div style={{ marginTop: 8 }}>
                 {cargandoLogros && (
-                  <div style={{ fontSize: '12px', color: 'var(--text-dim)' }}>Calculando…</div>
+                  <div style={{ fontSize: '12px', color: 'var(--text-dim)' }}>Cargando…</div>
                 )}
                 {logrosJugador?.filter(l => l.desbloqueado).length === 0 && !cargandoLogros && (
                   <p style={{ fontSize: '12px', color: 'var(--text-dim)' }}>Sin logros aún</p>
