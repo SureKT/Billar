@@ -152,6 +152,9 @@ function JugadorCard({ j, onReload, todosStats }) {
   const [mostrarTorneos, setMostrarTorneos] = useState(false)
   const [torneos, setTorneos] = useState(null)
   const [cargandoTorneos, setCargandoTorneos] = useState(false)
+  const [mostrarLogros, setMostrarLogros] = useState(false)
+  const [logrosJugador, setLogrosJugador] = useState(null)
+  const [cargandoLogros, setCargandoLogros] = useState(false)
 
   async function elegirColor(color) {
     const nuevo = j.color === color ? null : color  // tap mismo color → quitar
@@ -189,6 +192,16 @@ function JugadorCard({ j, onReload, todosStats }) {
     try { setTorneos(await api.getTorneosJugador(j.id)) }
     catch { setTorneos([]) }
     finally { setCargandoTorneos(false) }
+  }
+
+  async function toggleLogros() {
+    if (mostrarLogros) { setMostrarLogros(false); return }
+    setMostrarLogros(true)
+    if (logrosJugador !== null) return
+    setCargandoLogros(true)
+    try { setLogrosJugador(await api.getLogrosJugador(j.id)) }
+    catch { setLogrosJugador([]) }
+    finally { setCargandoLogros(false) }
   }
 
   const tienePartidas = j.partidas_jugadas > 0
@@ -599,6 +612,52 @@ function JugadorCard({ j, onReload, todosStats }) {
                     </div>
                   )
                 })}
+              </div>
+            )}
+          </div>
+
+          {/* Logros */}
+          <div style={{ marginTop: 10 }}>
+            <button
+              onClick={toggleLogros}
+              style={{
+                background: 'none', border: 'none', padding: 0, cursor: 'pointer',
+                fontSize: '11px', color: 'var(--text-dim)', fontWeight: 600,
+                textTransform: 'uppercase', letterSpacing: '.04em',
+                display: 'flex', alignItems: 'center', gap: 4,
+              }}
+            >
+              {mostrarLogros ? '▲' : '▼'} Logros
+              {logrosJugador && (
+                <span style={{ marginLeft: 4, color: '#06b6d4' }}>
+                  {logrosJugador.filter(l => l.desbloqueado).length}/{logrosJugador.length}
+                </span>
+              )}
+            </button>
+            {mostrarLogros && (
+              <div style={{ marginTop: 8 }}>
+                {cargandoLogros && (
+                  <div style={{ fontSize: '12px', color: 'var(--text-dim)' }}>Calculando…</div>
+                )}
+                {logrosJugador?.filter(l => l.desbloqueado).length === 0 && !cargandoLogros && (
+                  <p style={{ fontSize: '12px', color: 'var(--text-dim)' }}>Sin logros aún</p>
+                )}
+                {logrosJugador?.filter(l => l.desbloqueado).map(l => (
+                  <div key={l.id} style={{
+                    display: 'flex', alignItems: 'center', gap: 8,
+                    padding: '5px 0', borderBottom: '1px solid var(--border)',
+                  }}>
+                    <span style={{ fontSize: 15, flexShrink: 0 }}>{l.icono}</span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text)' }}>{l.nombre}</div>
+                      {l.nivel_actual && (
+                        <div style={{ fontSize: 10, color: '#06b6d4', marginTop: 1 }}>
+                          Nivel: {l.nivel_actual}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
           </div>

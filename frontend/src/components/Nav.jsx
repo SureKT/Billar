@@ -100,6 +100,10 @@ export default function Nav() {
         <span style={iconStyle()}>👤</span>
         <span style={textStyle}>Jugadores</span>
       </NavLink>
+      <NavLink to="/logros" style={({ isActive }) => linkBase(isActive)}>
+        <span style={iconStyle()}>🏅</span>
+        <span style={textStyle}>Logros</span>
+      </NavLink>
     </nav>
   )
 }
