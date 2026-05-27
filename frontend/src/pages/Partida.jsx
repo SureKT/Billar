@@ -6,6 +6,7 @@ import BolasEquipo from '../components/partida/BolasEquipo'
 import ResultadoBanner from '../components/partida/ResultadoBanner'
 import FormularioTurno from '../components/partida/FormularioTurno'
 import HistorialTurnos from '../components/partida/HistorialTurnos'
+import { showToast } from '../utils/toast'
 
 export default function Partida() {
   const { id } = useParams()
@@ -25,6 +26,7 @@ export default function Partida() {
   const [guardandoTiempos, setGuardandoTiempos] = useState(false)
   const [duracionActiva, setDuracionActiva] = useState('')
   const wakeLockRef = useRef(null)
+  const logrosSnapshotRef = useRef(null) // { [jugador_id]: LogroEstado[] }
 
   // ── Cronómetro partida activa ─────────────────────────────────────────────────
   useEffect(() => {
@@ -95,6 +97,17 @@ export default function Partida() {
     return () => window.removeEventListener('beforeunload', onBeforeUnload)
   }, [bolas.length])
 
+  // ── Snapshot de logros al arrancar partida en curso ───────────────────────────
+  useEffect(() => {
+    if (!partida || partida.estado !== 'en_curso' || logrosSnapshotRef.current) return
+    const ids = [...partida.equipo1_jugadores, ...partida.equipo2_jugadores]
+    Promise.all(ids.map(jid => api.getLogrosJugador(jid)))
+      .then(results => {
+        logrosSnapshotRef.current = Object.fromEntries(ids.map((jid, i) => [jid, results[i]]))
+      })
+      .catch(() => {})
+  }, [partida?.id, partida?.estado])
+
   // ── Guards ────────────────────────────────────────────────────────────────────
   if (loading) return <div className="spinner" />
   if (!partida) return <p style={{ color: 'var(--team2)' }}>Partida no encontrada</p>
@@ -127,6 +140,46 @@ export default function Partida() {
     navigate('/')
   }
 
+  function detectarNuevosLogros(antes, despues) {
+    const nuevos = []
+    for (const logro of despues) {
+      if (!logro.desbloqueado) continue
+      const prevLogro = antes.find(l => l.id === logro.id)
+      if (!prevLogro) continue
+      if (logro.niveles_desbloqueados.length > 0) {
+        const prevNiveles = new Set(prevLogro.niveles_desbloqueados ?? [])
+        for (const nivel of logro.niveles_desbloqueados) {
+          if (!prevNiveles.has(nivel)) nuevos.push({ ...logro, nivel_nuevo: nivel })
+        }
+      } else {
+        if (!prevLogro.desbloqueado) nuevos.push(logro)
+      }
+    }
+    return nuevos
+  }
+
+  async function checkNuevosLogros() {
+    if (!logrosSnapshotRef.current) return
+    const ids = [...partida.equipo1_jugadores, ...partida.equipo2_jugadores]
+    try {
+      const results = await Promise.all(ids.map(jid => api.getLogrosJugador(jid)))
+      for (let i = 0; i < ids.length; i++) {
+        const jid = ids[i]
+        const nuevos = detectarNuevosLogros(logrosSnapshotRef.current[jid] ?? [], results[i])
+        const jugNombre = jugadores.find(j => j.id === jid)?.nombre ?? `#${jid}`
+        for (const logro of nuevos) {
+          const nivelLabel = logro.nivel_nuevo
+            ? logro.nivel_nuevo.charAt(0).toUpperCase() + logro.nivel_nuevo.slice(1)
+            : null
+          showToast({ quien: jugNombre, emoji: logro.emoji, nombre: logro.nombre, nivel: nivelLabel }, 'logro', 5000)
+        }
+        logrosSnapshotRef.current[jid] = results[i]
+      }
+    } catch {
+      // fallo silencioso — los toasts de logros no son críticos
+    }
+  }
+
   async function registrar() {
     setRegistrando(true)
     setFlash(null)
@@ -150,6 +203,7 @@ export default function Partida() {
       setFaltasIds(new Set())
       setFaltasAutoIds(new Set())
       await reload()
+      await checkNuevosLogros()
     } catch (err) {
       setFlash({ texto: err.message, tipo: 'error' })
     } finally {
