@@ -204,10 +204,20 @@ export default function Partida() {
         const nuevos = detectarNuevosLogros(logrosSnapshotRef.current[jid] ?? [], results[i])
         const jugNombre = jugadores.find(j => j.id === jid)?.nombre ?? `#${jid}`
         for (const logro of nuevos) {
-          const nivelLabel = logro.nivel_nuevo
-            ? logro.nivel_nuevo.charAt(0).toUpperCase() + logro.nivel_nuevo.slice(1)
+          const nivelObj = logro.nivel_nuevo
+            ? (logro.niveles?.find(n => n.nivel === logro.nivel_nuevo) ?? null)
             : null
-          showToast({ quien: jugNombre, emoji: logro.icono, nombre: logro.nombre, nivel: nivelLabel, descripcion: logro.descripcion }, 'logro', 5000)
+          const nivelLabel = nivelObj
+            ? `${nivelObj.emoji} ${nivelObj.nivel.charAt(0).toUpperCase() + nivelObj.nivel.slice(1)}`
+            : null
+          showToast({
+            quien: jugNombre,
+            emoji: logro.icono,
+            nombre: logro.nombre,
+            nivel: nivelLabel,
+            umbral: nivelObj?.umbral ?? null,
+            descripcion: logro.descripcion,
+          }, 'logro', 5000)
         }
         logrosSnapshotRef.current[jid] = results[i]
       }

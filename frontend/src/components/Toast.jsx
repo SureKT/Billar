@@ -40,11 +40,24 @@ export default function ToastContainer() {
                   {t.msg.quien} desbloqueó
                 </div>
                 <div style={{ fontSize: 14, fontWeight: 700 }}>{t.msg.nombre}</div>
-                {t.msg.nivel && (
-                  <div style={{ fontSize: 11, color: '#d8b4fe' }}>{t.msg.nivel}</div>
+                {(t.msg.nivel || t.msg.umbral) && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
+                    {t.msg.nivel && (
+                      <span style={{
+                        fontSize: 10, fontWeight: 700, padding: '1px 7px', borderRadius: 8,
+                        background: 'rgba(168,85,247,.3)', color: '#e9d5ff',
+                        border: '1px solid rgba(168,85,247,.5)',
+                      }}>{t.msg.nivel}</span>
+                    )}
+                    {t.msg.umbral != null && (
+                      <span style={{ fontSize: 11, color: '#d8b4fe', fontWeight: 700 }}>
+                        {t.msg.umbral.toLocaleString()}
+                      </span>
+                    )}
+                  </div>
                 )}
                 {t.msg.descripcion && (
-                  <div style={{ fontSize: 11, color: 'rgba(255,255,255,.55)', marginTop: 2, fontWeight: 400 }}>{t.msg.descripcion}</div>
+                  <div style={{ fontSize: 11, color: 'rgba(255,255,255,.55)', marginTop: 3, fontWeight: 400 }}>{t.msg.descripcion}</div>
                 )}
               </div>
             </div>
