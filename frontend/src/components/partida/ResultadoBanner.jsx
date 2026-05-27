@@ -49,6 +49,7 @@ function MiniBar({ value, max, color }) {
 
 export default function ResultadoBanner({ partida, turnos, jugadores, onRevancha, onRepetir, torneoId, logrosPartida }) {
   const [sharing, setSharing] = useState(false)
+  const [logrosAbierto, setLogrosAbierto] = useState(true)
   // Derivar estadísticas por jugador
   const bolasXJugador  = {}
   const faltasXJugador = {}
@@ -171,13 +172,20 @@ export default function ResultadoBanner({ partida, turnos, jugadores, onRevancha
           border: '1px solid rgba(168,85,247,.3)',
           borderRadius: 10, padding: '12px 14px',
         }}>
-          <p style={{
-            fontSize: 11, textTransform: 'uppercase', letterSpacing: '.06em',
-            color: '#c4b5fd', marginBottom: 10, fontWeight: 700,
-          }}>
-            🏅 Logros desbloqueados
-          </p>
-          {logrosPartida.map(logro => {
+          <button
+            onClick={() => setLogrosAbierto(o => !o)}
+            style={{
+              width: '100%', background: 'none', border: 'none', padding: 0,
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              cursor: 'pointer', marginBottom: logrosAbierto ? 10 : 0,
+            }}
+          >
+            <span style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '.06em', color: '#c4b5fd', fontWeight: 700 }}>
+              🏅 Logros desbloqueados · {logrosPartida.length}
+            </span>
+            <span style={{ fontSize: 12, color: '#c4b5fd' }}>{logrosAbierto ? '▲' : '▼'}</span>
+          </button>
+          {logrosAbierto && logrosPartida.map(logro => {
             const tieneNiveles = logro.niveles?.length > 0
             const nd = logro.niveles_desbloqueados ?? []
             const nivelesOrdenados = tieneNiveles
@@ -197,6 +205,11 @@ export default function ResultadoBanner({ partida, turnos, jugadores, onRevancha
                   <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 1 }}>
                     {nombre(logro.jugador_id, jugadores)}
                   </div>
+                  {logro.descripcion && (
+                    <div style={{ fontSize: 11, color: 'rgba(148,163,184,.7)', marginTop: 3, fontStyle: 'italic' }}>
+                      {logro.descripcion}
+                    </div>
+                  )}
                   {tieneNiveles && (
                     <>
                       <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginTop: 6 }}>
