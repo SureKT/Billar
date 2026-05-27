@@ -174,7 +174,7 @@ export default function ResultadoBanner({ partida, turnos, jugadores, onRevancha
               padding: '6px 0', borderBottom: '1px solid rgba(255,255,255,.05)',
             }}>
               <span style={{ fontSize: 18, width: 28, textAlign: 'center', flexShrink: 0 }}>
-                {logro.emoji}
+                {logro.icono}
               </span>
               <div style={{ flex: 1 }}>
                 <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>{logro.nombre}</div>
