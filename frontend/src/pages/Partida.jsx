@@ -266,6 +266,15 @@ export default function Partida() {
       setFaltasIds(new Set())
       setFaltasAutoIds(new Set())
       await reload()
+      // Refresh snapshot post-undo so re-earned logros disparan toast correctamente
+      if (logrosSnapshotRef.current) {
+        const pids = [...partida.equipo1_jugadores, ...partida.equipo2_jugadores]
+        Promise.all(pids.map(jid => api.getLogrosJugador(jid)))
+          .then(results => {
+            logrosSnapshotRef.current = Object.fromEntries(pids.map((jid, i) => [jid, results[i]]))
+          })
+          .catch(() => {})
+      }
     } catch (err) {
       setFlash({ texto: err.message, tipo: 'error' })
     }
