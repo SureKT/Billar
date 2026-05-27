@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mockup — Tabla Estadísticas</title>
+<style>
+  :root {
+    --bg: #0f1117; --surface: #1a1d27; --surface2: #22263a;
+    --border: rgba(255,255,255,.08); --text: #f1f5f9;
+    --text-dim: #64748b; --accent: #e11d48;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: -apple-system, sans-serif; padding: 16px; max-width: 480px; }
+
+  h2 { font-size: 20px; margin-bottom: 4px; }
+  .filtros { display: flex; gap: 4px; margin-bottom: 12px; }
+  .chip { padding: 5px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; border: 1px solid var(--border); background: var(--surface2); color: var(--text-dim); cursor: pointer; }
+  .chip.active { border-color: var(--accent); background: rgba(225,29,72,.12); color: var(--accent); }
+
+  /* Tabla con scroll horizontal */
+  .tabla-wrap { background: var(--surface); border-radius: 12px; overflow: hidden; }
+  .tabla-container { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  table { width: max-content; min-width: 100%; border-collapse: collapse; }
+
+  /* Columna nombre fija */
+  th, td { padding: 0; white-space: nowrap; }
+  th:first-child, td:first-child {
+    position: sticky; left: 0; z-index: 2;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    min-width: 110px;
+  }
+  td:first-child { background: var(--surface); }
+
+  /* Cabecera */
+  thead th {
+    padding: 10px 10px 8px;
+    font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em;
+    color: var(--text-dim); cursor: pointer; user-select: none;
+    border-bottom: 1px solid var(--border);
+    text-align: center;
+  }
+  thead th:first-child { text-align: left; padding-left: 14px; }
+  thead th.sorted { color: var(--accent); }
+  thead th .sort-arrow { margin-left: 2px; font-size: 9px; }
+
+  /* Filas */
+  tbody tr { border-bottom: 1px solid var(--border); }
+  tbody tr:last-child { border-bottom: none; }
+  tbody tr.top1 { background: rgba(250,204,21,.04); }
+  tbody td { padding: 10px 10px; font-size: 13px; text-align: center; }
+  tbody td:first-child { text-align: left; padding-left: 14px; }
+
+  .jugador-cell { display: flex; align-items: center; gap: 7px; }
+  .pos { font-size: 14px; width: 20px; text-align: center; flex-shrink: 0; }
+  .pos-num { font-size: 11px; color: var(--text-dim); font-weight: 700; }
+  .nombre { font-size: 14px; font-weight: 700; }
+  .nombre.top1 { color: #fcd34d; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+
+  /* Win% cell */
+  .winrate-cell { display: flex; align-items: center; gap: 5px; min-width: 80px; }
+  .winbar { flex: 1; height: 5px; border-radius: 3px; background: rgba(255,255,255,.08); overflow: hidden; }
+  .winbar-fill { height: 100%; border-radius: 3px; }
+  .winpct { font-size: 12px; font-weight: 700; min-width: 30px; text-align: right; }
+
+  /* Racha */
+  .racha-pos { color: #86efac; font-weight: 700; }
+  .racha-neg { color: #fca5a5; font-weight: 700; }
+
+  /* Notas */
+  .nota { font-size: 10px; color: var(--text-dim); margin-top: 4px; }
+
+  .seccion-label {
+    padding: 8px 14px 6px;
+    font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em;
+    color: var(--text-dim); border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .scroll-hint { font-size: 10px; color: var(--text-dim); font-style: italic; }
+</style>
+</head>
+<body>
+
+<h2 style="margin-bottom:8px">Estadísticas</h2>
+
+<div class="filtros">
+  <button class="chip active">Todas</button>
+  <button class="chip">Bola 8</button>
+  <button class="chip">Bola 9</button>
+</div>
+
+<!-- Tabla comparativa -->
+<div class="tabla-wrap">
+  <div class="seccion-label">
+    <span>Ranking comparativo</span>
+    <span class="scroll-hint">← desliza →</span>
+  </div>
+  <div class="tabla-container">
+    <table>
+      <thead>
+        <tr>
+          <th style="text-align:left">Jugador</th>
+          <th>PJ</th>
+          <th class="sorted">Win% <span class="sort-arrow">↓</span></th>
+          <th>Bolas</th>
+          <th>B/T</th>
+          <th>B/P</th>
+          <th>Break%</th>
+          <th>Racha</th>
+          <th>F/P</th>
+        </tr>
+      </thead>
+      <tbody>
+        <!-- Pos 1 -->
+        <tr class="top1">
+          <td>
+            <div class="jugador-cell">
+              <span class="pos">🥇</span>
+              <span class="dot" style="background:#3b82f6"></span>
+              <span class="nombre top1">Gerard</span>
+            </div>
+          </td>
+          <td>24</td>
+          <td>
+            <div class="winrate-cell">
+              <div class="winbar"><div class="winbar-fill" style="width:71%;background:#4ade80"></div></div>
+              <span class="winpct" style="color:#4ade80">71%</span>
+            </div>
+          </td>
+          <td>187</td>
+          <td>0.82</td>
+          <td>7.8</td>
+          <td>68%</td>
+          <td><span class="racha-pos">▲3</span></td>
+          <td>0.9</td>
+        </tr>
+        <!-- Pos 2 -->
+        <tr>
+          <td>
+            <div class="jugador-cell">
+              <span class="pos">🥈</span>
+              <span class="dot" style="background:#ef4444"></span>
+              <span class="nombre">Marcos</span>
+            </div>
+          </td>
+          <td>22</td>
+          <td>
+            <div class="winrate-cell">
+              <div class="winbar"><div class="winbar-fill" style="width:59%;background:#fbbf24"></div></div>
+              <span class="winpct" style="color:#fbbf24">59%</span>
+            </div>
+          </td>
+          <td>163</td>
+          <td>0.74</td>
+          <td>7.1</td>
+          <td>55%</td>
+          <td><span class="racha-neg">▼1</span></td>
+          <td>1.3</td>
+        </tr>
+        <!-- Pos 3 -->
+        <tr>
+          <td>
+            <div class="jugador-cell">
+              <span class="pos">🥉</span>
+              <span class="dot" style="background:#22c55e"></span>
+              <span class="nombre">Àlex</span>
+            </div>
+          </td>
+          <td>19</td>
+          <td>
+            <div class="winrate-cell">
+              <div class="winbar"><div class="winbar-fill" style="width:53%;background:#fbbf24"></div></div>
+              <span class="winpct" style="color:#fbbf24">53%</span>
+            </div>
+          </td>
+          <td>141</td>
+          <td>0.71</td>
+          <td>6.4</td>
+          <td>48%</td>
+          <td><span class="racha-pos">▲2</span></td>
+          <td>1.1</td>
+        </tr>
+        <!-- Pos 4 -->
+        <tr>
+          <td>
+            <div class="jugador-cell">
+              <span class="pos"><span class="pos-num">4</span></span>
+              <span class="dot" style="background:#a855f7"></span>
+              <span class="nombre">Dani</span>
+            </div>
+          </td>
+          <td>18</td>
+          <td>
+            <div class="winrate-cell">
+              <div class="winbar"><div class="winbar-fill" style="width:44%;background:#f87171"></div></div>
+              <span class="winpct" style="color:#f87171">44%</span>
+            </div>
+          </td>
+          <td>98</td>
+          <td>0.58</td>
+          <td>5.1</td>
+          <td>40%</td>
+          <td style="color:var(--text-dim)">—</td>
+          <td>1.8</td>
+        </tr>
+        <!-- Pos 5 -->
+        <tr>
+          <td>
+            <div class="jugador-cell">
+              <span class="pos"><span class="pos-num">5</span></span>
+              <span class="dot" style="background:#f59e0b"></span>
+              <span class="nombre">Pau</span>
+            </div>
+          </td>
+          <td>15</td>
+          <td>
+            <div class="winrate-cell">
+              <div class="winbar"><div class="winbar-fill" style="width:33%;background:#f87171"></div></div>
+              <span class="winpct" style="color:#f87171">33%</span>
+            </div>
+          </td>
+          <td>79</td>
+          <td>0.51</td>
+          <td>4.8</td>
+          <td>33%</td>
+          <td><span class="racha-neg">▼2</span></td>
+          <td>2.1</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <div style="padding:8px 14px;border-top:1px solid var(--border)">
+    <p class="nota">Tap en cabecera para ordenar · PJ=partidas jugadas · B/T=bolas/turno · B/P=bolas/partida · Break%=breaks con bola · F/P=faltas/partida</p>
+  </div>
+</div>
+
+<br>
+<p style="font-size:11px;color:var(--text-dim)">
+  Mockup estático — el sort y el color de racha serán interactivos en la implementación.<br>
+  La columna "Jugador" quedará fija al hacer scroll horizontal.
+</p>
+
+</body>
+</html>
