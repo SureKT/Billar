@@ -106,11 +106,40 @@ export default function Partida() {
   useEffect(() => {
     if (!partida || partida.estado !== 'en_curso' || logrosSnapshotRef.current) return
     const ids = [...partida.equipo1_jugadores, ...partida.equipo2_jugadores]
+    const pid = parseInt(id)
+    const isNueva = turnos.length === 0
     Promise.all(ids.map(jid => api.getLogrosJugador(jid)))
       .then(results => {
         logrosSnapshotRef.current = Object.fromEntries(ids.map((jid, i) => [jid, results[i]]))
+        // Logros desbloqueados al crear la partida (p.ej. "Primera partida", "Noctámbulo")
+        if (isNueva) {
+          for (let i = 0; i < ids.length; i++) {
+            const jid = ids[i]
+            const jugNombre = jugadores.find(j => j.id === jid)?.nombre ?? `#${jid}`
+            for (const logro of results[i]) {
+              if (logro.desbloqueado && logro.partida_id === pid) {
+                showToast({ quien: jugNombre, emoji: logro.icono, nombre: logro.nombre, descripcion: logro.descripcion }, 'logro', 5000)
+              }
+              if (logro.niveles_partida_id) {
+                for (const [nivel, npid] of Object.entries(logro.niveles_partida_id)) {
+                  if (npid === pid) {
+                    const nivelObj = logro.niveles?.find(n => n.nivel === nivel) ?? null
+                    const nivelLabel = nivelObj
+                      ? `${nivelObj.emoji} ${nivelObj.nivel.charAt(0).toUpperCase() + nivelObj.nivel.slice(1)}`
+                      : null
+                    showToast({
+                      quien: jugNombre, emoji: logro.icono, nombre: logro.nombre,
+                      nivel: nivelLabel, umbral: nivelObj?.umbral ?? null, descripcion: logro.descripcion,
+                    }, 'logro', 5000)
+                  }
+                }
+              }
+            }
+          }
+        }
       })
       .catch(() => {})
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [partida?.id, partida?.estado])
 
   // ── Logros desbloqueados en esta partida (para ResultadoBanner) ───────────────
