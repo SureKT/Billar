@@ -377,7 +377,7 @@ export default function Estadisticas() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--gap)' }}>
       <div style={{
         position: 'sticky', top: 'var(--nav-height)', zIndex: 50,
-        background: 'var(--bg)', padding: '10px 16px 6px', margin: '0 -16px',
+        background: 'var(--bg)', padding: '14px 16px 6px', margin: '0 -16px',
         display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap',
       }}>
         <h2 style={{ fontSize: '20px', margin: 0, flexShrink: 0 }}>Estadísticas</h2>
