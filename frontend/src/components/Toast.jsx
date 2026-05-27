@@ -43,6 +43,9 @@ export default function ToastContainer() {
                 {t.msg.nivel && (
                   <div style={{ fontSize: 11, color: '#d8b4fe' }}>{t.msg.nivel}</div>
                 )}
+                {t.msg.descripcion && (
+                  <div style={{ fontSize: 11, color: 'rgba(255,255,255,.55)', marginTop: 2, fontWeight: 400 }}>{t.msg.descripcion}</div>
+                )}
               </div>
             </div>
           ) : (

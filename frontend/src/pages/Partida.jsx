@@ -207,7 +207,7 @@ export default function Partida() {
           const nivelLabel = logro.nivel_nuevo
             ? logro.nivel_nuevo.charAt(0).toUpperCase() + logro.nivel_nuevo.slice(1)
             : null
-          showToast({ quien: jugNombre, emoji: logro.icono, nombre: logro.nombre, nivel: nivelLabel }, 'logro', 5000)
+          showToast({ quien: jugNombre, emoji: logro.icono, nombre: logro.nombre, nivel: nivelLabel, descripcion: logro.descripcion }, 'logro', 5000)
         }
         logrosSnapshotRef.current[jid] = results[i]
       }
