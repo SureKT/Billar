@@ -38,7 +38,7 @@ function MiniBar({ value, max, color }) {
   )
 }
 
-export default function ResultadoBanner({ partida, turnos, jugadores, onRevancha, onRepetir, torneoId }) {
+export default function ResultadoBanner({ partida, turnos, jugadores, onRevancha, onRepetir, torneoId, logrosPartida }) {
   const [sharing, setSharing] = useState(false)
   // Derivar estadísticas por jugador
   const bolasXJugador  = {}
@@ -154,6 +154,46 @@ export default function ResultadoBanner({ partida, turnos, jugadores, onRevancha
             )
           })}
       </div>
+
+      {/* ── Logros desbloqueados en esta partida ── */}
+      {logrosPartida?.length > 0 && (
+        <div style={{
+          background: 'rgba(88,28,135,.15)',
+          border: '1px solid rgba(168,85,247,.3)',
+          borderRadius: 10, padding: '12px 14px',
+        }}>
+          <p style={{
+            fontSize: 11, textTransform: 'uppercase', letterSpacing: '.06em',
+            color: '#c4b5fd', marginBottom: 10, fontWeight: 700,
+          }}>
+            🏅 Logros desbloqueados
+          </p>
+          {logrosPartida.map(logro => (
+            <div key={`${logro.jugador_id}-${logro.id}`} style={{
+              display: 'flex', alignItems: 'center', gap: 10,
+              padding: '6px 0', borderBottom: '1px solid rgba(255,255,255,.05)',
+            }}>
+              <span style={{ fontSize: 18, width: 28, textAlign: 'center', flexShrink: 0 }}>
+                {logro.emoji}
+              </span>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>{logro.nombre}</div>
+                <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 1 }}>
+                  {nombre(logro.jugador_id, jugadores)}
+                </div>
+              </div>
+              {logro.nivel_actual && (
+                <span style={{
+                  fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 4,
+                  background: 'rgba(168,85,247,.2)', color: '#c4b5fd', flexShrink: 0,
+                }}>
+                  {logro.nivel_actual}
+                </span>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* ── Botones ── */}
       {!torneoId ? (

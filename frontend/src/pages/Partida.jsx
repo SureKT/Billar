@@ -25,6 +25,7 @@ export default function Partida() {
   const [fechaFinEdit, setFechaFinEdit] = useState('')
   const [guardandoTiempos, setGuardandoTiempos] = useState(false)
   const [duracionActiva, setDuracionActiva] = useState('')
+  const [logrosPartida, setLogrosPartida] = useState(null)
   const wakeLockRef = useRef(null)
   const logrosSnapshotRef = useRef(null) // { [jugador_id]: LogroEstado[] }
 
@@ -111,6 +112,25 @@ export default function Partida() {
       })
       .catch(() => {})
   }, [partida?.id, partida?.estado])
+
+  // ── Logros desbloqueados en esta partida (para ResultadoBanner) ───────────────
+  useEffect(() => {
+    if (!partida || partida.estado !== 'finalizada') return
+    const ids = [...partida.equipo1_jugadores, ...partida.equipo2_jugadores]
+    Promise.all(ids.map(jid => api.getLogrosJugador(jid)))
+      .then(results => {
+        const encontrados = []
+        ids.forEach((jid, i) => {
+          for (const logro of results[i]) {
+            if (logro.desbloqueado && logro.partida_id === parseInt(id)) {
+              encontrados.push({ jugador_id: jid, ...logro })
+            }
+          }
+        })
+        setLogrosPartida(encontrados)
+      })
+      .catch(() => setLogrosPartida([]))
+  }, [partida?.estado, partida?.id])
 
   // ── Guards ────────────────────────────────────────────────────────────────────
   if (loading) return <div className="spinner" />
@@ -373,6 +393,7 @@ export default function Partida() {
             onRevancha={revancha}
             onRepetir={repetir}
             torneoId={partida.torneo_id}
+            logrosPartida={logrosPartida}
           />
           {partida.torneo_id && (
             <button
