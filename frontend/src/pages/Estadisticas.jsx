@@ -224,25 +224,22 @@ function RecordCard({ emoji, titulo, nombre, valor, partidaId, partidaNumero, on
       )}
     </>
   )
+  const sharedStyle = {
+    background: 'var(--surface2)', borderRadius: 10, padding: '10px 12px',
+    display: 'flex', alignItems: 'center', gap: 10, width: '100%',
+  }
   if (partidaId != null) {
     return (
       <button onClick={() => onNavigate(partidaId)} style={{
-        background: 'var(--surface2)', borderRadius: 10, padding: '10px 12px',
-        display: 'flex', alignItems: 'center', gap: 10,
-        width: '100%', border: 'none', cursor: 'pointer', textAlign: 'left',
+        ...sharedStyle,
+        border: 'none', cursor: 'pointer', textAlign: 'left',
+        font: 'inherit', lineHeight: 'inherit',
       }}>
         {inner}
       </button>
     )
   }
-  return (
-    <div style={{
-      background: 'var(--surface2)', borderRadius: 10, padding: '10px 12px',
-      display: 'flex', alignItems: 'center', gap: 10,
-    }}>
-      {inner}
-    </div>
-  )
+  return <div style={sharedStyle}>{inner}</div>
 }
 
 function SeccionTitulo({ children }) {
