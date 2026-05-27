@@ -25,6 +25,7 @@ class LogroCatalogo(BaseModel):
     descripcion: str
     icono: str
     niveles: list[NivelLogro]
+    modalidad: Optional[str] = None  # None = ambas, "bola8", "bola9"
 
 
 class LogroEstado(LogroCatalogo):
@@ -112,27 +113,27 @@ CATALOGO: list[LogroCatalogo] = [
     LogroCatalogo(id="crack",            nombre="Crack",            descripcion="Victorias totales",                                               icono="🥊", niveles=NIVELES_CRACK),
     LogroCatalogo(id="en_racha",         nombre="En racha",         descripcion="Victorias consecutivas",                                          icono="🔥", niveles=NIVELES_RACHA),
     LogroCatalogo(id="artillero",        nombre="Artillero",        descripcion="Bolas metidas en total",                                          icono="🎳", niveles=NIVELES_ARTILLERO),
-    LogroCatalogo(id="limpio",           nombre="Limpio",           descripcion="Ganar una partida de Bola 8 sin ninguna falta",                   icono="🧼", niveles=[]),
-    LogroCatalogo(id="golden_break",     nombre="Golden Break",     descripcion="Ganar metiendo la 9 en el saque",                                icono="💥", niveles=[]),
+    LogroCatalogo(id="limpio",           nombre="Limpio",           descripcion="Ganar una partida de Bola 8 sin ninguna falta",                   icono="🧼", niveles=[],             modalidad="bola8"),
+    LogroCatalogo(id="golden_break",     nombre="Golden Break",     descripcion="Ganar metiendo la 9 en el saque",                                icono="💥", niveles=[],             modalidad="bola9"),
     LogroCatalogo(id="relampago",        nombre="Relámpago",        descripcion="Ganar en menos de 5 minutos",                                    icono="⚡", niveles=[]),
     LogroCatalogo(id="tirador",          nombre="Tirador",          descripcion="Promedio ≥1.5 bolas/turno en una partida ganada",                icono="🎯", niveles=[]),
     LogroCatalogo(id="campeon",          nombre="Campeón",          descripcion="Ganar un torneo",                                                icono="🥇", niveles=[]),
     LogroCatalogo(id="tricampeon",       nombre="Tricampeón",       descripcion="Ganar 3 torneos",                                                icono="👑", niveles=[]),
     LogroCatalogo(id="torpon",           nombre="Torpón",           descripcion="Perder una partida por tres faltas consecutivas del equipo",      icono="🤦", niveles=[]),
-    LogroCatalogo(id="nervios",          nombre="Nervios",          descripcion="Perder metiendo la 8 antes de tiempo",                           icono="😬", niveles=[]),
+    LogroCatalogo(id="nervios",          nombre="Nervios",          descripcion="Perder metiendo la 8 antes de tiempo",                           icono="😬", niveles=[],             modalidad="bola8"),
     LogroCatalogo(id="polivalente",      nombre="Polivalente",      descripcion="Ganar ≥1 Bola 8 y ≥1 Bola 9",                                  icono="🎭", niveles=[]),
     LogroCatalogo(id="verdugo",          nombre="Verdugo",          descripcion="Ganar 3 veces seguidas contra el mismo rival",                  icono="😈", niveles=[]),
     LogroCatalogo(id="maratoniano",      nombre="Maratoniano",      descripcion="Jugar una partida de más de 30 minutos",                        icono="⏱",  niveles=[]),
     LogroCatalogo(id="intocable",        nombre="Intocable",        descripcion="5 victorias acumuladas sin ninguna falta",                      icono="🎖️", niveles=[]),
     LogroCatalogo(id="noctambulo",       nombre="Noctámbulo",       descripcion="Partida registrada entre las 00:00 y las 02:00",                icono="🌙", niveles=[]),
     LogroCatalogo(id="madrugador",       nombre="Madrugador",       descripcion="Partida registrada entre las 06:00 y las 09:00",                icono="🌅", niveles=[]),
-    LogroCatalogo(id="barrida",          nombre="Barrida",          descripcion="Ganar sin que el rival meta ninguna bola de su grupo (Bola 8)", icono="🧹", niveles=[]),
+    LogroCatalogo(id="barrida",          nombre="Barrida",          descripcion="Ganar sin que el rival meta ninguna bola de su grupo (Bola 8)", icono="🧹", niveles=[],             modalidad="bola8"),
     LogroCatalogo(id="sesion_perfecta",  nombre="Sesión perfecta",  descripcion="Ganar 3 partidas en el mismo día",                             icono="📅", niveles=[]),
     LogroCatalogo(id="revancha",         nombre="Revancha",         descripcion="Ganar inmediatamente después de perder contra el mismo rival",  icono="🔄", niveles=[]),
-    LogroCatalogo(id="blue_balls",       nombre="Blue balls",       descripcion="Ambos grupos vaciados y la 8 sin meterse en 3+ turnos seguidos",icono="🔵", niveles=[]),
-    LogroCatalogo(id="woke",             nombre="Woke",             descripcion="Meter todas tus bolas en el orden de los colores del arcoíris (Bola 8)", icono="🏳️‍🌈", niveles=[]),
-    LogroCatalogo(id="remontada",        nombre="Remontada",        descripcion="Ganar en Bola 8 cuando el rival ya no tiene bolas de grupo y tú tienes 4 o más", icono="💪", niveles=[]),
-    LogroCatalogo(id="ubicate",          nombre="Ubícate",          descripcion="Meter bolas del rival en tus propios turnos (Bola 8) — máx. en una partida", icono="🙈", niveles=NIVELES_UBICATE),
+    LogroCatalogo(id="blue_balls",       nombre="Blue balls",       descripcion="Ambos grupos vaciados y la 8 sin meterse en 3+ turnos seguidos",icono="🔵", niveles=[],             modalidad="bola8"),
+    LogroCatalogo(id="woke",             nombre="Woke",             descripcion="Meter todas tus bolas en el orden de los colores del arcoíris (Bola 8)", icono="🏳️‍🌈", niveles=[],  modalidad="bola8"),
+    LogroCatalogo(id="remontada",        nombre="Remontada",        descripcion="Ganar en Bola 8 cuando el rival ya no tiene bolas de grupo y tú tienes 4 o más", icono="💪", niveles=[], modalidad="bola8"),
+    LogroCatalogo(id="ubicate",          nombre="Ubícate",          descripcion="Meter bolas del rival en tus propios turnos (Bola 8) — máx. en una partida", icono="🙈", niveles=NIVELES_UBICATE, modalidad="bola8"),
     LogroCatalogo(id="destructor",       nombre="Destructor",       descripcion="Bolas metidas en el saque — máx. en un saque",                 icono="💣", niveles=NIVELES_DESTRUCTOR),
 ]
 

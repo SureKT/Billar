@@ -264,6 +264,7 @@ export default function Logros() {
   const [cargandoGlobal, setCargandoGlobal] = useState(true)
   const [sortKey, setSortKey] = useSessionState('logros_sort_key', 'rareza')
   const [sortDir, setSortDir] = useSessionState('logros_sort_dir', 'desc')
+  const [filtroMod, setFiltroMod] = useSessionState('logros_filtro_mod', 'todas')
 
   // Cargar datos globales al montar (necesarios para orden por rareza en ambas vistas)
   useEffect(() => {
@@ -296,14 +297,16 @@ export default function Logros() {
   // Global ordenado por rareza con dirección
   const sortedGlobal = useMemo(() => {
     if (!globalData) return null
-    const list = [...globalData].sort((a, b) => a.porcentaje - b.porcentaje)
+    const filtered = filtroMod === 'todas' ? globalData : globalData.filter(l => !l.modalidad || l.modalidad === filtroMod)
+    const list = [...filtered].sort((a, b) => a.porcentaje - b.porcentaje)
     return sortDir === 'desc' ? list : list.reverse()
-  }, [globalData, sortDir])
+  }, [globalData, sortDir, filtroMod])
 
   // Logros del jugador con orden configurable
   const sortedLogros = useMemo(() => {
     if (!logros) return null
-    return [...logros].sort((a, b) => {
+    const base = filtroMod === 'todas' ? logros : logros.filter(l => !l.modalidad || l.modalidad === filtroMod)
+    return [...base].sort((a, b) => {
       let va, vb
       if (sortKey === 'rareza') {
         va = rarityMap[a.id] ?? 50
@@ -320,7 +323,7 @@ export default function Logros() {
       }
       return sortDir === 'desc' ? vb - va : va - vb
     })
-  }, [logros, rarityMap, sortKey, sortDir])
+  }, [logros, rarityMap, sortKey, sortDir, filtroMod])
 
   const jugadoresActivos = (jugadores ?? []).filter(j => j.activo)
   const desbloqueados = logros ? logros.filter(l => l.desbloqueado).length : null
@@ -391,6 +394,21 @@ export default function Logros() {
             ))}
           </>
         )}
+        <select
+          value={filtroMod}
+          onChange={e => setFiltroMod(e.target.value)}
+          style={{
+            padding: '4px 8px', borderRadius: 12, fontSize: 11, fontWeight: 700, cursor: 'pointer',
+            background: filtroMod !== 'todas' ? 'rgba(6,182,212,.15)' : 'var(--surface2)',
+            color: filtroMod !== 'todas' ? 'var(--accent)' : 'var(--text-dim)',
+            border: `1px solid ${filtroMod !== 'todas' ? 'rgba(6,182,212,.4)' : 'var(--border)'}`,
+            appearance: 'none', WebkitAppearance: 'none',
+          }}
+        >
+          <option value="todas">Todas</option>
+          <option value="bola8">Bola 8</option>
+          <option value="bola9">Bola 9</option>
+        </select>
         <button onClick={() => setSortDir(d => d === 'desc' ? 'asc' : 'desc')} style={{
           padding: '4px 10px', borderRadius: 12, fontSize: 11, fontWeight: 700, cursor: 'pointer',
           background: 'var(--surface2)', color: 'var(--text-dim)', border: '1px solid var(--border)',
