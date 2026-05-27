@@ -18,6 +18,9 @@ app/static/
 cert.pem
 key.pem
 
+# Superpowers brainstorm sessions
+.superpowers/
+
 # OS
 .DS_Store
 Thumbs.db
