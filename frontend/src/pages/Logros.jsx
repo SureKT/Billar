@@ -374,7 +374,11 @@ export default function Logros() {
       </div>
 
       {/* Controles de orden */}
-      <div style={{ display: 'flex', gap: 6, marginBottom: 12, alignItems: 'center' }}>
+      <div style={{
+        position: 'sticky', top: 'var(--nav-height)', zIndex: 50,
+        background: 'var(--bg)', padding: '14px 16px 8px', margin: '0 -16px',
+        display: 'flex', gap: 6, alignItems: 'center',
+      }}>
         {jugadorId !== null && (
           <>
             {[['rareza', '% global'], ['adquisicion', 'Adquisición']].map(([key, label]) => (

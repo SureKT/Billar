@@ -2,6 +2,7 @@ import { useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useApi } from '../hooks/useApi'
 import { api } from '../api/client'
+import { useSessionState, useSessionSet } from '../hooks/useSessionState'
 import { SkeletonList } from '../components/Skeleton'
 import AvatarJugador from '../components/AvatarJugador'
 
@@ -96,7 +97,7 @@ export default function Inicio() {
   const { data: jugadores } = useApi(api.getJugadores)
   const { data: torneos } = useApi(api.getTorneos)
   const navigate = useNavigate()
-  const [filtroEstado, setFiltroEstado]   = useState('todas')
+  const [filtroEstado, setFiltroEstado]   = useSessionState('inicio_filtro_estado', 'todas')
   const touchStartY = useRef(0)
   const [pullY, setPullY]   = useState(0)
   const [pulling, setPulling] = useState(false)
@@ -117,8 +118,8 @@ export default function Inicio() {
     setPullY(0)
     setPulling(false)
   }
-  const [filtroModal, setFiltroModal]     = useState('todas')
-  const [filtrosJugadores, setFiltrosJugadores] = useState(new Set())
+  const [filtroModal, setFiltroModal]     = useSessionState('inicio_filtro_modal', 'todas')
+  const [filtrosJugadores, setFiltrosJugadores] = useSessionSet('inicio_filtros_jugadores')
   const [panelJugadores, setPanelJugadores]     = useState(false)
   const [colapsadas, setColapsadas]       = useState(new Set())
 
@@ -220,7 +221,7 @@ export default function Inicio() {
         return (
           <div style={{
             position: 'sticky', top: 'var(--nav-height)', zIndex: 50,
-            background: 'var(--bg)', padding: '10px 16px 6px', margin: '0 -16px',
+            background: 'var(--bg)', padding: '14px 16px 6px', margin: '0 -16px',
             display: 'flex', flexDirection: 'column', gap: 6,
           }}>
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
