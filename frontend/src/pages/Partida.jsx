@@ -99,6 +99,10 @@ export default function Partida() {
 
   // ── Snapshot de logros al arrancar partida en curso ───────────────────────────
   useEffect(() => {
+    logrosSnapshotRef.current = null
+  }, [partida?.id])
+
+  useEffect(() => {
     if (!partida || partida.estado !== 'en_curso' || logrosSnapshotRef.current) return
     const ids = [...partida.equipo1_jugadores, ...partida.equipo2_jugadores]
     Promise.all(ids.map(jid => api.getLogrosJugador(jid)))
