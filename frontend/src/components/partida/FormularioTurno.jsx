@@ -126,11 +126,12 @@ export default function FormularioTurno({
           Turno #{numeroTurno}
         </p>
         <div style={{ display: 'flex', justifyContent: 'center' }}>
-          {partida.bola_en_mano && (
-            <span className="badge" style={{ background: '#3d2c00', color: '#fcd34d', fontSize: '11px' }}>
-              Bola en mano
-            </span>
-          )}
+          <span className="badge" style={{
+            background: '#3d2c00', color: '#fcd34d', fontSize: '11px',
+            visibility: partida.bola_en_mano ? 'visible' : 'hidden',
+          }}>
+            Bola en mano
+          </span>
         </div>
         <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
           {siguienteNoRepite && (
