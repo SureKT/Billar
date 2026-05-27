@@ -182,14 +182,24 @@ export default function ResultadoBanner({ partida, turnos, jugadores, onRevancha
                   {nombre(logro.jugador_id, jugadores)}
                 </div>
               </div>
-              {logro.nivel_actual && (
-                <span style={{
-                  fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 4,
-                  background: 'rgba(168,85,247,.2)', color: '#c4b5fd', flexShrink: 0,
-                }}>
-                  {logro.nivel_actual}
-                </span>
-              )}
+              {logro.nivel_actual && (() => {
+                const nivelObj = logro.niveles?.find(n => n.nivel === logro.nivel_actual)
+                return (
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2, flexShrink: 0 }}>
+                    <span style={{
+                      fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 4,
+                      background: 'rgba(168,85,247,.2)', color: '#c4b5fd',
+                    }}>
+                      {nivelObj?.emoji} {logro.nivel_actual}
+                    </span>
+                    {nivelObj?.umbral != null && (
+                      <span style={{ fontSize: 10, color: 'rgba(196,181,253,.6)', fontWeight: 600 }}>
+                        {nivelObj.umbral.toLocaleString()}
+                      </span>
+                    )}
+                  </div>
+                )
+              })()}
             </div>
           ))}
         </div>
