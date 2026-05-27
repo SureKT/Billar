@@ -116,8 +116,7 @@ export default function FormularioTurno({
     <div className="card" style={{
       display: 'flex', flexDirection: 'column', gap: 14,
       ...(partida.bola_en_mano ? {
-        borderColor: 'rgba(202,138,4,.7)',
-        boxShadow: '0 0 0 1px rgba(202,138,4,.3), 0 0 14px rgba(202,138,4,.12)',
+        boxShadow: '0 0 0 2px rgba(202,138,4,.6), 0 0 14px rgba(202,138,4,.15)',
       } : {}),
     }}>
 
