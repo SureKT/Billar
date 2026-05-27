@@ -1,8 +1,9 @@
 const listeners = new Set()
 
-export function showToast(msg, type = 'error') {
+// msg: string para tipos 'error'/'success', objeto { quien, emoji, nombre, nivel? } para tipo 'logro'
+export function showToast(msg, type = 'error', duration = 3000) {
   const id = Date.now() + Math.random()
-  listeners.forEach(fn => fn({ id, msg, type }))
+  listeners.forEach(fn => fn({ id, msg, type, duration }))
 }
 
 export function subscribeToast(fn) {

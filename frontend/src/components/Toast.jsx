@@ -7,7 +7,7 @@ export default function ToastContainer() {
   useEffect(() => {
     return subscribeToast(t => {
       setToasts(prev => [...prev, t])
-      setTimeout(() => setToasts(prev => prev.filter(x => x.id !== t.id)), 3000)
+      setTimeout(() => setToasts(prev => prev.filter(x => x.id !== t.id)), t.duration ?? 3000)
     })
   }, [])
 
@@ -21,14 +21,33 @@ export default function ToastContainer() {
     }}>
       {toasts.map(t => (
         <div key={t.id} style={{
-          padding: '10px 18px', borderRadius: 10, width: '100%', textAlign: 'center',
-          background: t.type === 'success' ? 'rgba(22,101,52,.96)' : 'rgba(127,29,29,.96)',
+          padding: '10px 18px', borderRadius: 10, width: '100%',
+          background: t.type === 'logro'
+            ? 'linear-gradient(135deg, rgba(88,28,135,.95) 0%, rgba(120,53,15,.95) 100%)'
+            : t.type === 'success' ? 'rgba(22,101,52,.96)' : 'rgba(127,29,29,.96)',
+          border: t.type === 'logro' ? '1px solid rgba(168,85,247,.5)' : 'none',
           color: '#fff', fontSize: 13, fontWeight: 600,
           boxShadow: '0 4px 20px rgba(0,0,0,.5)',
           animation: 'slideUp .2s ease',
           backdropFilter: 'blur(8px)',
+          textAlign: t.type === 'logro' ? 'left' : 'center',
         }}>
-          {t.type === 'success' ? '✓ ' : '⚠ '}{t.msg}
+          {t.type === 'logro' && typeof t.msg === 'object' ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <span style={{ fontSize: 24, flexShrink: 0 }}>{t.msg.emoji}</span>
+              <div>
+                <div style={{ fontSize: 10, color: 'rgba(255,255,255,.55)', textTransform: 'uppercase', letterSpacing: '.05em' }}>
+                  {t.msg.quien} desbloqueó
+                </div>
+                <div style={{ fontSize: 14, fontWeight: 700 }}>{t.msg.nombre}</div>
+                {t.msg.nivel && (
+                  <div style={{ fontSize: 11, color: '#d8b4fe' }}>{t.msg.nivel}</div>
+                )}
+              </div>
+            </div>
+          ) : (
+            <>{t.type === 'success' ? '✓ ' : '⚠ '}{t.msg}</>
+          )}
         </div>
       ))}
     </div>
