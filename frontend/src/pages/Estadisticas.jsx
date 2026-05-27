@@ -233,7 +233,7 @@ function RecordCard({ emoji, titulo, nombre, valor, partidaId, partidaNumero, on
       <button onClick={() => onNavigate(partidaId)} style={{
         ...sharedStyle,
         border: 'none', cursor: 'pointer', textAlign: 'left',
-        font: 'inherit', lineHeight: 'inherit',
+        font: 'inherit', lineHeight: 'inherit', color: 'inherit',
       }}>
         {inner}
       </button>
