@@ -34,14 +34,19 @@ export default function ToastContainer() {
         }}>
           {t.type === 'logro' && typeof t.msg === 'object' ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <span style={{ fontSize: 24, flexShrink: 0 }}>{t.msg.emoji}</span>
-              <div>
-                <div style={{ fontSize: 10, color: 'rgba(255,255,255,.55)', textTransform: 'uppercase', letterSpacing: '.05em' }}>
+              <span style={{ fontSize: 22, flexShrink: 0 }}>{t.msg.emoji}</span>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 10, color: 'rgba(255,255,255,.5)', textTransform: 'uppercase', letterSpacing: '.05em' }}>
                   {t.msg.quien} desbloqueó
                 </div>
-                <div style={{ fontSize: 14, fontWeight: 700 }}>{t.msg.nombre}</div>
-                {(t.msg.nivel || t.msg.umbral) && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: 5, flexWrap: 'wrap' }}>
+                  <span style={{ fontSize: 14, fontWeight: 700 }}>{t.msg.nombre}</span>
+                  {t.msg.descripcion && (
+                    <span style={{ fontSize: 11, color: 'rgba(255,255,255,.45)', fontStyle: 'italic' }}>{t.msg.descripcion}</span>
+                  )}
+                </div>
+                {(t.msg.nivel || t.msg.umbral != null) && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 3 }}>
                     {t.msg.nivel && (
                       <span style={{
                         fontSize: 10, fontWeight: 700, padding: '1px 7px', borderRadius: 8,
@@ -55,9 +60,6 @@ export default function ToastContainer() {
                       </span>
                     )}
                   </div>
-                )}
-                {t.msg.descripcion && (
-                  <div style={{ fontSize: 11, color: 'rgba(255,255,255,.55)', marginTop: 3, fontWeight: 400 }}>{t.msg.descripcion}</div>
                 )}
               </div>
             </div>
