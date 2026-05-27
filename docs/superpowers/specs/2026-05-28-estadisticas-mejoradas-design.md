@@ -61,41 +61,53 @@ Reemplaza el bloque `FilaRanking`-based en `Estadisticas.jsx`. Archivo: `fronten
 
 ### Columnas
 
-| Key | Cabecera | Valor | Ancho |
+Dos grupos: **siempre visibles** (sin scroll) y **métricas nuevas** (requieren scroll derecho).
+
+| Key | Cabecera | Valor | Grupo |
 |---|---|---|---|
-| `nombre` | Jugador | nombre + dot color + medalla | fija (sticky left) |
-| `pj` | PJ | `partidas_jugadas` | 44px |
-| `winrate` | Win% | barra mini + porcentaje | 90px |
-| `bolas` | Bolas | `bolas_metidas` | 54px |
-| `bpt` | B/T | `bolas_por_turno` | 44px |
-| `bpp` | B/P | `bolas_por_partida` | 44px |
-| `break` | Break% | `break_con_bola_pct` | 58px |
-| `racha` | Racha | `racha_actual` (▲3 / ▼2 / —) | 52px |
-| `fpp` | F/P | `faltas_por_partida` | 44px |
+| `nombre` | Jugador | nombre + dot color + medalla | sticky left |
+| `pj` | PJ | `partidas_jugadas` | siempre visible |
+| `winrate` | Win% | barra mini + porcentaje | siempre visible |
+| `bolas` | Bolas | `bolas_metidas` | siempre visible |
+| `racha` | Racha | `racha_actual` (▲3 / ▼2 / —) | siempre visible |
+| `bpt` | B/T | `bolas_por_turno` | métricas nuevas |
+| `bpp` | B/P | `bolas_por_partida` | métricas nuevas |
+| `break` | Break% | `break_con_bola_pct` | métricas nuevas |
+| `fpp` | F/P | `faltas_por_partida` | métricas nuevas |
+
+Las columnas del grupo "métricas nuevas" llevan fondo `rgba(255,255,255,.015)` para señalar visualmente que son secundarias/scrollables.
 
 ### Interacción
 
-- Tap en cabecera → ordena por esa columna; segundo tap → invierte dirección
+- Tap en cabecera (height 42px mínimo) → ordena por esa columna; segundo tap → invierte dirección
 - Columna activa: color accent en cabecera
 - Sort por defecto: `winrate` descendente
 - Sort key + dirección persisten: `useSessionState('stats_tabla_sort', 'winrate')` y `useSessionState('stats_tabla_dir', 'desc')`
 - Fila pos 1: fondo dorado sutil `rgba(250,204,21,.04)`
 - Pos 1–3: emoji medalla (🥇🥈🥉), resto: número
 
-### Layout
+### Layout mobile (390px)
 
 ```
-┌─────────────┬────┬──────────┬───────┬─────┬─────┬────────┬───────┬─────┐
-│ Jugador     │ PJ │  Win%    │ Bolas │ B/T │ B/P │ Break% │ Racha │ F/P │
-│ (sticky)    │    │ ▓▓▓▓░ % │       │     │     │        │       │     │
-├─────────────┼────┼──────────┼───────┼─────┼─────┼────────┼───────┼─────┤
-│ 🥇 Gerard  │ 24 │ ████ 71% │  187  │0.82 │ 7.8 │  68%   │  ▲3   │ 0.9 │
-│ 🥈 Marcos  │ 22 │ ███░ 59% │  163  │0.74 │ 7.1 │  55%   │  ▼1   │ 1.3 │
-└─────────────┴────┴──────────┴───────┴─────┴─────┴────────┴───────┴─────┘
-← scroll horizontal →
+┌─────────────┬────┬──────────┬───────┬───────║░B/T░║░B/P░║░Brk%░║░F/P░║
+│ Jugador     │ PJ │  Win%    │ Bolas │ Racha ║     métricas nuevas      ║
+│ (sticky)    │    │ ▓▓▓▓░ % │       │       ║   (scroll derecho →)     ║
+├─────────────┼────┼──────────┼───────┼───────╫──────╫──────╫───────╫─────╢
+│ 🥇 Gerard  │ 24 │ ████ 71% │  187  │  ▲3   ║ 0.82 ║  7.8 ║  68%  ║ 0.9 ║
+│ 🥈 Marcos  │ 22 │ ███░ 59% │  163  │  ▼1   ║ 0.74 ║  7.1 ║  55%  ║ 1.3 ║
+└─────────────┴────┴──────────┴───────┴───────╨──────╨──────╨───────╨─────╜
 ```
 
-`Win%` reutiliza `BarraWin` existente (o equivalente inline). Columna `Jugador` usa `position: sticky; left: 0`.
+**Affordances de scroll:**
+- Sombra gradiente en borde derecho del contenedor (`linear-gradient(to left, rgba(26,29,39,.9), transparent)`)
+- Label "Desliza para más →" en cabecera de sección
+- Scrollbar oculta (`scrollbar-width: none`) — scroll nativo touch
+
+`Win%` reutiliza lógica de `BarraWin` existente. Columna `Jugador` usa `position: sticky; left: 0; box-shadow: 1px 0 0 var(--border)`.
+
+### Leyenda
+
+Pie de tabla con abreviaturas: `PJ partidas jugadas · B/T bolas/turno · B/P bolas/partida · Break% breaks con bola · F/P faltas/partida`
 
 ### Win% colores
 

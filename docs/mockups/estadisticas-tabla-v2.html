@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Mockup v2 — Tabla Mobile</title>
+<style>
+  :root {
+    --bg: #0f1117; --surface: #1a1d27; --surface2: #22263a;
+    --border: rgba(255,255,255,.08); --text: #f1f5f9;
+    --text-dim: #64748b; --accent: #e11d48;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg); color: var(--text);
+    font-family: -apple-system, sans-serif;
+    padding: 16px;
+    /* simular ancho móvil */
+    max-width: 390px;
+  }
+
+  h2 { font-size: 20px; margin-bottom: 8px; }
+  .filtros { display: flex; gap: 4px; margin-bottom: 14px; }
+  .chip { padding: 5px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; border: 1px solid var(--border); background: var(--surface2); color: var(--text-dim); cursor: pointer; }
+  .chip.active { border-color: var(--accent); background: rgba(225,29,72,.12); color: var(--accent); }
+
+  /* Wrapper con sombra de scroll */
+  .tabla-wrap { background: var(--surface); border-radius: 12px; overflow: hidden; }
+
+  .tabla-scroll-outer {
+    position: relative;
+  }
+  .tabla-scroll-outer::after {
+    content: '';
+    position: absolute;
+    top: 0; right: 0; bottom: 0;
+    width: 32px;
+    background: linear-gradient(to left, rgba(26,29,39,.9), transparent);
+    pointer-events: none;
+    border-radius: 0 0 12px 0;
+  }
+
+  .tabla-container {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .tabla-container::-webkit-scrollbar { display: none; }
+
+  table { width: max-content; border-collapse: collapse; }
+
+  /* Columna nombre fija */
+  th, td { padding: 0; white-space: nowrap; }
+
+  th:first-child, td:first-child {
+    position: sticky; left: 0; z-index: 2;
+    background: var(--surface);
+    box-shadow: 1px 0 0 var(--border);
+    min-width: 120px; max-width: 120px;
+  }
+
+  /* Separador visual entre columnas fijas y scrollables */
+  th:nth-child(4), td:nth-child(4) {
+    border-right: 1px solid rgba(255,255,255,.12);
+  }
+
+  /* Cabecera */
+  thead th {
+    padding: 0 8px;
+    height: 42px; /* touch target cómodo */
+    font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em;
+    color: var(--text-dim); cursor: pointer; user-select: none;
+    border-bottom: 1px solid var(--border);
+    text-align: center; vertical-align: middle;
+  }
+  thead th:first-child { text-align: left; padding-left: 14px; }
+  thead th.sorted { color: var(--accent); }
+  thead th .arrow { font-size: 8px; margin-left: 1px; opacity: .8; }
+
+  /* Separador visual: columnas nuevas con fondo ligeramente distinto */
+  thead th.nueva, tbody td.nueva {
+    background: rgba(255,255,255,.015);
+  }
+  thead th.nueva { color: rgba(100,116,139,.7); }
+
+  /* Filas */
+  tbody tr { border-bottom: 1px solid var(--border); }
+  tbody tr:last-child { border-bottom: none; }
+  tbody tr.top1 td { background: rgba(250,204,21,.04); }
+  tbody tr.top1 td:first-child { background: rgba(250,204,21,.04); }
+  tbody td { padding: 10px 8px; font-size: 13px; text-align: center; vertical-align: middle; }
+  tbody td:first-child { text-align: left; padding-left: 14px; }
+
+  .jugador-cell { display: flex; align-items: center; gap: 6px; }
+  .pos { font-size: 15px; width: 20px; text-align: center; flex-shrink: 0; }
+  .pos-num { font-size: 11px; color: var(--text-dim); font-weight: 700; }
+  .nombre { font-size: 14px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; max-width: 70px; }
+  .nombre.top1 { color: #fcd34d; }
+  .dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+
+  /* Win% cell */
+  .winrate-cell { display: flex; align-items: center; gap: 5px; min-width: 76px; }
+  .winbar { flex: 1; height: 4px; border-radius: 2px; background: rgba(255,255,255,.08); overflow: hidden; }
+  .winbar-fill { height: 100%; border-radius: 2px; transition: width .4s; }
+  .winpct { font-size: 12px; font-weight: 700; min-width: 28px; text-align: right; }
+
+  .racha-pos { color: #86efac; font-weight: 700; font-size: 12px; }
+  .racha-neg { color: #fca5a5; font-weight: 700; font-size: 12px; }
+  .racha-nil { color: var(--text-dim); }
+
+  /* Leyenda */
+  .leyenda {
+    padding: 8px 14px;
+    border-top: 1px solid var(--border);
+    display: flex; flex-wrap: wrap; gap: 6px;
+  }
+  .leyenda span { font-size: 10px; color: var(--text-dim); }
+  .sep { color: rgba(255,255,255,.15); }
+
+  .seccion-label {
+    padding: 9px 14px 7px;
+    font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em;
+    color: var(--text-dim); border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .scroll-hint {
+    font-size: 10px; color: var(--text-dim); font-style: italic;
+    display: flex; align-items: center; gap: 3px;
+  }
+  .scroll-hint::after { content: ' →'; }
+</style>
+</head>
+<body>
+
+<h2>Estadísticas</h2>
+<div class="filtros">
+  <button class="chip active">Todas</button>
+  <button class="chip">Bola 8</button>
+  <button class="chip">Bola 9</button>
+</div>
+
+<div class="tabla-wrap">
+  <div class="seccion-label">
+    <span>Ranking comparativo</span>
+    <span class="scroll-hint">Desliza para más</span>
+  </div>
+
+  <div class="tabla-scroll-outer">
+    <div class="tabla-container">
+      <table>
+        <thead>
+          <tr>
+            <!-- Siempre visibles -->
+            <th style="text-align:left">Jugador</th>
+            <th>PJ</th>
+            <th class="sorted">Win% <span class="arrow">↓</span></th>
+            <!-- Separador después de Bolas -->
+            <th>Bolas</th>
+            <th>Racha</th>
+            <!-- Nuevas métricas — requieren scroll -->
+            <th class="nueva">B/T</th>
+            <th class="nueva">B/P</th>
+            <th class="nueva">Break%</th>
+            <th class="nueva">F/P</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="top1">
+            <td><div class="jugador-cell">
+              <span class="pos">🥇</span>
+              <span class="dot" style="background:#3b82f6"></span>
+              <span class="nombre top1">Gerard</span>
+            </div></td>
+            <td>24</td>
+            <td><div class="winrate-cell">
+              <div class="winbar"><div class="winbar-fill" style="width:71%;background:#4ade80"></div></div>
+              <span class="winpct" style="color:#4ade80">71%</span>
+            </div></td>
+            <td>187</td>
+            <td><span class="racha-pos">▲3</span></td>
+            <td class="nueva">0.82</td>
+            <td class="nueva">7.8</td>
+            <td class="nueva">68%</td>
+            <td class="nueva">0.9</td>
+          </tr>
+          <tr>
+            <td><div class="jugador-cell">
+              <span class="pos">🥈</span>
+              <span class="dot" style="background:#ef4444"></span>
+              <span class="nombre">Marcos</span>
+            </div></td>
+            <td>22</td>
+            <td><div class="winrate-cell">
+              <div class="winbar"><div class="winbar-fill" style="width:59%;background:#fbbf24"></div></div>
+              <span class="winpct" style="color:#fbbf24">59%</span>
+            </div></td>
+            <td>163</td>
+            <td><span class="racha-neg">▼1</span></td>
+            <td class="nueva">0.74</td>
+            <td class="nueva">7.1</td>
+            <td class="nueva">55%</td>
+            <td class="nueva">1.3</td>
+          </tr>
+          <tr>
+            <td><div class="jugador-cell">
+              <span class="pos">🥉</span>
+              <span class="dot" style="background:#22c55e"></span>
+              <span class="nombre">Àlex</span>
+            </div></td>
+            <td>19</td>
+            <td><div class="winrate-cell">
+              <div class="winbar"><div class="winbar-fill" style="width:53%;background:#fbbf24"></div></div>
+              <span class="winpct" style="color:#fbbf24">53%</span>
+            </div></td>
+            <td>141</td>
+            <td><span class="racha-pos">▲2</span></td>
+            <td class="nueva">0.71</td>
+            <td class="nueva">6.4</td>
+            <td class="nueva">48%</td>
+            <td class="nueva">1.1</td>
+          </tr>
+          <tr>
+            <td><div class="jugador-cell">
+              <span class="pos"><span class="pos-num">4</span></span>
+              <span class="dot" style="background:#a855f7"></span>
+              <span class="nombre">Dani</span>
+            </div></td>
+            <td>18</td>
+            <td><div class="winrate-cell">
+              <div class="winbar"><div class="winbar-fill" style="width:44%;background:#f87171"></div></div>
+              <span class="winpct" style="color:#f87171">44%</span>
+            </div></td>
+            <td>98</td>
+            <td><span class="racha-nil">—</span></td>
+            <td class="nueva">0.58</td>
+            <td class="nueva">5.1</td>
+            <td class="nueva">40%</td>
+            <td class="nueva">1.8</td>
+          </tr>
+          <tr>
+            <td><div class="jugador-cell">
+              <span class="pos"><span class="pos-num">5</span></span>
+              <span class="dot" style="background:#f59e0b"></span>
+              <span class="nombre">Pau</span>
+            </div></td>
+            <td>15</td>
+            <td><div class="winrate-cell">
+              <div class="winbar"><div class="winbar-fill" style="width:33%;background:#f87171"></div></div>
+              <span class="winpct" style="color:#f87171">33%</span>
+            </div></td>
+            <td>79</td>
+            <td><span class="racha-neg">▼2</span></td>
+            <td class="nueva">0.51</td>
+            <td class="nueva">4.8</td>
+            <td class="nueva">33%</td>
+            <td class="nueva">2.1</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="leyenda">
+    <span>PJ partidas jugadas</span><span class="sep">·</span>
+    <span>B/T bolas/turno</span><span class="sep">·</span>
+    <span>B/P bolas/partida</span><span class="sep">·</span>
+    <span>Break% breaks con bola</span><span class="sep">·</span>
+    <span>F/P faltas/partida</span>
+  </div>
+</div>
+
+<p style="font-size:10px;color:var(--text-dim);margin-top:10px">
+  Mockup estático a 390px (iPhone). Columna Jugador fija. Sombra derecha indica scroll. Fondo tenue en columnas nuevas (B/T → F/P).
+</p>
+
+</body>
+</html>
