@@ -37,6 +37,16 @@ billar/
 - Siempre usar SQLModel para modelos — no mezclar con SQLAlchemy puro
 - El frontend consume la API en http://localhost:8000/api
 
+## Filosofía de diseño
+
+La app es una **herramienta de uso frecuente en pantalla pequeña**, no un showcase. Los usuarios saben lo que hacen — no hay que explicar, hay que mostrar.
+
+**Densidad funcional.** Cada píxel debe ganárselo. Si dos datos van juntos conceptualmente, van juntos visualmente. Información inline antes que filas separadas. El espacio en blanco no es elegancia — es espacio que el usuario escanea sin obtener nada.
+
+**Coherencia total.** El mismo dato se muestra igual en todos los contextos. Un logro en la página de logros, en el banner de resultado o en un toast comparte jerarquía visual, mismas pills, mismo orden. El usuario aprende una vez y ya sabe leerlo en cualquier parte.
+
+**Completitud de las acciones.** Una acción tiene consecuencias — todas deben tratarse. Deshacer un turno deshace sus efectos secundarios. Volver navega al origen real, no a una ruta arbitraria. La app no deja loose ends.
+
 ## Decisiones de arquitectura
 - Frontend servido como estático desde FastAPI en local (un solo comando para todo)
 - No hay sistema de usuarios ni autenticación
