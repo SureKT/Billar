@@ -17,6 +17,15 @@ const TEAM = {
   2: { color: 'var(--team2)' },
 }
 
+const NIVEL_STYLE = {
+  bronce:  { bg: 'rgba(180,110,60,.2)',  color: '#cd7f32', border: 'rgba(180,110,60,.5)' },
+  plata:   { bg: 'rgba(160,170,180,.2)', color: '#a0aab4', border: 'rgba(160,170,180,.5)' },
+  oro:     { bg: 'rgba(251,191,36,.2)',  color: '#fbbf24', border: 'rgba(251,191,36,.5)' },
+  platino: { bg: 'rgba(139,92,246,.2)',  color: '#a78bfa', border: 'rgba(139,92,246,.5)' },
+}
+
+function cap(s) { return s.charAt(0).toUpperCase() + s.slice(1) }
+
 function nombre(id, jugadores) {
   return jugadores.find(j => j.id === id)?.nombre ?? `#${id}`
 }
@@ -168,40 +177,67 @@ export default function ResultadoBanner({ partida, turnos, jugadores, onRevancha
           }}>
             🏅 Logros desbloqueados
           </p>
-          {logrosPartida.map(logro => (
-            <div key={`${logro.jugador_id}-${logro.id}`} style={{
-              display: 'flex', alignItems: 'center', gap: 10,
-              padding: '6px 0', borderBottom: '1px solid rgba(255,255,255,.05)',
-            }}>
-              <span style={{ fontSize: 18, width: 28, textAlign: 'center', flexShrink: 0 }}>
-                {logro.icono}
-              </span>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>{logro.nombre}</div>
-                <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 1 }}>
-                  {nombre(logro.jugador_id, jugadores)}
+          {logrosPartida.map(logro => {
+            const tieneNiveles = logro.niveles?.length > 0
+            const nd = logro.niveles_desbloqueados ?? []
+            const nivelesOrdenados = tieneNiveles
+              ? [...logro.niveles].sort((a, b) => a.umbral - b.umbral)
+              : []
+            const nextNivel = nivelesOrdenados.find(n => !nd.includes(n.nivel))
+            return (
+              <div key={`${logro.jugador_id}-${logro.id}`} style={{
+                display: 'flex', alignItems: 'flex-start', gap: 10,
+                padding: '8px 0', borderBottom: '1px solid rgba(255,255,255,.05)',
+              }}>
+                <span style={{ fontSize: 20, width: 28, textAlign: 'center', flexShrink: 0, marginTop: 2 }}>
+                  {logro.icono}
+                </span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>{logro.nombre}</div>
+                  <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 1 }}>
+                    {nombre(logro.jugador_id, jugadores)}
+                  </div>
+                  {tieneNiveles && (
+                    <>
+                      <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginTop: 6 }}>
+                        {nivelesOrdenados.map(n => {
+                          const unlocked = nd.includes(n.nivel)
+                          const st = NIVEL_STYLE[n.nivel] ?? {}
+                          return (
+                            <span key={n.nivel} style={{
+                              fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 8,
+                              background: unlocked ? st.bg : 'rgba(255,255,255,.04)',
+                              color: unlocked ? st.color : '#555',
+                              border: `1px solid ${unlocked ? st.border : '#333'}`,
+                              display: 'inline-flex', alignItems: 'center', gap: 3,
+                            }}>
+                              {n.emoji} {cap(n.nivel)}
+                              {unlocked && <span style={{ fontSize: 9 }}>✓</span>}
+                            </span>
+                          )
+                        })}
+                      </div>
+                      {logro.progreso != null && nextNivel && (
+                        <div style={{ marginTop: 5 }}>
+                          <div style={{ fontSize: 10, color: 'var(--text-dim)', marginBottom: 3 }}>
+                            {logro.progreso.toLocaleString()} / {nextNivel.umbral.toLocaleString()} para {nextNivel.emoji} {cap(nextNivel.nivel)}
+                          </div>
+                          <div style={{ background: 'rgba(255,255,255,.08)', borderRadius: 4, height: 3, overflow: 'hidden' }}>
+                            <div style={{
+                              height: '100%',
+                              width: `${Math.min(100, (logro.progreso / nextNivel.umbral) * 100)}%`,
+                              background: NIVEL_STYLE[nextNivel.nivel]?.color ?? 'var(--accent)',
+                              borderRadius: 4,
+                            }} />
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  )}
                 </div>
               </div>
-              {logro.nivel_actual && (() => {
-                const nivelObj = logro.niveles?.find(n => n.nivel === logro.nivel_actual)
-                return (
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2, flexShrink: 0 }}>
-                    <span style={{
-                      fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 4,
-                      background: 'rgba(168,85,247,.2)', color: '#c4b5fd',
-                    }}>
-                      {nivelObj?.emoji} {logro.nivel_actual}
-                    </span>
-                    {nivelObj?.umbral != null && (
-                      <span style={{ fontSize: 10, color: 'rgba(196,181,253,.6)', fontWeight: 600 }}>
-                        {nivelObj.umbral.toLocaleString()}
-                      </span>
-                    )}
-                  </div>
-                )
-              })()}
-            </div>
-          ))}
+            )
+          })}
         </div>
       )}
 
