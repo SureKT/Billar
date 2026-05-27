@@ -120,10 +120,22 @@ export default function Partida() {
     Promise.all(ids.map(jid => api.getLogrosJugador(jid)))
       .then(results => {
         const encontrados = []
+        const ORDEN_NIVELES = ['bronce', 'plata', 'oro', 'platino']
         ids.forEach((jid, i) => {
           for (const logro of results[i]) {
-            if (logro.desbloqueado && logro.partida_id === parseInt(id)) {
+            const pid = parseInt(id)
+            if (logro.desbloqueado && logro.partida_id === pid) {
               encontrados.push({ jugador_id: jid, ...logro })
+            } else if (logro.niveles_partida_id) {
+              const nivelesAqui = Object.entries(logro.niveles_partida_id)
+                .filter(([, npid]) => npid === pid)
+                .map(([nivel]) => nivel)
+              if (nivelesAqui.length > 0) {
+                const nivelMasAlto = nivelesAqui.sort(
+                  (a, b) => ORDEN_NIVELES.indexOf(a) - ORDEN_NIVELES.indexOf(b)
+                ).at(-1)
+                encontrados.push({ jugador_id: jid, ...logro, nivel_actual: nivelMasAlto })
+              }
             }
           }
         })
