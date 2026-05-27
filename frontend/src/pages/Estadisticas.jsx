@@ -205,18 +205,42 @@ function FilaRanking({ pos, j, esTop, forma = [] }) {
   )
 }
 
-function RecordCard({ emoji, titulo, nombre, valor }) {
+function RecordCard({ emoji, titulo, nombre, valor, partidaId, partidaNumero, onNavigate }) {
+  const inner = (
+    <>
+      <span style={{ fontSize: '22px', flexShrink: 0 }}>{emoji}</span>
+      <div style={{ minWidth: 0, flex: 1 }}>
+        <div style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '.05em', color: 'var(--text-dim)', marginBottom: 2 }}>{titulo}</div>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, flexWrap: 'wrap' }}>
+          <span style={{ fontSize: '14px', fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{nombre}</span>
+          {partidaNumero != null && (
+            <span style={{ fontSize: '11px', color: 'var(--text-dim)', fontWeight: 600, flexShrink: 0 }}>#{partidaNumero}</span>
+          )}
+        </div>
+        {valor && <div style={{ fontSize: '12px', color: 'var(--accent)', fontWeight: 600 }}>{valor}</div>}
+      </div>
+      {partidaId != null && (
+        <span style={{ fontSize: '16px', color: 'var(--text-dim)', flexShrink: 0 }}>›</span>
+      )}
+    </>
+  )
+  if (partidaId != null) {
+    return (
+      <button onClick={() => onNavigate(partidaId)} style={{
+        background: 'var(--surface2)', borderRadius: 10, padding: '10px 12px',
+        display: 'flex', alignItems: 'center', gap: 10,
+        width: '100%', border: 'none', cursor: 'pointer', textAlign: 'left',
+      }}>
+        {inner}
+      </button>
+    )
+  }
   return (
     <div style={{
       background: 'var(--surface2)', borderRadius: 10, padding: '10px 12px',
       display: 'flex', alignItems: 'center', gap: 10,
     }}>
-      <span style={{ fontSize: '22px', flexShrink: 0 }}>{emoji}</span>
-      <div style={{ minWidth: 0 }}>
-        <div style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '.05em', color: 'var(--text-dim)', marginBottom: 2 }}>{titulo}</div>
-        <div style={{ fontSize: '14px', fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{nombre}</div>
-        {valor && <div style={{ fontSize: '12px', color: 'var(--accent)', fontWeight: 600 }}>{valor}</div>}
-      </div>
+      {inner}
     </div>
   )
 }
@@ -485,12 +509,18 @@ export default function Estadisticas() {
                 <RecordCard emoji="⚡" titulo="Partida más rápida"
                   nombre={nombresPartida(masRapida)}
                   valor={fmtMin(durMs(masRapida))}
+                  partidaId={masRapida.id}
+                  partidaNumero={masRapida.numero}
+                  onNavigate={id => navigate(`/partida/${id}`)}
                 />
               )}
               {masLenta && masLenta !== masRapida && (
                 <RecordCard emoji="🐢" titulo="Partida más larga"
                   nombre={nombresPartida(masLenta)}
                   valor={fmtMin(durMs(masLenta))}
+                  partidaId={masLenta.id}
+                  partidaNumero={masLenta.numero}
+                  onNavigate={id => navigate(`/partida/${id}`)}
                 />
               )}
             </div>
