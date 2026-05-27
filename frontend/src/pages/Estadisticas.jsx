@@ -377,22 +377,23 @@ export default function Estadisticas() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--gap)' }}>
       <div style={{
         position: 'sticky', top: 'var(--nav-height)', zIndex: 50,
-        background: 'var(--bg)', padding: '6px 16px 6px', margin: '0 -16px',
-        display: 'flex', alignItems: 'center', gap: 8,
+        background: 'var(--bg)', padding: '6px 16px 4px', margin: '0 -16px',
+        display: 'flex', flexDirection: 'column', gap: 6,
       }}>
-        <h2 style={{ fontSize: '20px', margin: 0, flexShrink: 0 }}>Estadísticas</h2>
-        <button
-          onClick={() => navigate('/tv')}
-          style={{
-            padding: '3px 8px', borderRadius: 6, cursor: 'pointer',
-            background: 'rgba(255,255,255,.06)', border: '1px solid var(--border)',
-            color: 'var(--text-dim)', fontSize: 11, fontWeight: 600, flexShrink: 0,
-          }}
-        >
-          📺 TV
-        </button>
-        <div style={{ flex: 1 }} />
-        <div style={{ display: 'flex', gap: 4 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <h2 style={{ fontSize: '20px', margin: 0 }}>Estadísticas</h2>
+          <button
+            onClick={() => navigate('/tv')}
+            style={{
+              padding: '3px 8px', borderRadius: 6, cursor: 'pointer',
+              background: 'rgba(255,255,255,.06)', border: '1px solid var(--border)',
+              color: 'var(--text-dim)', fontSize: 11, fontWeight: 600,
+            }}
+          >
+            📺 TV
+          </button>
+        </div>
+        <div style={{ display: 'flex', gap: 4, paddingBottom: 4 }}>
           {['todas', 'bola8', 'bola9'].map(f => (
             <button key={f} onClick={() => setFiltro(f)} style={{
               padding: '5px 12px', borderRadius: 20, fontSize: '12px', fontWeight: 600,
