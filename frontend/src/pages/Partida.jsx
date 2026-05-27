@@ -173,7 +173,7 @@ export default function Partida() {
   // ── Handlers ─────────────────────────────────────────────────────────────────
   function handleBack() {
     if (bolas.length > 0 && !window.confirm('¿Salir? Perderás las bolas seleccionadas.')) return
-    navigate('/')
+    navigate(-1)
   }
 
   function detectarNuevosLogros(antes, despues) {
