@@ -113,7 +113,13 @@ export default function FormularioTurno({
 
   // ── Render ───────────────────────────────────────────────────────────────────
   return (
-    <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+    <div className="card" style={{
+      display: 'flex', flexDirection: 'column', gap: 14,
+      ...(partida.bola_en_mano ? {
+        borderColor: 'rgba(202,138,4,.7)',
+        boxShadow: '0 0 0 1px rgba(202,138,4,.3), 0 0 14px rgba(202,138,4,.12)',
+      } : {}),
+    }}>
 
       {/* Cabecera del turno */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', gap: 4 }}>
