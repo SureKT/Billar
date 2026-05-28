@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useApi } from '../hooks/useApi'
 import { useSessionState } from '../hooks/useSessionState'
@@ -179,6 +179,21 @@ function TablaComparativa({ jugadores }) {
   const [sortKey, setSortKey] = useSessionState('stats_tabla_sort', 'winrate')
   const [sortDir, setSortDir] = useSessionState('stats_tabla_dir', 'desc')
   const medallas = ['🥇', '🥈', '🥉']
+  const scrollRef = useRef(null)
+
+  // Desktop: convertir scroll vertical de la rueda en scroll horizontal de la tabla
+  useEffect(() => {
+    const el = scrollRef.current
+    if (!el) return
+    function onWheel(e) {
+      if (el.scrollWidth <= el.clientWidth) return          // no hay overflow
+      if (Math.abs(e.deltaY) <= Math.abs(e.deltaX)) return  // ya es scroll horizontal
+      el.scrollLeft += e.deltaY
+      e.preventDefault()
+    }
+    el.addEventListener('wheel', onWheel, { passive: false })
+    return () => el.removeEventListener('wheel', onWheel)
+  }, [])
 
   function clickCabecera(key) {
     if (key === sortKey) {
@@ -238,7 +253,7 @@ function TablaComparativa({ jugadores }) {
       <p style={{ fontSize: '11px', color: 'var(--text-dim)', textAlign: 'right',
         padding: '0 4px 6px' }}>Desliza para más →</p>
       <div style={{ position: 'relative' }}>
-        <div style={{ overflowX: 'auto', scrollbarWidth: 'none' }} className="hide-scrollbar">
+        <div ref={scrollRef} style={{ overflowX: 'auto', scrollbarWidth: 'none' }} className="hide-scrollbar">
           <table style={{ borderCollapse: 'collapse', width: '100%', minWidth: 560 }}>
             <thead>
               <tr>
