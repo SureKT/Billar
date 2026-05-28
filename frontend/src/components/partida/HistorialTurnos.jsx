@@ -352,8 +352,8 @@ export default function HistorialTurnos({
                     {(() => {
                       const esRespot = !!t.es_respot
                       if (esRespot) return (
-                        <span className="badge" style={{ background: 'rgba(245,158,11,.18)', border: '1px solid rgba(245,158,11,.35)', color: '#fbbf24', fontSize: '11px' }}>
-                          ⚡ Respot · bola en mano
+                        <span className="badge" style={{ background: 'rgba(127,29,29,.5)', border: '1px solid rgba(252,165,165,.3)', color: '#fca5a5', fontSize: '11px' }}>
+                          ⚡ Respot · Bola 9 ilegal
                         </span>
                       )
                       if (t.falta_id) return (
@@ -417,8 +417,22 @@ export default function HistorialTurnos({
                   </div>
                 </div>
 
-                {!editando && (t.bolas_metidas?.length ?? 0) > 0 && (
-                  <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                {!editando && ((t.bolas_metidas?.length ?? 0) > 0 || t.es_respot) && (
+                  <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', alignItems: 'center' }}>
+                    {t.es_respot && (
+                      <div style={{ position: 'relative', display: 'inline-flex' }}>
+                        <div style={{ opacity: 0.45, filter: 'grayscale(.4)' }}>
+                          <BolaPool numero={9} size={28} />
+                        </div>
+                        <span style={{
+                          position: 'absolute', inset: 0,
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          fontSize: 13, fontWeight: 900, color: '#fca5a5',
+                          textShadow: '0 0 4px #000',
+                          pointerEvents: 'none',
+                        }}>✕</span>
+                      </div>
+                    )}
                     {(t.bolas_metidas ?? []).map(n => <BolaPool key={n} numero={n} size={28} />)}
                   </div>
                 )}
