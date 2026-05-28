@@ -266,7 +266,14 @@ function TablaComparativa({ jugadores }) {
                 const p = pct(j.partidas_ganadas, j.partidas_jugadas)
                 const winColor = p >= 60 ? '#4ade80' : p >= 40 ? '#fbbf24' : '#f87171'
                 const top = i === 0
-                const filaBg = top ? 'rgba(250,204,21,.04)' : 'var(--surface)'
+                // Fondo OPACO (tinte compuesto sobre surface) — la columna sticky
+                // debe tapar el contenido que se desliza por debajo al hacer scroll.
+                const filaBg = top
+                  ? 'linear-gradient(rgba(250,204,21,.05), rgba(250,204,21,.05)), var(--surface)'
+                  : 'var(--surface)'
+                const filaBgNuevo = top
+                  ? filaBg
+                  : 'linear-gradient(rgba(255,255,255,.015), rgba(255,255,255,.015)), var(--surface)'
                 return (
                   <tr key={j.id}>
                     <td style={{
@@ -302,8 +309,7 @@ function TablaComparativa({ jugadores }) {
                     <td style={{ ...tdBase, background: filaBg }}>{j.bolas_metidas}</td>
                     <td style={{ ...tdBase, background: filaBg }}><RachaCell valor={j.racha_actual} /></td>
                     {COLS.filter(c => c.grupo === 'nuevo').map(c => (
-                      <td key={c.key} style={{ ...tdBase, background: filaBg,
-                        backgroundColor: top ? filaBg : 'rgba(255,255,255,.015)',
+                      <td key={c.key} style={{ ...tdBase, background: filaBgNuevo,
                         color: 'var(--text-dim)' }}>
                         {c.fmt(c.get(j))}
                       </td>
