@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useApi } from '../hooks/useApi'
+import { useSessionState } from '../hooks/useSessionState'
 import { api } from '../api/client'
 import { SkeletonList } from '../components/Skeleton'
 
@@ -147,60 +148,165 @@ function GraficaVertical({ datos, altura = 80 }) {
   )
 }
 
-function BarraWin({ ganadas, jugadas, color }) {
-  const p = pct(ganadas, jugadas)
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1 }}>
-      <div style={{ flex: 1, height: 6, borderRadius: 3, background: 'var(--border)', overflow: 'hidden' }}>
-        <div style={{ height: '100%', width: `${p}%`, background: color, borderRadius: 3, transition: 'width .4s ease' }} />
-      </div>
-      <span style={{ fontSize: '12px', fontWeight: 700, color, minWidth: 34, textAlign: 'right' }}>{p}%</span>
-    </div>
-  )
+// ─── Tabla comparativa ordenable ──────────────────────────────────────────────
+
+const COLS = [
+  { key: 'pj',      head: 'PJ',     grupo: 'fijo',  get: j => j.partidas_jugadas,    fmt: v => v },
+  { key: 'winrate', head: 'Win%',   grupo: 'fijo' }, // render especial (barra)
+  { key: 'bolas',   head: 'Bolas',  grupo: 'fijo',  get: j => j.bolas_metidas,       fmt: v => v },
+  { key: 'racha',   head: 'Racha',  grupo: 'fijo' }, // render especial
+  { key: 'bpt',     head: 'B/T',    grupo: 'nuevo', get: j => j.bolas_por_turno,     fmt: v => v.toFixed(2) },
+  { key: 'bpp',     head: 'B/P',    grupo: 'nuevo', get: j => j.bolas_por_partida,   fmt: v => v.toFixed(1) },
+  { key: 'break',   head: 'Break%', grupo: 'nuevo', get: j => j.break_con_bola_pct,  fmt: v => `${Math.round(v)}%` },
+  { key: 'fpp',     head: 'F/P',    grupo: 'nuevo', get: j => j.faltas_por_partida,  fmt: v => v.toFixed(1) },
+]
+
+function sortVal(j, key) {
+  if (key === 'nombre') return j.nombre.toLowerCase()
+  if (key === 'winrate') return winrate(j)
+  if (key === 'racha') return j.racha_actual
+  const col = COLS.find(c => c.key === key)
+  return col?.get ? col.get(j) : 0
 }
 
-function FilaRanking({ pos, j, esTop, forma = [] }) {
-  const p = pct(j.partidas_ganadas, j.partidas_jugadas)
-  const barColor = p >= 60 ? '#4ade80' : p >= 40 ? '#fbbf24' : '#f87171'
+function RachaCell({ valor }) {
+  if (valor > 0) return <span style={{ color: '#4ade80', fontWeight: 700 }}>▲{valor}</span>
+  if (valor < 0) return <span style={{ color: '#f87171', fontWeight: 700 }}>▼{-valor}</span>
+  return <span style={{ color: 'var(--text-dim)' }}>—</span>
+}
+
+function TablaComparativa({ jugadores }) {
+  const [sortKey, setSortKey] = useSessionState('stats_tabla_sort', 'winrate')
+  const [sortDir, setSortDir] = useSessionState('stats_tabla_dir', 'desc')
   const medallas = ['🥇', '🥈', '🥉']
-  const recent = forma.slice(-5)
+
+  function clickCabecera(key) {
+    if (key === sortKey) {
+      setSortDir(d => (d === 'desc' ? 'asc' : 'desc'))
+    } else {
+      setSortKey(key)
+      setSortDir('desc')
+    }
+  }
+
+  const filas = [...jugadores].sort((a, b) => {
+    const va = sortVal(a, sortKey)
+    const vb = sortVal(b, sortKey)
+    let cmp = typeof va === 'string' ? va.localeCompare(vb) : va - vb
+    if (cmp === 0) cmp = b.partidas_jugadas - a.partidas_jugadas
+    return sortDir === 'desc' ? -cmp : cmp
+  })
+
+  const thBase = {
+    fontSize: '11px', fontWeight: 700, color: 'var(--text-dim)',
+    textTransform: 'uppercase', letterSpacing: '.04em',
+    padding: '0 10px', height: 42, whiteSpace: 'nowrap',
+    cursor: 'pointer', userSelect: 'none', textAlign: 'right',
+    background: 'var(--surface)', borderBottom: '1px solid var(--border)',
+  }
+  const stickyCol = {
+    position: 'sticky', left: 0, zIndex: 1,
+    boxShadow: '1px 0 0 var(--border)',
+  }
+
+  function Cabecera({ col, sticky, align }) {
+    const activa = col.key === sortKey
+    return (
+      <th
+        onClick={() => clickCabecera(col.key)}
+        style={{
+          ...thBase,
+          textAlign: align ?? 'right',
+          color: activa ? 'var(--accent)' : 'var(--text-dim)',
+          ...(sticky ? { ...stickyCol, textAlign: 'left' } : {}),
+          ...(col.grupo === 'nuevo' ? { background: 'rgba(255,255,255,.015)' } : {}),
+        }}
+      >
+        {col.head}{activa ? (sortDir === 'desc' ? ' ↓' : ' ↑') : ''}
+      </th>
+    )
+  }
+
+  const tdBase = {
+    padding: '0 10px', height: 44, fontSize: '13px',
+    textAlign: 'right', whiteSpace: 'nowrap',
+    borderBottom: '1px solid var(--border)',
+  }
 
   return (
-    <div style={{
-      display: 'flex', alignItems: 'center', gap: 10,
-      padding: '10px 14px',
-      background: esTop ? 'rgba(250,204,21,.06)' : 'transparent',
-      borderBottom: '1px solid var(--border)',
-    }}>
-      <span style={{ width: 22, fontSize: pos <= 3 ? '18px' : '12px', textAlign: 'center', flexShrink: 0,
-        color: pos > 3 ? 'var(--text-dim)' : undefined }}>
-        {pos <= 3 ? medallas[pos - 1] : pos}
-      </span>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <span style={{ fontSize: '14px', fontWeight: 700, color: esTop ? '#fcd34d' : 'var(--text)',
-          display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {j.nombre}
-        </span>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
-          <span style={{ fontSize: '11px', color: 'var(--text-dim)' }}>
-            {j.partidas_ganadas}W · {j.partidas_jugadas - j.partidas_ganadas}L
-          </span>
-          {recent.length > 0 && (
-            <div style={{ display: 'flex', gap: 2, alignItems: 'center' }}>
-              {recent.map((r, i) => (
-                <div key={i} style={{
-                  width: 6, height: 6, borderRadius: '50%',
-                  background: r === 'W' ? '#4ade80' : '#f87171',
-                  opacity: 0.5 + (i / recent.length) * 0.5,
-                }} />
-              ))}
-            </div>
-          )}
+    <div>
+      <p style={{ fontSize: '11px', color: 'var(--text-dim)', textAlign: 'right',
+        padding: '0 4px 6px' }}>Desliza para más →</p>
+      <div style={{ position: 'relative' }}>
+        <div style={{ overflowX: 'auto', scrollbarWidth: 'none' }} className="hide-scrollbar">
+          <table style={{ borderCollapse: 'collapse', width: '100%', minWidth: 560 }}>
+            <thead>
+              <tr>
+                <Cabecera col={{ key: 'nombre', head: 'Jugador' }} sticky align="left" />
+                {COLS.map(c => <Cabecera key={c.key} col={c} />)}
+              </tr>
+            </thead>
+            <tbody>
+              {filas.map((j, i) => {
+                const p = pct(j.partidas_ganadas, j.partidas_jugadas)
+                const winColor = p >= 60 ? '#4ade80' : p >= 40 ? '#fbbf24' : '#f87171'
+                const top = i === 0
+                const filaBg = top ? 'rgba(250,204,21,.04)' : 'var(--surface)'
+                return (
+                  <tr key={j.id}>
+                    <td style={{
+                      ...tdBase, textAlign: 'left', ...stickyCol, background: filaBg,
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ width: 20, textAlign: 'center', flexShrink: 0,
+                          fontSize: i < 3 ? '15px' : '12px',
+                          color: i < 3 ? undefined : 'var(--text-dim)' }}>
+                          {i < 3 ? medallas[i] : i + 1}
+                        </span>
+                        {j.color && (
+                          <span style={{ width: 8, height: 8, borderRadius: '50%',
+                            background: j.color, flexShrink: 0 }} />
+                        )}
+                        <span style={{ fontWeight: 700, overflow: 'hidden',
+                          textOverflow: 'ellipsis', maxWidth: 110,
+                          color: top ? '#fcd34d' : 'var(--text)' }}>
+                          {j.nombre}
+                        </span>
+                      </div>
+                    </td>
+                    <td style={{ ...tdBase, background: filaBg }}>{j.partidas_jugadas}</td>
+                    <td style={{ ...tdBase, background: filaBg, minWidth: 96 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, justifyContent: 'flex-end' }}>
+                        <div style={{ flex: 1, maxWidth: 48, height: 5, borderRadius: 3,
+                          background: 'var(--border)', overflow: 'hidden' }}>
+                          <div style={{ height: '100%', width: `${p}%`, background: winColor }} />
+                        </div>
+                        <span style={{ color: winColor, fontWeight: 700, minWidth: 30 }}>{p}%</span>
+                      </div>
+                    </td>
+                    <td style={{ ...tdBase, background: filaBg }}>{j.bolas_metidas}</td>
+                    <td style={{ ...tdBase, background: filaBg }}><RachaCell valor={j.racha_actual} /></td>
+                    {COLS.filter(c => c.grupo === 'nuevo').map(c => (
+                      <td key={c.key} style={{ ...tdBase, background: filaBg,
+                        backgroundColor: top ? filaBg : 'rgba(255,255,255,.015)',
+                        color: 'var(--text-dim)' }}>
+                        {c.fmt(c.get(j))}
+                      </td>
+                    ))}
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
         </div>
+        <div style={{ position: 'absolute', top: 0, right: 0, bottom: 0, width: 24,
+          pointerEvents: 'none',
+          background: 'linear-gradient(to left, rgba(24,24,31,.9), transparent)' }} />
       </div>
-      <div style={{ width: 100, flexShrink: 0 }}>
-        <BarraWin ganadas={j.partidas_ganadas} jugadas={j.partidas_jugadas} color={barColor} />
-      </div>
+      <p style={{ fontSize: '10px', color: 'var(--text-dim)', padding: '8px 12px',
+        lineHeight: 1.5 }}>
+        PJ partidas jugadas · B/T bolas/turno · B/P bolas/partida · Break% breaks con bola · F/P faltas/partida
+      </p>
     </div>
   )
 }
@@ -383,15 +489,6 @@ export default function Estadisticas() {
       .map(([, v]) => v)
   })()
 
-  const formaMap = {}
-  for (const p of [...finalizadasFiltradas].sort((a, b) => new Date(a.fecha) - new Date(b.fecha))) {
-    if (!p.ganador_equipo) continue
-    const ganadores = p.ganador_equipo === 1 ? p.equipo1_jugadores : p.equipo2_jugadores
-    const perdedores = p.ganador_equipo === 1 ? p.equipo2_jugadores : p.equipo1_jugadores
-    for (const id of ganadores) { if (!formaMap[id]) formaMap[id] = []; formaMap[id].push('W') }
-    for (const id of perdedores) { if (!formaMap[id]) formaMap[id] = []; formaMap[id].push('L') }
-  }
-
   const sinDatos = todasFiltradas.length === 0
 
   return (
@@ -573,9 +670,9 @@ export default function Estadisticas() {
                   Sin datos para este filtro
                 </p>
               ) : (
-                rankingFiltrado.map((j, i) => (
-                  <FilaRanking key={j.id} pos={i + 1} j={j} esTop={i === 0} forma={formaMap[j.id] ?? []} />
-                ))
+                <div style={{ padding: '10px 12px 4px' }}>
+                  <TablaComparativa jugadores={rankingFiltrado} />
+                </div>
               )}
             </div>
           )}

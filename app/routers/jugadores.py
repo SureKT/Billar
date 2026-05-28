@@ -38,6 +38,11 @@ class JugadorStats(BaseModel):
     activo: bool = True
     racha_mejor: int = 0          # best ever consecutive win streak
     duracion_promedio_min: Optional[float] = None  # avg finished-game duration in minutes
+    break_bolas_media: float = 0.0     # media de bolas metidas en turnos numero==1
+    break_con_bola_pct: float = 0.0    # % de breaks donde metió >=1 bola
+    bolas_por_partida: float = 0.0     # bolas / partidas finalizadas con participación
+    max_bolas_turno: int = 0           # máximo de bolas metidas en un único turno
+    faltas_por_partida: float = 0.0    # faltas / partidas jugadas
 
 
 class H2HRecord(BaseModel):
@@ -184,6 +189,27 @@ def _calcular_stats(session: Session, jugador: Jugador, modalidad: Optional[str]
     fid8 = top_falta("bola8")
     fid9 = top_falta("bola9")
 
+    # ── Métricas nuevas (un solo pase sobre turnos ya cargados) ──────────────────
+    # turno.numero == 1 es el break; solo el jugador que rompió tiene ese turno
+    breaks = [t for t in turnos if t.numero == 1]
+    break_bolas = [sum(1 for b in t.bolas_metidas if b != 0) for t in breaks]
+    break_bolas_media = round(sum(break_bolas) / len(break_bolas), 2) if break_bolas else 0.0
+    break_con_bola_pct = round(
+        sum(1 for b in break_bolas if b > 0) / len(break_bolas) * 100, 1
+    ) if break_bolas else 0.0
+
+    max_bolas_turno = max(
+        (sum(1 for b in t.bolas_metidas if b != 0) for t in turnos),
+        default=0,
+    )
+
+    total_faltas_jugador = sum(1 for t in turnos if t.falta_id)
+    faltas_por_partida = round(total_faltas_jugador / partidas_jugadas, 2) if partidas_jugadas else 0.0
+
+    # partidas finalizadas con participación (ya calculadas como partidas_fin)
+    partidas_fin_count = len(partidas_fin)
+    bolas_por_partida = round(bolas_metidas / partidas_fin_count, 2) if partidas_fin_count else 0.0
+
     return JugadorStats(
         id=jugador.id,
         nombre=jugador.nombre,
@@ -207,6 +233,11 @@ def _calcular_stats(session: Session, jugador: Jugador, modalidad: Optional[str]
         activo=jugador.activo,
         racha_mejor=racha_mejor,
         duracion_promedio_min=duracion_promedio_min,
+        break_bolas_media=break_bolas_media,
+        break_con_bola_pct=break_con_bola_pct,
+        bolas_por_partida=bolas_por_partida,
+        max_bolas_turno=max_bolas_turno,
+        faltas_por_partida=faltas_por_partida,
     )
 
 
