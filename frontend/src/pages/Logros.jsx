@@ -376,14 +376,26 @@ export default function Logros() {
         ))}
       </div>
 
-      {/* Controles de orden */}
+      {/* Controles — sticky header con dos filas separadas */}
       <div style={{
         position: 'sticky', top: 'var(--nav-height)', zIndex: 50,
-        background: 'var(--bg)', padding: '14px 16px 8px', margin: '0 -16px',
-        display: 'flex', gap: 6, alignItems: 'center',
+        background: 'var(--bg)', padding: '10px 16px 8px', margin: '0 -16px',
+        display: 'flex', flexDirection: 'column', gap: 6,
       }}>
+        {/* Fila 1: filtro de modalidad */}
+        <div style={{ display: 'flex', gap: 6 }}>
+          {[['todas', 'Todas'], ['bola8', 'Bola 8'], ['bola9', 'Bola 9']].map(([val, label]) => (
+            <button key={val} onClick={() => setFiltroMod(val)} style={{
+              padding: '4px 10px', borderRadius: 12, fontSize: 11, fontWeight: 700, cursor: 'pointer',
+              background: filtroMod === val ? 'rgba(6,182,212,.15)' : 'var(--surface2)',
+              color: filtroMod === val ? 'var(--accent)' : 'var(--text-dim)',
+              border: `1px solid ${filtroMod === val ? 'rgba(6,182,212,.4)' : 'var(--border)'}`,
+            }}>{label}</button>
+          ))}
+        </div>
+        {/* Fila 2: controles de orden — solo en vista jugador */}
         {jugadorId !== null && (
-          <>
+          <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
             {[['rareza', '% global'], ['adquisicion', 'Adquisición']].map(([key, label]) => (
               <button key={key} onClick={() => setSortKey(key)} style={{
                 padding: '4px 10px', borderRadius: 12, fontSize: 11, fontWeight: 700, cursor: 'pointer',
@@ -392,23 +404,15 @@ export default function Logros() {
                 border: `1px solid ${sortKey === key ? 'rgba(6,182,212,.4)' : 'var(--border)'}`,
               }}>{label}</button>
             ))}
-          </>
+            <button onClick={() => setSortDir(d => d === 'desc' ? 'asc' : 'desc')} style={{
+              padding: '4px 10px', borderRadius: 12, fontSize: 11, fontWeight: 700, cursor: 'pointer',
+              background: 'var(--surface2)', color: 'var(--text-dim)', border: '1px solid var(--border)',
+              marginLeft: 'auto',
+            }}>
+              {sortDir === 'desc' ? '↓ Mayor a menor' : '↑ Menor a mayor'}
+            </button>
+          </div>
         )}
-        {[['todas', 'Todas'], ['bola8', 'Bola 8'], ['bola9', 'Bola 9']].map(([val, label]) => (
-          <button key={val} onClick={() => setFiltroMod(val)} style={{
-            padding: '4px 10px', borderRadius: 12, fontSize: 11, fontWeight: 700, cursor: 'pointer',
-            background: filtroMod === val ? 'rgba(6,182,212,.15)' : 'var(--surface2)',
-            color: filtroMod === val ? 'var(--accent)' : 'var(--text-dim)',
-            border: `1px solid ${filtroMod === val ? 'rgba(6,182,212,.4)' : 'var(--border)'}`,
-          }}>{label}</button>
-        ))}
-        <button onClick={() => setSortDir(d => d === 'desc' ? 'asc' : 'desc')} style={{
-          padding: '4px 10px', borderRadius: 12, fontSize: 11, fontWeight: 700, cursor: 'pointer',
-          background: 'var(--surface2)', color: 'var(--text-dim)', border: '1px solid var(--border)',
-          marginLeft: 'auto',
-        }}>
-          {sortDir === 'desc' ? '↓ Mayor a menor' : '↑ Menor a mayor'}
-        </button>
       </div>
 
       {/* Contenido */}
