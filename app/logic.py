@@ -250,10 +250,10 @@ def _evaluar_bola8(session: Session, partida: Partida, turno: Turno) -> dict:
 def _evaluar_bola9(session: Session, partida: Partida, turno: Turno) -> dict:
     """
     Lógica de Bola 9.
-    - Ganar: meter la 9 sin la blanca (incluso en el break = Golden Break).
-    - 9 + blanca simultáneas: respot de la 9, bola en mano para el rival.
+    - Ganar: meter la 9 sin falta (incluso en el break = Golden Break).
+    - 9 + cualquier falta: respot de la 9, bola en mano para el rival.
     - Repetir turno: meter cualquier bola 1-8 sin falta.
-    - Falta → bola en mano para el rival (no hay grupos).
+    - Falta sin la 9 → bola en mano para el rival (no hay grupos).
     - Tres faltas consecutivas del equipo → pierde.
     """
     resultado = {
@@ -269,19 +269,19 @@ def _evaluar_bola9(session: Session, partida: Partida, turno: Turno) -> dict:
     equipo_actual = _equipo_de_jugador(session, partida.id, turno.jugador_id)
     equipo_rival = 2 if equipo_actual == 1 else 1
 
-    # --- Caso especial: 9 + blanca simultáneas → respot de la 9, bola en mano ---
-    # Se evalúa ANTES que la falta genérica para poder quitar la 9 de bolas_metidas.
-    if 9 in bolas and 0 in bolas:
+    # --- 9 + cualquier falta → respot de la 9, bola en mano (no es victoria) ---
+    # Cubre: 9+blanca, 9+doble golpe, 9+push shot, etc.
+    if 9 in bolas and (0 in bolas or turno.falta_id is not None):
         turno.bolas_metidas = [b for b in bolas if b != 9]   # la 9 vuelve a la mesa
         turno.es_respot = True
-        turno.falta_id = turno.falta_id or _get_falta_id(session, "Blanca dentro (Scratch)")
+        if 0 in bolas and turno.falta_id is None:
+            turno.falta_id = _get_falta_id(session, "Blanca dentro (Scratch)")
         turno.repite = False
         sig = _siguiente_jugador(session, partida, turno.jugador_id)
         resultado["siguiente_jugador_id"] = sig
         resultado["bola_en_mano_siguiente"] = True
         partida.siguiente_jugador_id = sig
         partida.bola_en_mano = True
-        # Tres faltas consecutivas
         if _tres_faltas_consecutivas(session, partida.id, equipo_actual):
             turno.falta_id = _get_falta_id(session, "Tres faltas consecutivas") or turno.falta_id
             _finalizar(partida, equipo_rival)
@@ -289,7 +289,7 @@ def _evaluar_bola9(session: Session, partida: Partida, turno: Turno) -> dict:
             resultado["ganador_equipo"] = equipo_rival
         return resultado
 
-    # --- Falta (sin caso 9+blanca) ---
+    # --- Falta sin la 9 ---
     res_falta = _evaluar_falta_comun(session, partida, turno, resultado)
     if res_falta is not None:
         return res_falta

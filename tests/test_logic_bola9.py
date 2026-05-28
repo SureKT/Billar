@@ -223,6 +223,30 @@ class TestBola9Respot:
         assert res["bola_en_mano_siguiente"] is True
         assert partida.bola_en_mano is True
 
+    def test_9_falta_manual_respot_no_victoria(self, session):
+        """9 + falta manual (sin blanca) → respot, NO victoria."""
+        partida, j1, j2 = crear_partida(session, "bola9")
+        crear_turno_contextual(session, partida, j1, [], numero=1)
+
+        t = make_turno(session, partida, j1, [9], numero=2, falta_nombre="Doble golpe")
+        res = evaluar_turno(session, partida, t)
+
+        assert res["partida_finalizada"] is False
+        assert res["bola_en_mano_siguiente"] is True
+        assert res["siguiente_jugador_id"] == j2.id
+        assert 9 not in t.bolas_metidas
+        assert t.es_respot is True
+
+    def test_9_falta_manual_no_cuenta_como_metida(self, session):
+        """La 9 respoteada no queda registrada como metida (vuelve a la mesa)."""
+        partida, j1, j2 = crear_partida(session, "bola9")
+        crear_turno_contextual(session, partida, j1, [], numero=1)
+
+        t = make_turno(session, partida, j1, [9], numero=2, falta_nombre="Doble golpe")
+        evaluar_turno(session, partida, t)
+
+        assert 9 not in t.bolas_metidas
+
 
 # ---------------------------------------------------------------------------
 # Tres faltas consecutivas del equipo
