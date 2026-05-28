@@ -78,15 +78,19 @@ export default function BolasEquipo({
       </div>
 
 
-      {bolaMano && (
+      <div style={{
+        overflow: 'hidden',
+        maxHeight: bolaMano ? '32px' : '0px',
+        transition: 'max-height .2s ease',
+      }}>
         <span style={{
           fontSize: '10px', fontWeight: 700, color: '#fbbf24',
           background: 'rgba(202,138,4,.15)', border: '1px solid rgba(202,138,4,.35)',
-          borderRadius: 6, padding: '2px 8px', alignSelf: 'flex-start',
+          borderRadius: 6, padding: '2px 8px', display: 'inline-block',
         }}>
           🎱 Bola en mano
         </span>
-      )}
+      </div>
     </div>
   )
 }

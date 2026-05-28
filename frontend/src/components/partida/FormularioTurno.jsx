@@ -122,14 +122,9 @@ export default function FormularioTurno({
 
       {/* Cabecera del turno */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', gap: 4 }}>
-        <div>
-          <p style={{ fontSize: '14px', fontWeight: 700, color: `var(--team${equipoActual})`, lineHeight: 1.2 }}>
-            {nombre(partida.siguiente_jugador_id, jugadores)}
-          </p>
-          <p style={{ fontSize: '11px', color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '.05em', marginTop: 1 }}>
-            Turno #{numeroTurno}
-          </p>
-        </div>
+        <p style={{ fontSize: '12px', color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '.05em' }}>
+          Turno #{numeroTurno}
+        </p>
         <div style={{ display: 'flex', justifyContent: 'center' }}>
           <span className="badge" style={{
             background: '#3d2c00', color: '#fcd34d', fontSize: '11px',
@@ -141,14 +136,18 @@ export default function FormularioTurno({
         <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
           {siguienteNoRepite && (
             <p style={{ fontSize: '12px', fontWeight: 600, color: `var(--team${equipoActual === 1 ? 2 : 1})`, textAlign: 'right' }}>
-              → {nombre(siguienteNoRepite, jugadores)}
+              siguiente → {nombre(siguienteNoRepite, jugadores)}
             </p>
           )}
         </div>
       </div>
 
-      {/* Aviso faltas consecutivas — antes del selector para que sea visible sin scroll */}
-      {faltasConsecutivas >= 1 && (
+      {/* Aviso faltas consecutivas — antes del selector, animado para no causar salto */}
+      <div style={{
+        overflow: 'hidden',
+        maxHeight: faltasConsecutivas >= 1 ? '60px' : '0px',
+        transition: 'max-height .2s ease',
+      }}>
         <div style={{
           padding: '8px 12px', borderRadius: 8, fontSize: '13px', fontWeight: 600,
           background: faltasConsecutivas >= 2 ? 'rgba(127,29,29,.5)' : 'rgba(124,45,18,.35)',
@@ -159,7 +158,7 @@ export default function FormularioTurno({
             ? '⚠ 2 faltas seguidas — la próxima pierde la partida'
             : '1 falta seguida — cuidado con la siguiente'}
         </div>
-      )}
+      </div>
 
       {/* Selector de bolas */}
       <div>

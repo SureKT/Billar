@@ -287,7 +287,6 @@ export default function Partida() {
       setFaltasAutoIds(new Set())
       await reload()
       await checkNuevosLogros()
-      showToast('✓ Turno registrado', 'success', 1500)
     } catch (err) {
       setFlash({ texto: err.message, tipo: 'error' })
     } finally {
