@@ -421,15 +421,15 @@ export default function HistorialTurnos({
                   <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', alignItems: 'center' }}>
                     {t.es_respot && (
                       <div style={{ position: 'relative', display: 'inline-flex' }}>
-                        <div style={{ opacity: 0.55 }}>
+                        <div style={{ opacity: 0.8 }}>
                           <BolaPool numero={9} size={28} />
                         </div>
                         <svg
                           viewBox="0 0 28 28" width={28} height={28}
-                          style={{ position: 'absolute', inset: 0, pointerEvents: 'none', filter: 'drop-shadow(0 0 2px #000)' }}
+                          style={{ position: 'absolute', inset: 0, pointerEvents: 'none', filter: 'drop-shadow(0 0 1px #000)' }}
                         >
-                          <line x1="5" y1="5" x2="23" y2="23" stroke="#fca5a5" strokeWidth="2.5" strokeLinecap="round"/>
-                          <line x1="23" y1="5" x2="5" y2="23" stroke="#fca5a5" strokeWidth="2.5" strokeLinecap="round"/>
+                          <circle cx="14" cy="14" r="11.5" stroke="#fca5a5" strokeWidth="1.8" fill="none"/>
+                          <line x1="6.5" y1="21.5" x2="21.5" y2="6.5" stroke="#fca5a5" strokeWidth="1.8" strokeLinecap="round"/>
                         </svg>
                       </div>
                     )}
