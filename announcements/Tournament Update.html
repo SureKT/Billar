@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Billar App — Changelog</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #0f1117;
+    color: #e5e7eb;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    padding: 32px 24px;
+    min-height: 100vh;
+  }
+  .wrap { max-width: 520px; margin: 0 auto; }
+
+  .header {
+    display: flex; align-items: center; gap: 14px;
+    margin-bottom: 28px;
+  }
+  .header-icon {
+    width: 52px; height: 52px; border-radius: 14px;
+    background: linear-gradient(135deg, #06b6d4, #0e7490);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 26px; flex-shrink: 0;
+  }
+  .header-title { font-size: 22px; font-weight: 800; color: #fff; }
+  .header-sub { font-size: 13px; color: #6b7280; margin-top: 2px; }
+
+  .version-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: rgba(6,182,212,.12); border: 1px solid rgba(6,182,212,.25);
+    color: #22d3ee; font-size: 12px; font-weight: 700;
+    padding: 4px 10px; border-radius: 20px; margin-bottom: 20px;
+    letter-spacing: .03em;
+  }
+  .dot { width: 6px; height: 6px; border-radius: 50%; background: #22d3ee; }
+
+  .section { margin-bottom: 20px; }
+  .section-title {
+    font-size: 11px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .08em; color: #6b7280;
+    margin-bottom: 10px; display: flex; align-items: center; gap: 8px;
+  }
+  .section-title::after {
+    content: ''; flex: 1; height: 1px; background: #1f2937;
+  }
+
+  .card {
+    background: #161b27;
+    border: 1px solid #1f2937;
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .item {
+    display: flex; align-items: flex-start; gap: 12px;
+    padding: 11px 14px;
+    border-bottom: 1px solid #1a2030;
+  }
+  .item:last-child { border-bottom: none; }
+  .item-icon {
+    width: 30px; height: 30px; border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 15px; flex-shrink: 0; margin-top: 1px;
+  }
+  .item-text { flex: 1; }
+  .item-title { font-size: 13px; font-weight: 600; color: #f3f4f6; line-height: 1.3; }
+  .item-desc { font-size: 12px; color: #6b7280; margin-top: 2px; line-height: 1.4; }
+
+  .tag {
+    display: inline-block; font-size: 10px; font-weight: 700;
+    padding: 1px 6px; border-radius: 4px; margin-left: 6px;
+    vertical-align: middle; letter-spacing: .03em;
+  }
+  .tag-new { background: rgba(34,197,94,.15); color: #4ade80; }
+  .tag-fix { background: rgba(251,191,36,.12); color: #fbbf24; }
+  .tag-ux  { background: rgba(168,85,247,.15); color: #c084fc; }
+
+  .footer {
+    text-align: center; margin-top: 24px;
+    font-size: 11px; color: #374151;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="header">
+    <div class="header-icon">🎱</div>
+    <div>
+      <div class="header-title">Billar App</div>
+      <div class="header-sub">Resumen de contenidos · 15 Mayo 2025</div>
+    </div>
+  </div>
+
+  <div class="version-badge">
+    <div class="dot"></div>
+    Tournament Update
+  </div>
+
+  <!-- TORNEOS -->
+  <div class="section">
+    <div class="section-title">🏆 Torneos</div>
+    <div class="card">
+      <div class="item">
+        <div class="item-icon" style="background:rgba(234,179,8,.12)">🏆</div>
+        <div class="item-text">
+          <div class="item-title">Sistema de torneos round-robin <span class="tag tag-new">NUEVO</span></div>
+          <div class="item-desc">Crea torneos con 3–6 jugadores. Genera automáticamente todos los enfrentamientos 1v1.</div>
+        </div>
+      </div>
+      <div class="item">
+        <div class="item-icon" style="background:rgba(234,179,8,.1)">📊</div>
+        <div class="item-text">
+          <div class="item-title">Clasificación con W / L y puntos</div>
+          <div class="item-desc">3 puntos por victoria. Desempate por bolas metidas.</div>
+        </div>
+      </div>
+      <div class="item">
+        <div class="item-icon" style="background:rgba(234,179,8,.1)">🥇</div>
+        <div class="item-text">
+          <div class="item-title">Podio al finalizar</div>
+          <div class="item-desc">Pantalla de resultado final con tarima 1º/2º/3º y panel de stats: bolas totales, duración, MVP.</div>
+        </div>
+      </div>
+      <div class="item">
+        <div class="item-icon" style="background:rgba(6,182,212,.1)">⚡</div>
+        <div class="item-text">
+          <div class="item-title">Elegir quién empieza cada partida</div>
+          <div class="item-desc">Al pulsar "Jugar" aparece un selector con los dos jugadores.</div>
+        </div>
+      </div>
+      <div class="item">
+        <div class="item-icon" style="background:rgba(234,179,8,.1)">🎯</div>
+        <div class="item-text">
+          <div class="item-title">Widget de torneo activo en Inicio</div>
+          <div class="item-desc">Barra de progreso y acceso rápido cuando hay un torneo en curso.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- UI -->
+  <div class="section">
+    <div class="section-title">✨ Interfaz</div>
+    <div class="card">
+      <div class="item">
+        <div class="item-icon" style="background:rgba(168,85,247,.12)">👤</div>
+        <div class="item-text">
+          <div class="item-title">Avatares con iniciales de color <span class="tag tag-new">NUEVO</span></div>
+          <div class="item-desc">Círculos con iniciales y el color del jugador en historial, torneos y clasificaciones.</div>
+        </div>
+      </div>
+      <div class="item">
+        <div class="item-icon" style="background:rgba(168,85,247,.1)">📈</div>
+        <div class="item-text">
+          <div class="item-title">Sparklines de forma reciente en Stats</div>
+          <div class="item-desc">Puntos verdes/rojos mostrando las últimas W/L de cada jugador.</div>
+        </div>
+      </div>
+      <div class="item">
+        <div class="item-icon" style="background:rgba(6,182,212,.1)">🎲</div>
+        <div class="item-text">
+          <div class="item-title">Mix (sugerencias) integrado en Nueva partida</div>
+          <div class="item-desc">Tabs Manual / Mix dentro de la misma pantalla. Menú reducido a 5 pestañas.</div>
+        </div>
+      </div>
+      <div class="item">
+        <div class="item-icon" style="background:rgba(6,182,212,.1)">⚫</div>
+        <div class="item-text">
+          <div class="item-title">Iconos ⚫ Bola 8 / 🟡 Bola 9</div>
+          <div class="item-desc">En los botones de modalidad al crear partida y torneo.</div>
+        </div>
+      </div>
+      <div class="item">
+        <div class="item-icon" style="background:rgba(34,197,94,.1)">↓</div>
+        <div class="item-text">
+          <div class="item-title">Pull-to-refresh en Inicio <span class="tag tag-ux">UX</span></div>
+          <div class="item-desc">Arrastra hacia abajo para actualizar el historial.</div>
+        </div>
+      </div>
+      <div class="item">
+        <div class="item-icon" style="background:rgba(251,191,36,.1)">💀</div>
+        <div class="item-text">
+          <div class="item-title">Jugadores inactivos colapsados</div>
+          <div class="item-desc">Sección "Inactivos" oculta por defecto, expandible con un toque.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FIXES -->
+  <div class="section">
+    <div class="section-title">🛠 Mejoras y correcciones</div>
+    <div class="card">
+      <div class="item">
+        <div class="item-icon" style="background:rgba(251,191,36,.1)">🔒</div>
+        <div class="item-text">
+          <div class="item-title">Doble confirmación en todas las eliminaciones <span class="tag tag-fix">FIX</span></div>
+          <div class="item-desc">Eliminar partida, torneo o jugador requiere pulsar dos veces.</div>
+        </div>
+      </div>
+      <div class="item">
+        <div class="item-icon" style="background:rgba(251,191,36,.1)">🏆</div>
+        <div class="item-text">
+          <div class="item-title">Botón "Ir al torneo" al terminar partida</div>
+          <div class="item-desc">Vuelta directa al torneo sin pasar por el menú principal.</div>
+        </div>
+      </div>
+      <div class="item">
+        <div class="item-icon" style="background:rgba(251,191,36,.1)">🗑</div>
+        <div class="item-text">
+          <div class="item-title">Eliminar torneo: elegir qué borrar</div>
+          <div class="item-desc">Opción de conservar las partidas en el historial o borrar todo junto.</div>
+        </div>
+      </div>
+      <div class="item">
+        <div class="item-icon" style="background:rgba(34,197,94,.1)">⬛</div>
+        <div class="item-text">
+          <div class="item-title">Skeleton loaders + carga más suave <span class="tag tag-ux">UX</span></div>
+          <div class="item-desc">Animaciones de carga en todas las pantallas. Sin saltos al recargar.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">billar.local · uso privado entre amigos</div>
+</div>
+</body>
+</html>
