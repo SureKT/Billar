@@ -428,8 +428,7 @@ export default function HistorialTurnos({
                           viewBox="0 0 28 28" width={28} height={28}
                           style={{ position: 'absolute', inset: 0, pointerEvents: 'none', filter: 'drop-shadow(0 0 1px #000)' }}
                         >
-                          <circle cx="14" cy="14" r="11.5" stroke="#fca5a5" strokeWidth="1.8" fill="none"/>
-                          <line x1="6.5" y1="21.5" x2="21.5" y2="6.5" stroke="#fca5a5" strokeWidth="1.8" strokeLinecap="round"/>
+                          <line x1="5" y1="5" x2="23" y2="23" stroke="#fca5a5" strokeWidth="1.8" strokeLinecap="round"/>
                         </svg>
                       </div>
                     )}
