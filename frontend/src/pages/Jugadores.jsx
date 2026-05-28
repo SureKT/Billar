@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useApi } from '../hooks/useApi'
+import { useSessionState } from '../hooks/useSessionState'
 import { api } from '../api/client'
 
 function NombresEquipoSection({ statsMap }) {
@@ -730,8 +731,8 @@ export default function Jugadores() {
   const [nombre, setNombre] = useState('')
   const [error, setError] = useState(null)
   const [guardando, setGuardando] = useState(false)
-  const [orden, setOrden] = useState('nombre')
-  const [inactivosExpand, setInactivosExpand] = useState(false)
+  const [orden, setOrden] = useSessionState('jugadores_orden', 'nombre')
+  const [inactivosExpand, setInactivosExpand] = useSessionState('jugadores_inactivos_expand', false)
 
   async function crear(e) {
     e.preventDefault()

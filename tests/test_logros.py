@@ -49,13 +49,13 @@ def _add_derrota(session: Session, j1_id: int, j2_id: int, modalidad="bola8") ->
 
 
 def test_catalogo_tiene_25_logros():
-    assert len(CATALOGO) == 25
+    assert len(CATALOGO) == 29
 
 
 def test_sin_partidas_todo_bloqueado(session):
     j1 = get_jugador(session, "J1")
     logros = calcular_logros(j1.id, session)
-    assert len(logros) == 25
+    assert len(logros) == 29
     assert all(not l.desbloqueado for l in logros)
 
 

@@ -39,6 +39,7 @@ Sistema de logros estilo Steam: catálogo global de 24 logros, desbloqueo por ju
 | 22 | Barrida | Ganar sin que el rival meta ninguna bola de su grupo | — |
 | 23 | Sesión perfecta | Ganar 3 partidas en el mismo día | — |
 | 24 | Revancha | Ganar inmediatamente después de perder contra el mismo rival | — |
+| 25 | Blue balls | Ambos equipos ya sin bolas de grupo y la 8 sin meterse en más de 3 turnos seguidos — ambos jugadores lo desbloquean | — |
 
 **Logros con niveles:** Rodaje, Crack, En racha, Artillero (4 total).  
 Para niveles, el jugador acumula todos los niveles alcanzados (bronce + plata si tiene ≥25 victorias).
@@ -150,3 +151,4 @@ class LogroEstado(LogroCatalogo):
 - **Barrida en Bola 9**: no aplica (no hay grupos). Solo para Bola 8.
 - **Limpio**: solo para Bola 8 (en Bola 9 no hay concepto de "sin faltas" del mismo modo).
 - **Golden Break**: solo para Bola 8.
+- **Blue balls**: solo para Bola 8. Cómputo: reconstruir bolas pendientes por equipo turno a turno. Detectar el primer turno donde ambos equipos tienen 0 bolas de grupo pendientes. A partir de ahí, contar turnos consecutivos donde la 8 no está en `bolas_metidas` y la partida no termina. Si ≥3 → ambos jugadores de esa partida lo desbloquean.

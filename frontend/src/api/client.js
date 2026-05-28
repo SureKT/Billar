@@ -78,4 +78,5 @@ export const api = {
   // Logros
   getLogrosCatalogo: () => request('GET', '/logros/catalogo'),
   getLogrosJugador: (jugadorId) => request('GET', `/logros/${jugadorId}`),
+  getLogrosTodos: () => request('GET', '/logros/todos'),
 }
