@@ -122,9 +122,14 @@ export default function FormularioTurno({
 
       {/* Cabecera del turno */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', gap: 4 }}>
-        <p style={{ fontSize: '12px', color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '.05em' }}>
-          Turno #{numeroTurno}
-        </p>
+        <div>
+          <p style={{ fontSize: '14px', fontWeight: 700, color: `var(--team${equipoActual})`, lineHeight: 1.2 }}>
+            {nombre(partida.siguiente_jugador_id, jugadores)}
+          </p>
+          <p style={{ fontSize: '11px', color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '.05em', marginTop: 1 }}>
+            Turno #{numeroTurno}
+          </p>
+        </div>
         <div style={{ display: 'flex', justifyContent: 'center' }}>
           <span className="badge" style={{
             background: '#3d2c00', color: '#fcd34d', fontSize: '11px',
@@ -135,26 +140,14 @@ export default function FormularioTurno({
         </div>
         <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
           {siguienteNoRepite && (
-            <p style={{ fontSize: '11px', color: 'var(--text-dim)', textAlign: 'right' }}>
-              siguiente → {nombre(siguienteNoRepite, jugadores)}
+            <p style={{ fontSize: '12px', fontWeight: 600, color: `var(--team${equipoActual === 1 ? 2 : 1})`, textAlign: 'right' }}>
+              → {nombre(siguienteNoRepite, jugadores)}
             </p>
           )}
         </div>
       </div>
 
-      {/* Selector de bolas */}
-      <div>
-        <SelectorBolas
-          seleccionadas={bolas}
-          onChange={setBolas}
-          grupoPropio={grupoPropio}
-          bolasEnMesa={bolasEnMesa}
-          modalidad={partida.modalidad}
-          bolaObjetivo={bolaObjetivo}
-        />
-      </div>
-
-      {/* Aviso faltas consecutivas */}
+      {/* Aviso faltas consecutivas — antes del selector para que sea visible sin scroll */}
       {faltasConsecutivas >= 1 && (
         <div style={{
           padding: '8px 12px', borderRadius: 8, fontSize: '13px', fontWeight: 600,
@@ -167,6 +160,18 @@ export default function FormularioTurno({
             : '1 falta seguida — cuidado con la siguiente'}
         </div>
       )}
+
+      {/* Selector de bolas */}
+      <div>
+        <SelectorBolas
+          seleccionadas={bolas}
+          onChange={setBolas}
+          grupoPropio={grupoPropio}
+          bolasEnMesa={bolasEnMesa}
+          modalidad={partida.modalidad}
+          bolaObjetivo={bolaObjetivo}
+        />
+      </div>
 
       {/* Faltas */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -263,12 +268,19 @@ export default function FormularioTurno({
             title={deshacerConfirm ? 'Toca de nuevo para confirmar' : 'Deshacer último turno'}
             style={{
               padding: '15px 14px', borderRadius: 10,
-              fontSize: deshacerConfirm ? '11px' : '18px',
-              flexShrink: 0, minWidth: 56,
-              transition: 'all .2s',
+              fontSize: deshacerConfirm ? '13px' : '20px',
+              flexShrink: 0, minWidth: deshacerConfirm ? 76 : 56,
+              position: 'relative', overflow: 'hidden',
             }}
           >
             {deshacerConfirm ? '¿Seguro?' : '↩'}
+            {deshacerConfirm && (
+              <span style={{
+                position: 'absolute', bottom: 0, left: 0, height: 3, width: '100%',
+                background: 'rgba(248,113,113,.55)',
+                animation: 'timerShrink 3s linear forwards',
+              }} />
+            )}
           </button>
         )}
       </div>

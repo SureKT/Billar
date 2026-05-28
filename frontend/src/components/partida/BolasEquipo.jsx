@@ -13,7 +13,7 @@ export default function BolasEquipo({
   titulo, teamNum, pendientes, grupo,
   esActivo, ganador,
   jugadoresEquipo, siguienteJugadorId,
-  modalidad,
+  modalidad, bolaMano = false,
 }) {
   const t = TEAM[teamNum]
   const esBola9 = modalidad === 'bola9'
@@ -34,7 +34,12 @@ export default function BolasEquipo({
           {titulo} {ganador && '🏆'}
         </span>
         {!esBola9 && (grupo
-          ? <span className={`badge badge-${grupo}`} style={{ fontSize: '10px', padding: '2px 7px' }}>{grupo.charAt(0).toUpperCase() + grupo.slice(1)}</span>
+          ? <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              <span className={`badge badge-${grupo}`} style={{ fontSize: '10px', padding: '2px 7px' }}>{grupo.charAt(0).toUpperCase() + grupo.slice(1)}</span>
+              {pendientes.length > 0 && (
+                <span style={{ fontSize: '11px', color: 'var(--text-dim)', fontWeight: 700 }}>{pendientes.length}</span>
+              )}
+            </div>
           : <span style={{ fontSize: '10px', color: 'var(--text-dim)' }}>—</span>
         )}
       </div>
@@ -73,6 +78,15 @@ export default function BolasEquipo({
       </div>
 
 
+      {bolaMano && (
+        <span style={{
+          fontSize: '10px', fontWeight: 700, color: '#fbbf24',
+          background: 'rgba(202,138,4,.15)', border: '1px solid rgba(202,138,4,.35)',
+          borderRadius: 6, padding: '2px 8px', alignSelf: 'flex-start',
+        }}>
+          🎱 Bola en mano
+        </span>
+      )}
     </div>
   )
 }

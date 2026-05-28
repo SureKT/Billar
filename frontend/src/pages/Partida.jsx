@@ -18,6 +18,7 @@ export default function Partida() {
   const [faltasAutoIds, setFaltasAutoIds] = useState(new Set())
   const [registrando, setRegistrando] = useState(false)
   const [confirmarBorrar, setConfirmarBorrar] = useState(false)
+  const [confirmarSalir, setConfirmarSalir]   = useState(false)
   const [flash, setFlash]             = useState(null)
   const [editandoTiempos, setEditandoTiempos] = useState(false)
   const [editandoTurnos, setEditandoTurnos] = useState(false)
@@ -208,7 +209,7 @@ export default function Partida() {
 
   // ── Handlers ─────────────────────────────────────────────────────────────────
   function handleBack() {
-    if (bolas.length > 0 && !window.confirm('¿Salir? Perderás las bolas seleccionadas.')) return
+    if (bolas.length > 0) { setConfirmarSalir(true); return }
     navigate(-1)
   }
 
@@ -286,6 +287,7 @@ export default function Partida() {
       setFaltasAutoIds(new Set())
       await reload()
       await checkNuevosLogros()
+      showToast('✓ Turno registrado', 'success', 1500)
     } catch (err) {
       setFlash({ texto: err.message, tipo: 'error' })
     } finally {
@@ -425,6 +427,15 @@ export default function Partida() {
         </div>
       </div>
 
+      {/* Confirmar salida */}
+      {confirmarSalir && (
+        <div className="card" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px' }}>
+          <p style={{ flex: 1, fontSize: 13, margin: 0 }}>¿Salir? Perderás las bolas seleccionadas.</p>
+          <button className="btn btn-danger" onClick={() => navigate(-1)} style={{ flexShrink: 0 }}>Salir</button>
+          <button className="btn btn-ghost" onClick={() => setConfirmarSalir(false)} style={{ flexShrink: 0 }}>Cancelar</button>
+        </div>
+      )}
+
       {/* Estado de equipos */}
       <div style={{ display: 'flex', gap: 8 }}>
         <BolasEquipo
@@ -436,6 +447,7 @@ export default function Partida() {
           jugadoresEquipo={buildEquipo(partida.equipo1_jugadores)}
           siguienteJugadorId={partida.siguiente_jugador_id}
           modalidad={partida.modalidad}
+          bolaMano={!finalizada && partida.bola_en_mano && equipoActual === 1}
         />
         <BolasEquipo
           titulo={partida.equipo2_nombre || 'Equipo 2'} teamNum={2}
@@ -446,6 +458,7 @@ export default function Partida() {
           jugadoresEquipo={buildEquipo(partida.equipo2_jugadores)}
           siguienteJugadorId={partida.siguiente_jugador_id}
           modalidad={partida.modalidad}
+          bolaMano={!finalizada && partida.bola_en_mano && equipoActual === 2}
         />
       </div>
 
@@ -591,7 +604,7 @@ export default function Partida() {
           <button
             className="btn btn-ghost btn-full"
             onClick={() => setConfirmarBorrar(true)}
-            style={{ color: 'var(--text-dim)', fontSize: '13px' }}
+            style={{ color: 'rgba(239,68,68,.65)', fontSize: '13px' }}
           >
             ❌ Eliminar partida
           </button>

@@ -132,3 +132,4 @@ input[type="text"]:focus { outline: none; border-color: var(--accent); }
 /* Scroll horizontal sin barra visible (tabla comparativa) */
 .hide-scrollbar::-webkit-scrollbar { display: none; }
 .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+@keyframes timerShrink { from { width: 100%; } to { width: 0%; } }
