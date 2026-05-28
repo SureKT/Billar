@@ -44,21 +44,24 @@ def _bolas_pendientes_equipo(session: Session, partida: Partida, equipo: int) ->
     return list(grupo_bolas - metidas)
 
 
-def _tres_faltas_consecutivas(session: Session, partida_id: int, equipo: int) -> bool:
+def _tres_faltas_consecutivas(session: Session, partida_id: int, equipo: int, hasta_numero: int | None = None) -> bool:
     jugadores = _jugadores_equipo(session, partida_id, equipo)
     if not jugadores:
         return False
-    turnos = session.exec(
+    query = (
         select(Turno)
         .where(Turno.partida_id == partida_id, Turno.jugador_id.in_(jugadores))
-        .order_by(Turno.numero.desc())
-    ).all()
+    )
+    # En replay solo cuentan los turnos hasta el actual, no los futuros.
+    if hasta_numero is not None:
+        query = query.where(Turno.numero <= hasta_numero)
+    turnos = session.exec(query.order_by(Turno.numero.desc())).all()
     if len(turnos) < 3:
         return False
     return all(t.falta_id is not None for t in turnos[:3])
 
 
-def _siguiente_jugador(session: Session, partida: Partida, jugador_actual_id: int) -> int:
+def _siguiente_jugador(session: Session, partida: Partida, jugador_actual_id: int, hasta_numero: int | None = None) -> int:
     """El turno pasa al equipo rival. Dentro del rival, rota al siguiente tras el último que jugó."""
     equipo_actual = _equipo_de_jugador(session, partida.id, jugador_actual_id)
     equipo_rival = 2 if equipo_actual == 1 else 1
@@ -67,11 +70,14 @@ def _siguiente_jugador(session: Session, partida: Partida, jugador_actual_id: in
         return jugador_actual_id
     if len(rival_ids) == 1:
         return rival_ids[0]
-    ultimo_rival = session.exec(
+    query = (
         select(Turno)
         .where(Turno.partida_id == partida.id, Turno.jugador_id.in_(rival_ids))
-        .order_by(Turno.numero.desc())
-    ).first()
+    )
+    # En replay solo cuenta el último rival hasta el turno actual, no los futuros.
+    if hasta_numero is not None:
+        query = query.where(Turno.numero <= hasta_numero)
+    ultimo_rival = session.exec(query.order_by(Turno.numero.desc())).first()
     if ultimo_rival is None:
         return rival_ids[0]
     idx = rival_ids.index(ultimo_rival.jugador_id) if ultimo_rival.jugador_id in rival_ids else -1
@@ -115,13 +121,13 @@ def _evaluar_falta_comun(session: Session, partida: Partida, turno: Turno, resul
         return resultado
 
     turno.repite = False
-    sig = _siguiente_jugador(session, partida, turno.jugador_id)
+    sig = _siguiente_jugador(session, partida, turno.jugador_id, turno.numero)
     resultado["siguiente_jugador_id"] = sig
     resultado["bola_en_mano_siguiente"] = (penalizacion == "bola_en_mano")
     partida.siguiente_jugador_id = sig
     partida.bola_en_mano = resultado["bola_en_mano_siguiente"]
 
-    if _tres_faltas_consecutivas(session, partida.id, equipo_actual):
+    if _tres_faltas_consecutivas(session, partida.id, equipo_actual, turno.numero):
         turno.falta_id = _get_falta_id(session, "Tres faltas consecutivas") or turno.falta_id
         _finalizar(partida, equipo_rival)
         resultado["partida_finalizada"] = True
@@ -196,7 +202,7 @@ def _evaluar_bola8(session: Session, partida: Partida, turno: Turno) -> dict:
         resultado["repite"] = turno.repite
         resultado["siguiente_jugador_id"] = (
             turno.jugador_id if turno.repite
-            else _siguiente_jugador(session, partida, turno.jugador_id)
+            else _siguiente_jugador(session, partida, turno.jugador_id, turno.numero)
         )
         partida.siguiente_jugador_id = resultado["siguiente_jugador_id"]
         partida.bola_en_mano = False
@@ -239,7 +245,7 @@ def _evaluar_bola8(session: Session, partida: Partida, turno: Turno) -> dict:
     resultado["repite"] = turno.repite
     resultado["siguiente_jugador_id"] = (
         turno.jugador_id if turno.repite
-        else _siguiente_jugador(session, partida, turno.jugador_id)
+        else _siguiente_jugador(session, partida, turno.jugador_id, turno.numero)
     )
     partida.siguiente_jugador_id = resultado["siguiente_jugador_id"]
     partida.bola_en_mano = False
@@ -277,12 +283,12 @@ def _evaluar_bola9(session: Session, partida: Partida, turno: Turno) -> dict:
         if 0 in bolas and turno.falta_id is None:
             turno.falta_id = _get_falta_id(session, "Blanca dentro (Scratch)")
         turno.repite = False
-        sig = _siguiente_jugador(session, partida, turno.jugador_id)
+        sig = _siguiente_jugador(session, partida, turno.jugador_id, turno.numero)
         resultado["siguiente_jugador_id"] = sig
         resultado["bola_en_mano_siguiente"] = True
         partida.siguiente_jugador_id = sig
         partida.bola_en_mano = True
-        if _tres_faltas_consecutivas(session, partida.id, equipo_actual):
+        if _tres_faltas_consecutivas(session, partida.id, equipo_actual, turno.numero):
             turno.falta_id = _get_falta_id(session, "Tres faltas consecutivas") or turno.falta_id
             _finalizar(partida, equipo_rival)
             resultado["partida_finalizada"] = True
@@ -308,7 +314,7 @@ def _evaluar_bola9(session: Session, partida: Partida, turno: Turno) -> dict:
     resultado["repite"] = turno.repite
     resultado["siguiente_jugador_id"] = (
         turno.jugador_id if turno.repite
-        else _siguiente_jugador(session, partida, turno.jugador_id)
+        else _siguiente_jugador(session, partida, turno.jugador_id, turno.numero)
     )
     partida.siguiente_jugador_id = resultado["siguiente_jugador_id"]
     partida.bola_en_mano = False

@@ -70,6 +70,9 @@ def _calcular_stats(session: Session, jugador: Jugador, modalidad: Optional[str]
     else:
         partida_ids = all_partida_ids
 
+    # Cargar todas las partidas una sola vez (evita N+1 repetidos)
+    partida_map = {pid: session.get(Partida, pid) for pid in partida_ids}
+
     partidas_jugadas = len(partida_ids)
     partidas_ganadas = 0
     partidas_jugadas_bola8 = 0
@@ -79,7 +82,7 @@ def _calcular_stats(session: Session, jugador: Jugador, modalidad: Optional[str]
 
     resultados = []  # (fecha, gano) para calcular racha
     for pid in partida_ids:
-        partida = session.get(Partida, pid)
+        partida = partida_map.get(pid)
         if not partida:
             continue
         # Conteo por modalidad (todas las partidas, no solo finalizadas)
@@ -127,7 +130,7 @@ def _calcular_stats(session: Session, jugador: Jugador, modalidad: Optional[str]
     # Average game duration (only finished games with fecha_fin)
     duraciones_min = []
     for pid in partida_ids:
-        p = session.get(Partida, pid)
+        p = partida_map.get(pid)
         if p and p.fecha_fin:
             mins = (p.fecha_fin - p.fecha).total_seconds() / 60
             duraciones_min.append(mins)
@@ -144,7 +147,7 @@ def _calcular_stats(session: Session, jugador: Jugador, modalidad: Optional[str]
     # Falta más frecuente por modalidad (se construye sobre partidas ya cargadas)
     modalidad_por_partida = {}
     for pid in partida_ids:
-        p = session.get(Partida, pid)
+        p = partida_map.get(pid)
         if p:
             modalidad_por_partida[pid] = p.modalidad
 
@@ -167,8 +170,8 @@ def _calcular_stats(session: Session, jugador: Jugador, modalidad: Optional[str]
 
     # Tendencia: bolas por turno en las últimas 5 partidas finalizadas
     partidas_fin = sorted(
-        [session.get(Partida, pid) for pid in partida_ids
-         if session.get(Partida, pid) and session.get(Partida, pid).ganador_equipo],
+        [p for pid in partida_ids
+         if (p := partida_map.get(pid)) and p.ganador_equipo],
         key=lambda p: p.fecha, reverse=True,
     )
     ultimas_5_ids = {p.id for p in partidas_fin[:5]}

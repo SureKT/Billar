@@ -22,7 +22,7 @@ class Bola(SQLModel, table=True):
 # Tabla de enlace jugadores <-> partidas
 class PartidaJugador(SQLModel, table=True):
     partida_id: Optional[int] = Field(default=None, foreign_key="partida.id", primary_key=True)
-    jugador_id: Optional[int] = Field(default=None, foreign_key="jugador.id", primary_key=True)
+    jugador_id: Optional[int] = Field(default=None, foreign_key="jugador.id", primary_key=True, index=True)
     equipo: int  # 1 o 2
     orden: int   # posición en la lista circular
 
@@ -64,8 +64,8 @@ class Turno(SQLModel, table=True):
     )
 
     id: Optional[int] = Field(default=None, primary_key=True)
-    partida_id: int = Field(foreign_key="partida.id")
-    jugador_id: int = Field(foreign_key="jugador.id")
+    partida_id: int = Field(foreign_key="partida.id", index=True)
+    jugador_id: int = Field(foreign_key="jugador.id", index=True)
     falta_id: Optional[int] = Field(default=None, foreign_key="falta.id")
     numero: int             # orden dentro de la partida (1-based)
     repite: bool = Field(default=False)

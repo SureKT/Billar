@@ -11,6 +11,67 @@ from app import events
 router = APIRouter(prefix="/api/partidas", tags=["turnos"])
 
 
+def _aplicar_auto_scratch(session: Session, partida: Partida, bolas: list[int], falta_id: Optional[int]) -> Optional[int]:
+    """Devuelve la falta efectiva auto-detectando 'Blanca dentro (Scratch)' al meter la 0.
+
+    Se omite cuando la 8 entra en Bola 8 (lo maneja la lógica de partida) o cuando
+    la 9 entra en Bola 9 (respot — lo maneja _evaluar_bola9).
+    """
+    es_bola9 = partida.modalidad == "bola9"
+    omitir = (
+        (not es_bola9 and 8 in bolas) or
+        (es_bola9 and 9 in bolas)
+    )
+    if 0 in bolas and not omitir:
+        falta_blanca = session.exec(
+            select(Falta).where(Falta.nombre == "Blanca dentro (Scratch)")
+        ).first()
+        if falta_blanca:
+            return falta_blanca.id
+    return falta_id
+
+
+def _reset_y_replay(session: Session, partida: Partida) -> dict:
+    """Resetea la partida al estado inicial y re-evalúa todos sus turnos en orden.
+
+    - Preserva la `fecha_fin` original (no la pisa con `now()` al re-finalizar).
+    - Detiene el replay en el primer turno que finalice la partida, para que los
+      turnos posteriores no sobrescriban ganador/siguiente jugador.
+    Devuelve el resultado del último turno evaluado.
+    """
+    fecha_fin_original = partida.fecha_fin
+
+    primer_jugador = session.exec(
+        select(PartidaJugador)
+        .where(PartidaJugador.partida_id == partida.id)
+        .order_by(PartidaJugador.orden)
+    ).first()
+
+    partida.estado = "en_curso"
+    partida.ganador_equipo = None
+    partida.fecha_fin = None
+    partida.equipo1_grupo = None
+    partida.equipo2_grupo = None
+    partida.siguiente_jugador_id = primer_jugador.jugador_id if primer_jugador else None
+    partida.bola_en_mano = False
+
+    todos_turnos = session.exec(
+        select(Turno).where(Turno.partida_id == partida.id).order_by(Turno.numero)
+    ).all()
+
+    ultimo_resultado: dict = {}
+    for t in todos_turnos:
+        ultimo_resultado = evaluar_turno(session, partida, t)
+        if partida.estado == "finalizada":
+            break
+
+    # Preservar la hora de fin original (evita corromper duración al editar).
+    if partida.estado == "finalizada" and fecha_fin_original is not None:
+        partida.fecha_fin = fecha_fin_original
+
+    return ultimo_resultado
+
+
 class TurnoCreate(BaseModel):
     jugador_id: int
     bolas_metidas: list[int] = []  # números de bola (0-15)
@@ -98,22 +159,8 @@ def registrar_turno(
             detail="Conflicto: otro turno fue registrado simultáneamente. Recarga la partida.",
         )
 
-    # Auto-detección: blanca dentro
-    # Se omite cuando:
-    #  - Bola 8 entra también en Bola 8 (ese caso lo maneja la lógica de partida)
-    #  - Bola 9 entra también en Bola 9 (respot de la 9 — lo maneja _evaluar_bola9)
-    falta_id = datos.falta_id
-    es_bola9 = partida.modalidad == "bola9"
-    omitir_scratch = (
-        (not es_bola9 and 8 in datos.bolas_metidas) or   # bola8: 8+blanca
-        (es_bola9 and 9 in datos.bolas_metidas)           # bola9: 9+blanca → respot
-    )
-    if 0 in datos.bolas_metidas and not omitir_scratch:
-        falta_blanca = session.exec(
-            select(Falta).where(Falta.nombre == "Blanca dentro (Scratch)")
-        ).first()
-        if falta_blanca:
-            falta_id = falta_blanca.id
+    # Auto-detección: blanca dentro (ver _aplicar_auto_scratch)
+    falta_id = _aplicar_auto_scratch(session, partida, datos.bolas_metidas, datos.falta_id)
 
     turno = Turno(
         partida_id=partida_id,
@@ -193,40 +240,23 @@ def insertar_turno(
         session.add(t)
     session.flush()
 
-    # Crear el nuevo turno
+    # Crear el nuevo turno (con auto-detección de scratch, igual que al registrar)
+    falta_id = _aplicar_auto_scratch(session, partida, datos.bolas_metidas, datos.falta_id)
     nuevo = Turno(
         partida_id=partida_id,
         jugador_id=datos.jugador_id,
-        falta_id=datos.falta_id,
+        falta_id=falta_id,
         numero=datos.despues_de_numero + 1,
         bola_en_mano=datos.bola_en_mano,
         repite=False,
     )
     nuevo.bolas_metidas = datos.bolas_metidas
-    nuevo.faltas_ids = [datos.falta_id] if datos.falta_id else []
+    nuevo.faltas_ids = [falta_id] if falta_id else []
     session.add(nuevo)
     session.flush()
 
     # Resetear partida y hacer replay completo
-    primer_jugador = session.exec(
-        select(PartidaJugador)
-        .where(PartidaJugador.partida_id == partida_id)
-        .order_by(PartidaJugador.orden)
-    ).first()
-
-    partida.estado = "en_curso"
-    partida.ganador_equipo = None
-    partida.fecha_fin = None
-    partida.equipo1_grupo = None
-    partida.equipo2_grupo = None
-    partida.siguiente_jugador_id = primer_jugador.jugador_id if primer_jugador else None
-    partida.bola_en_mano = False
-
-    todos_turnos = session.exec(
-        select(Turno).where(Turno.partida_id == partida_id).order_by(Turno.numero)
-    ).all()
-    for t in todos_turnos:
-        evaluar_turno(session, partida, t)
+    _reset_y_replay(session, partida)
 
     session.add(partida)
     session.commit()
@@ -270,37 +300,16 @@ def editar_turno(
         if not session.get(Bola, b):
             raise HTTPException(status_code=400, detail=f"Bola {b} no existe")
 
-    # Aplicar los cambios al turno
+    # Aplicar los cambios al turno (con auto-detección de scratch, igual que al registrar)
     if datos.jugador_id is not None:
         turno.jugador_id = datos.jugador_id
+    falta_id = _aplicar_auto_scratch(session, partida, datos.bolas_metidas, datos.falta_id)
     turno.bolas_metidas = datos.bolas_metidas
-    turno.falta_id = datos.falta_id
-    turno.faltas_ids = [datos.falta_id] if datos.falta_id else []
+    turno.falta_id = falta_id
+    turno.faltas_ids = [falta_id] if falta_id else []
 
-    # Obtener todos los turnos en orden
-    todos_turnos = session.exec(
-        select(Turno).where(Turno.partida_id == partida_id).order_by(Turno.numero)
-    ).all()
-
-    # Resetear partida al estado inicial
-    primer_jugador = session.exec(
-        select(PartidaJugador)
-        .where(PartidaJugador.partida_id == partida_id)
-        .order_by(PartidaJugador.orden)
-    ).first()
-
-    partida.estado = "en_curso"
-    partida.ganador_equipo = None
-    partida.fecha_fin = None
-    partida.equipo1_grupo = None
-    partida.equipo2_grupo = None
-    partida.siguiente_jugador_id = primer_jugador.jugador_id if primer_jugador else None
-    partida.bola_en_mano = False
-
-    # Replay completo con todos los turnos
-    ultimo_resultado = {}
-    for t in todos_turnos:
-        ultimo_resultado = evaluar_turno(session, partida, t)
+    # Resetear partida al estado inicial y hacer replay completo
+    ultimo_resultado = _reset_y_replay(session, partida)
 
     session.add(partida)
     session.commit()
@@ -360,24 +369,7 @@ def eliminar_turno(
     session.flush()
 
     # Resetear y replay
-    primer_jugador = session.exec(
-        select(PartidaJugador)
-        .where(PartidaJugador.partida_id == partida_id)
-        .order_by(PartidaJugador.orden)
-    ).first()
-
-    partida.estado = "en_curso"
-    partida.ganador_equipo = None
-    partida.fecha_fin = None
-    partida.equipo1_grupo = None
-    partida.equipo2_grupo = None
-    partida.siguiente_jugador_id = primer_jugador.jugador_id if primer_jugador else None
-    partida.bola_en_mano = False
-
-    for t in session.exec(
-        select(Turno).where(Turno.partida_id == partida_id).order_by(Turno.numero)
-    ).all():
-        evaluar_turno(session, partida, t)
+    _reset_y_replay(session, partida)
 
     session.add(partida)
     session.commit()
@@ -401,26 +393,9 @@ def deshacer_ultimo_turno(partida_id: int, session: Session = Depends(get_sessio
     # Borrar el último
     session.delete(turnos[-1])
     session.flush()
-    turnos_restantes = turnos[:-1]
 
-    # Resetear partida al estado inicial
-    primer_jugador = session.exec(
-        select(PartidaJugador)
-        .where(PartidaJugador.partida_id == partida_id)
-        .order_by(PartidaJugador.orden)
-    ).first()
-
-    partida.estado = "en_curso"
-    partida.ganador_equipo = None
-    partida.fecha_fin = None
-    partida.equipo1_grupo = None
-    partida.equipo2_grupo = None
-    partida.siguiente_jugador_id = primer_jugador.jugador_id if primer_jugador else None
-    partida.bola_en_mano = False
-
-    # Replay de todos los turnos restantes
-    for t in turnos_restantes:
-        evaluar_turno(session, partida, t)
+    # Resetear partida al estado inicial y hacer replay de los turnos restantes
+    _reset_y_replay(session, partida)
 
     session.add(partida)
     session.commit()

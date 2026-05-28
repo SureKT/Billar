@@ -245,6 +245,9 @@ def crear_partida(datos: PartidaCreate, session: Session = Depends(get_session))
     if datos.modalidad not in ("bola8", "bola9"):
         raise HTTPException(status_code=400, detail="Modalidad inválida")
 
+    if not datos.equipo1.jugador_ids or not datos.equipo2.jugador_ids:
+        raise HTTPException(status_code=400, detail="Cada equipo necesita al menos un jugador")
+
     todos_ids = datos.equipo1.jugador_ids + datos.equipo2.jugador_ids
     if len(todos_ids) != len(set(todos_ids)):
         raise HTTPException(status_code=400, detail="Un jugador no puede estar en ambos equipos")

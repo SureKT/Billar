@@ -323,7 +323,6 @@ export default function Partida() {
     } catch (err) {
       setFlash({ texto: err.message, tipo: 'error' })
       setConfirmarBorrar(false)
-      setConfirmarBorrar2(false)
     }
   }
 

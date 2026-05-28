@@ -82,8 +82,8 @@ Soporta **Bola 8** y **Bola 9** con lógica completa y automática.
 - **Share card de torneo:** podio, tabla de clasificación con barras de puntos, compartible
 
 ### Torneos
-- Crear torneos Round Robin (todos contra todos) en modalidad Bola 8 o Bola 9
-- Configuración flexible: partidas 1v1 o 2v2, número de jugadores libre
+- Crear torneos Round Robin (todos contra todos, 1v1) en modalidad Bola 8 o Bola 9
+- Número de jugadores libre (mínimo 3); se generan todos los enfrentamientos posibles
 - Widget en Inicio con torneo activo, progreso y partidas pendientes
 - **Clasificación en tiempo real:** W/L badges, puntos, barra de progreso
 - Secciones colapsables de clasificación y enfrentamientos
