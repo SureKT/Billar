@@ -35,7 +35,8 @@ class LogroEstado(LogroCatalogo):
     partida_id: Optional[int] = None       # id DB de la partida que lo desbloqueó
     partida_numero: Optional[int] = None   # número visible (posición cronológica global)
     progreso: Optional[int] = None         # valor actual (solo para nivelados)
-    niveles_partida_id: dict[str, int] = {} # {nivel: partida_id} para logros nivelados
+    niveles_partida_id: dict[str, int] = {}     # {nivel: partida_id}
+    niveles_partida_numero: dict[str, int] = {} # {nivel: partida_numero visible}
 
 
 class JugadorMinimo(BaseModel):
@@ -730,6 +731,11 @@ def calcular_logros(jugador_id: int, session: Session) -> list[LogroEstado]:
                 niveles_desbloqueados=nd,
                 progreso=valor,
                 niveles_partida_id=_npid.get(c.id, {}),
+                niveles_partida_numero={
+                    nivel: numero_map[pid]
+                    for nivel, pid in _npid.get(c.id, {}).items()
+                    if pid in numero_map
+                },
             ))
         else:
             output.append(LogroEstado(

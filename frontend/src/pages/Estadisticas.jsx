@@ -159,6 +159,7 @@ const COLS = [
   { key: 'bpp',     head: 'B/P',    grupo: 'nuevo', get: j => j.bolas_por_partida,   fmt: v => v.toFixed(1) },
   { key: 'break',   head: 'Break%', grupo: 'nuevo', get: j => j.break_con_bola_pct,  fmt: v => `${Math.round(v)}%` },
   { key: 'fpp',     head: 'F/P',    grupo: 'nuevo', get: j => j.faltas_por_partida,  fmt: v => v.toFixed(1) },
+  { key: 'mbt',     head: 'MaxB',  grupo: 'nuevo', get: j => j.max_bolas_turno,     fmt: v => v },
 ]
 
 function sortVal(j, key) {
@@ -326,7 +327,7 @@ function TablaComparativa({ jugadores }) {
       </div>
       <p style={{ fontSize: '10px', color: 'var(--text-dim)', padding: '8px 12px',
         lineHeight: 1.5 }}>
-        PJ partidas jugadas · B/T bolas/turno · B/P bolas/partida · Break% breaks con bola · F/P faltas/partida
+        PJ partidas jugadas · B/T bolas/turno · B/P bolas/partida · Break% breaks con bola · F/P faltas/partida · MaxB máx bolas en un turno
       </p>
     </div>
   )
@@ -462,6 +463,7 @@ export default function Estadisticas() {
   }
 
   const rachaHistorica = [...jugadoresConPartidas].filter(j => j.racha_mejor > 1).sort((a,b) => b.racha_mejor - a.racha_mejor)[0]
+  const masMaxBolasT  = [...jugadoresConPartidas].filter(j => (j.max_bolas_turno ?? 0) > 0).sort((a,b) => b.max_bolas_turno - a.max_bolas_turno)[0]
   const conDur = conDuracion  // already filtered
   const masRapida = conDur.length > 0 ? conDur.reduce((m,p) => durMs(p) < durMs(m) ? p : m) : null
   const masLenta  = conDur.length > 0 ? conDur.reduce((m,p) => durMs(p) > durMs(m) ? p : m) : null
@@ -488,6 +490,27 @@ export default function Estadisticas() {
     .map((j, i) => ({
       label: j.nombre,
       value: Math.round(j.duracion_promedio_min),
+      playerColor: j.color ?? COLORES_FALLBACK[i % COLORES_FALLBACK.length],
+    }))
+
+  const grafBreak = [...jugadoresConPartidas]
+    .filter(j => (j.break_con_bola_pct ?? 0) > 0)
+    .sort((a, b) => b.break_con_bola_pct - a.break_con_bola_pct)
+    .slice(0, 8)
+    .map((j, i) => ({
+      label: j.nombre,
+      value: Math.round(j.break_con_bola_pct),
+      sub: `${j.break_bolas_media?.toFixed(1)} x saque`,
+      playerColor: j.color ?? COLORES_FALLBACK[i % COLORES_FALLBACK.length],
+    }))
+
+  const grafBolasPartida = [...jugadoresConPartidas]
+    .filter(j => (j.bolas_por_partida ?? 0) > 0)
+    .sort((a, b) => b.bolas_por_partida - a.bolas_por_partida)
+    .slice(0, 8)
+    .map((j, i) => ({
+      label: j.nombre,
+      value: j.bolas_por_partida,
       playerColor: j.color ?? COLORES_FALLBACK[i % COLORES_FALLBACK.length],
     }))
 
@@ -620,6 +643,12 @@ export default function Estadisticas() {
                   valor={`${rachaHistorica.racha_mejor} victorias seguidas`}
                 />
               )}
+              {masMaxBolasT && (
+                <RecordCard emoji="💥" titulo="Máx bolas en un turno"
+                  nombre={masMaxBolasT.nombre}
+                  valor={`${masMaxBolasT.max_bolas_turno} bolas`}
+                />
+              )}
               {masRapida && (
                 <RecordCard emoji="⚡" titulo="Partida más rápida"
                   nombre={nombresPartida(masRapida)}
@@ -662,6 +691,22 @@ export default function Estadisticas() {
             <div className="card" style={{ padding: '12px' }}>
               <SeccionTitulo>Duración media por jugador (min)</SeccionTitulo>
               <GraficaHorizontal datos={grafDuracion} />
+            </div>
+          )}
+
+          {/* ── Gráfica: break con bola (%) ── */}
+          {grafBreak.length > 1 && (
+            <div className="card" style={{ padding: '12px' }}>
+              <SeccionTitulo>Break con bola (%)</SeccionTitulo>
+              <GraficaHorizontal datos={grafBreak} />
+            </div>
+          )}
+
+          {/* ── Gráfica: bolas por partida ── */}
+          {grafBolasPartida.length > 1 && (
+            <div className="card" style={{ padding: '12px' }}>
+              <SeccionTitulo>Bolas metidas por partida</SeccionTitulo>
+              <GraficaHorizontal datos={grafBolasPartida} />
             </div>
           )}
 

@@ -107,12 +107,27 @@ function LogroRow({ logro, porcentaje }) {
           </div>
         )}
 
-        {/* Badges de nivel */}
+        {/* Badges de nivel con links a partida */}
         {tieneNiveles && (
           <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginTop: 6 }}>
-            {logro.niveles.map(n => (
-              <NivelBadge key={n.nivel} nivel={n.nivel} desbloqueado={nd.includes(n.nivel)} />
-            ))}
+            {logro.niveles.map(n => {
+              const desbloqueado = nd.includes(n.nivel)
+              const pid = logro.niveles_partida_id?.[n.nivel]
+              const pnum = logro.niveles_partida_numero?.[n.nivel]
+              return (
+                <span key={n.nivel} style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+                  <NivelBadge nivel={n.nivel} desbloqueado={desbloqueado} />
+                  {desbloqueado && pid && (
+                    <Link
+                      to={`/partida/${pid}`}
+                      style={{ fontSize: 10, color: '#475569', textDecoration: 'none', lineHeight: 1 }}
+                    >
+                      {pnum != null ? `#${pnum}` : '→'}
+                    </Link>
+                  )}
+                </span>
+              )
+            })}
           </div>
         )}
 
@@ -265,6 +280,7 @@ export default function Logros() {
   const [sortKey, setSortKey] = useSessionState('logros_sort_key', 'rareza')
   const [sortDir, setSortDir] = useSessionState('logros_sort_dir', 'desc')
   const [filtroMod, setFiltroMod] = useSessionState('logros_filtro_mod', 'todas')
+  const [filtroDesbloqueo, setFiltroDesbloqueo] = useSessionState('logros_filtro_desbloqueo', 'todos')
   const [filtroOpen, setFiltroOpen] = useState(false)
   const filtroRef = useRef(null)
 
@@ -318,7 +334,10 @@ export default function Logros() {
   const sortedLogros = useMemo(() => {
     if (!logros) return null
     const base = filtroMod === 'todas' ? logros : logros.filter(l => !l.modalidad || l.modalidad === filtroMod)
-    return [...base].sort((a, b) => {
+    const baseFiltered = filtroDesbloqueo === 'desbloqueados' ? base.filter(l => l.desbloqueado)
+      : filtroDesbloqueo === 'pendientes' ? base.filter(l => !l.desbloqueado)
+      : base
+    return [...baseFiltered].sort((a, b) => {
       let va, vb
       if (sortKey === 'rareza') {
         va = rarityMap[a.id] ?? 50
@@ -335,7 +354,7 @@ export default function Logros() {
       }
       return sortDir === 'desc' ? vb - va : va - vb
     })
-  }, [logros, rarityMap, sortKey, sortDir, filtroMod])
+  }, [logros, rarityMap, sortKey, sortDir, filtroMod, filtroDesbloqueo])
 
   const jugadoresActivos = (jugadores ?? []).filter(j => j.activo)
   const desbloqueados = logros ? logros.filter(l => l.desbloqueado).length : null
@@ -394,43 +413,52 @@ export default function Logros() {
         background: 'var(--bg)', padding: '10px 16px 8px', margin: '0 -16px',
         display: 'flex', flexDirection: 'column', gap: 6,
       }}>
-        {/* Fila 1: filtro de modalidad — dropdown custom */}
-        <div ref={filtroRef} style={{ position: 'relative', display: 'inline-block' }}>
-          <button
-            onClick={() => setFiltroOpen(o => !o)}
-            style={{
-              padding: '4px 10px', borderRadius: 12, fontSize: 11, fontWeight: 700, cursor: 'pointer',
-              background: filtroMod !== 'todas' ? 'rgba(6,182,212,.15)' : 'var(--surface2)',
-              color: filtroMod !== 'todas' ? 'var(--accent)' : 'var(--text-dim)',
-              border: `1px solid ${filtroMod !== 'todas' ? 'rgba(6,182,212,.4)' : 'var(--border)'}`,
-              display: 'flex', alignItems: 'center', gap: 5,
-            }}
-          >
-            {filtroMod === 'todas' ? 'Todas' : filtroMod === 'bola8' ? 'Bola 8' : 'Bola 9'}
-            <span style={{ fontSize: 9, opacity: .7, transition: 'transform .15s', display: 'inline-block', transform: filtroOpen ? 'rotate(180deg)' : 'none' }}>▾</span>
+        {/* Fila 1: filtro modalidad + dirección de orden (siempre visible) */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <div ref={filtroRef} style={{ position: 'relative' }}>
+            <button
+              onClick={() => setFiltroOpen(o => !o)}
+              style={{
+                padding: '4px 10px', borderRadius: 12, fontSize: 11, fontWeight: 700, cursor: 'pointer',
+                background: filtroMod !== 'todas' ? 'rgba(6,182,212,.15)' : 'var(--surface2)',
+                color: filtroMod !== 'todas' ? 'var(--accent)' : 'var(--text-dim)',
+                border: `1px solid ${filtroMod !== 'todas' ? 'rgba(6,182,212,.4)' : 'var(--border)'}`,
+                display: 'flex', alignItems: 'center', gap: 5,
+              }}
+            >
+              {filtroMod === 'todas' ? 'Todas' : filtroMod === 'bola8' ? 'Bola 8' : 'Bola 9'}
+              <span style={{ fontSize: 9, opacity: .7, transition: 'transform .15s', display: 'inline-block', transform: filtroOpen ? 'rotate(180deg)' : 'none' }}>▾</span>
+            </button>
+            {filtroOpen && (
+              <div style={{
+                position: 'absolute', top: 'calc(100% + 6px)', left: 0, zIndex: 200,
+                background: 'var(--surface)', border: '1px solid var(--border)',
+                borderRadius: 12, padding: '6px', display: 'flex', flexDirection: 'column', gap: 4,
+                boxShadow: '0 4px 16px rgba(0,0,0,.4)',
+              }}>
+                {[['todas', 'Todas'], ['bola8', 'Bola 8'], ['bola9', 'Bola 9']].map(([val, label]) => (
+                  <button key={val} onClick={() => { setFiltroMod(val); setFiltroOpen(false) }} style={{
+                    padding: '4px 14px', borderRadius: 10, fontSize: 11, fontWeight: 700, cursor: 'pointer',
+                    background: filtroMod === val ? 'rgba(6,182,212,.15)' : 'transparent',
+                    color: filtroMod === val ? 'var(--accent)' : 'var(--text-dim)',
+                    border: `1px solid ${filtroMod === val ? 'rgba(6,182,212,.4)' : 'transparent'}`,
+                    whiteSpace: 'nowrap', textAlign: 'left',
+                  }}>{label}</button>
+                ))}
+              </div>
+            )}
+          </div>
+          <button onClick={() => setSortDir(d => d === 'desc' ? 'asc' : 'desc')} style={{
+            padding: '4px 10px', borderRadius: 12, fontSize: 11, fontWeight: 700, cursor: 'pointer',
+            background: 'var(--surface2)', color: 'var(--text-dim)', border: '1px solid var(--border)',
+            marginLeft: 'auto',
+          }}>
+            {sortDir === 'desc' ? '↓' : '↑'}
           </button>
-          {filtroOpen && (
-            <div style={{
-              position: 'absolute', top: 'calc(100% + 6px)', left: 0, zIndex: 200,
-              background: 'var(--surface)', border: '1px solid var(--border)',
-              borderRadius: 12, padding: '6px', display: 'flex', flexDirection: 'column', gap: 4,
-              boxShadow: '0 4px 16px rgba(0,0,0,.4)',
-            }}>
-              {[['todas', 'Todas'], ['bola8', 'Bola 8'], ['bola9', 'Bola 9']].map(([val, label]) => (
-                <button key={val} onClick={() => { setFiltroMod(val); setFiltroOpen(false) }} style={{
-                  padding: '4px 14px', borderRadius: 10, fontSize: 11, fontWeight: 700, cursor: 'pointer',
-                  background: filtroMod === val ? 'rgba(6,182,212,.15)' : 'transparent',
-                  color: filtroMod === val ? 'var(--accent)' : 'var(--text-dim)',
-                  border: `1px solid ${filtroMod === val ? 'rgba(6,182,212,.4)' : 'transparent'}`,
-                  whiteSpace: 'nowrap', textAlign: 'left',
-                }}>{label}</button>
-              ))}
-            </div>
-          )}
         </div>
-        {/* Fila 2: controles de orden — solo en vista jugador */}
+        {/* Fila 2: orden y desbloqueo — solo vista individual */}
         {jugadorId !== null && (
-          <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+          <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
             {[['rareza', '% global'], ['adquisicion', 'Adquisición']].map(([key, label]) => (
               <button key={key} onClick={() => setSortKey(key)} style={{
                 padding: '4px 10px', borderRadius: 12, fontSize: 11, fontWeight: 700, cursor: 'pointer',
@@ -439,13 +467,15 @@ export default function Logros() {
                 border: `1px solid ${sortKey === key ? 'rgba(6,182,212,.4)' : 'var(--border)'}`,
               }}>{label}</button>
             ))}
-            <button onClick={() => setSortDir(d => d === 'desc' ? 'asc' : 'desc')} style={{
-              padding: '4px 10px', borderRadius: 12, fontSize: 11, fontWeight: 700, cursor: 'pointer',
-              background: 'var(--surface2)', color: 'var(--text-dim)', border: '1px solid var(--border)',
-              marginLeft: 'auto',
-            }}>
-              {sortDir === 'desc' ? '↓ Mayor a menor' : '↑ Menor a mayor'}
-            </button>
+            <div style={{ width: 1, height: 16, background: 'var(--border)', flexShrink: 0, margin: '0 2px' }} />
+            {[['todos', 'Todos'], ['desbloqueados', '✓'], ['pendientes', '…']].map(([val, label]) => (
+              <button key={val} onClick={() => setFiltroDesbloqueo(val)} style={{
+                padding: '4px 10px', borderRadius: 12, fontSize: 11, fontWeight: 700, cursor: 'pointer',
+                background: filtroDesbloqueo === val ? 'rgba(6,182,212,.15)' : 'var(--surface2)',
+                color: filtroDesbloqueo === val ? 'var(--accent)' : 'var(--text-dim)',
+                border: `1px solid ${filtroDesbloqueo === val ? 'rgba(6,182,212,.4)' : 'var(--border)'}`,
+              }}>{label}</button>
+            ))}
           </div>
         )}
       </div>
