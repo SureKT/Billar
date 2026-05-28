@@ -394,21 +394,14 @@ export default function Logros() {
             ))}
           </>
         )}
-        <select
-          value={filtroMod}
-          onChange={e => setFiltroMod(e.target.value)}
-          style={{
-            padding: '4px 8px', borderRadius: 12, fontSize: 11, fontWeight: 700, cursor: 'pointer',
-            background: filtroMod !== 'todas' ? 'rgba(6,182,212,.15)' : 'var(--surface2)',
-            color: filtroMod !== 'todas' ? 'var(--accent)' : 'var(--text-dim)',
-            border: `1px solid ${filtroMod !== 'todas' ? 'rgba(6,182,212,.4)' : 'var(--border)'}`,
-            appearance: 'none', WebkitAppearance: 'none',
-          }}
-        >
-          <option value="todas">Todas</option>
-          <option value="bola8">Bola 8</option>
-          <option value="bola9">Bola 9</option>
-        </select>
+        {[['todas', 'Todas'], ['bola8', 'Bola 8'], ['bola9', 'Bola 9']].map(([val, label]) => (
+          <button key={val} onClick={() => setFiltroMod(val)} style={{
+            padding: '4px 10px', borderRadius: 12, fontSize: 11, fontWeight: 700, cursor: 'pointer',
+            background: filtroMod === val ? 'rgba(6,182,212,.15)' : 'var(--surface2)',
+            color: filtroMod === val ? 'var(--accent)' : 'var(--text-dim)',
+            border: `1px solid ${filtroMod === val ? 'rgba(6,182,212,.4)' : 'var(--border)'}`,
+          }}>{label}</button>
+        ))}
         <button onClick={() => setSortDir(d => d === 'desc' ? 'asc' : 'desc')} style={{
           padding: '4px 10px', borderRadius: 12, fontSize: 11, fontWeight: 700, cursor: 'pointer',
           background: 'var(--surface2)', color: 'var(--text-dim)', border: '1px solid var(--border)',

@@ -107,12 +107,19 @@ export default function Partida() {
     if (!partida || partida.estado !== 'en_curso' || logrosSnapshotRef.current) return
     const ids = [...partida.equipo1_jugadores, ...partida.equipo2_jugadores]
     const pid = parseInt(id)
-    const isNueva = turnos.length === 0
+    const toastKey = `logros_creation_shown_${pid}`
+    const yaShown = sessionStorage.getItem(toastKey) === '1'
     Promise.all(ids.map(jid => api.getLogrosJugador(jid)))
       .then(results => {
         logrosSnapshotRef.current = Object.fromEntries(ids.map((jid, i) => [jid, results[i]]))
         // Logros desbloqueados al crear la partida (p.ej. "Primera partida", "Noctámbulo")
-        if (isNueva) {
+        // Solo si es primera vez en esta sesión que entramos a esta partida recién creada
+        const isNueva = results.some(r => r.some(logro =>
+          (logro.desbloqueado && logro.partida_id === pid) ||
+          (logro.niveles_partida_id && Object.values(logro.niveles_partida_id).includes(pid))
+        ))
+        if (isNueva && !yaShown) {
+          sessionStorage.setItem(toastKey, '1')
           for (let i = 0; i < ids.length; i++) {
             const jid = ids[i]
             const jugNombre = jugadores.find(j => j.id === jid)?.nombre ?? `#${jid}`
