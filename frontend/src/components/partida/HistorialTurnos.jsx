@@ -421,17 +421,16 @@ export default function HistorialTurnos({
                   <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', alignItems: 'center' }}>
                     {t.es_respot && (
                       <div style={{ position: 'relative', display: 'inline-flex' }}>
-                        <div style={{ opacity: 0.6 }}>
+                        <div style={{ opacity: 0.55 }}>
                           <BolaPool numero={9} size={28} />
                         </div>
-                        <span style={{
-                          position: 'absolute', inset: 0,
-                          display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          fontSize: 26, fontWeight: 900, lineHeight: 1,
-                          color: '#fca5a5',
-                          textShadow: '0 0 6px #000, 0 0 3px #000',
-                          pointerEvents: 'none',
-                        }}>✕</span>
+                        <svg
+                          viewBox="0 0 28 28" width={28} height={28}
+                          style={{ position: 'absolute', inset: 0, pointerEvents: 'none', filter: 'drop-shadow(0 0 2px #000)' }}
+                        >
+                          <line x1="5" y1="5" x2="23" y2="23" stroke="#fca5a5" strokeWidth="2.5" strokeLinecap="round"/>
+                          <line x1="23" y1="5" x2="5" y2="23" stroke="#fca5a5" strokeWidth="2.5" strokeLinecap="round"/>
+                        </svg>
                       </div>
                     )}
                     {(t.bolas_metidas ?? []).map(n => <BolaPool key={n} numero={n} size={28} />)}
