@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { api } from '../api/client'
 import { useApi } from '../hooks/useApi'
@@ -265,6 +265,18 @@ export default function Logros() {
   const [sortKey, setSortKey] = useSessionState('logros_sort_key', 'rareza')
   const [sortDir, setSortDir] = useSessionState('logros_sort_dir', 'desc')
   const [filtroMod, setFiltroMod] = useSessionState('logros_filtro_mod', 'todas')
+  const [filtroOpen, setFiltroOpen] = useState(false)
+  const filtroRef = useRef(null)
+
+  // Cerrar dropdown de filtro al hacer click fuera
+  useEffect(() => {
+    if (!filtroOpen) return
+    function handler(e) {
+      if (filtroRef.current && !filtroRef.current.contains(e.target)) setFiltroOpen(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [filtroOpen])
 
   // Cargar datos globales al montar (necesarios para orden por rareza en ambas vistas)
   useEffect(() => {
@@ -382,16 +394,39 @@ export default function Logros() {
         background: 'var(--bg)', padding: '10px 16px 8px', margin: '0 -16px',
         display: 'flex', flexDirection: 'column', gap: 6,
       }}>
-        {/* Fila 1: filtro de modalidad */}
-        <div style={{ display: 'flex', gap: 6 }}>
-          {[['todas', 'Todas'], ['bola8', 'Bola 8'], ['bola9', 'Bola 9']].map(([val, label]) => (
-            <button key={val} onClick={() => setFiltroMod(val)} style={{
+        {/* Fila 1: filtro de modalidad — dropdown custom */}
+        <div ref={filtroRef} style={{ position: 'relative', display: 'inline-block' }}>
+          <button
+            onClick={() => setFiltroOpen(o => !o)}
+            style={{
               padding: '4px 10px', borderRadius: 12, fontSize: 11, fontWeight: 700, cursor: 'pointer',
-              background: filtroMod === val ? 'rgba(6,182,212,.15)' : 'var(--surface2)',
-              color: filtroMod === val ? 'var(--accent)' : 'var(--text-dim)',
-              border: `1px solid ${filtroMod === val ? 'rgba(6,182,212,.4)' : 'var(--border)'}`,
-            }}>{label}</button>
-          ))}
+              background: filtroMod !== 'todas' ? 'rgba(6,182,212,.15)' : 'var(--surface2)',
+              color: filtroMod !== 'todas' ? 'var(--accent)' : 'var(--text-dim)',
+              border: `1px solid ${filtroMod !== 'todas' ? 'rgba(6,182,212,.4)' : 'var(--border)'}`,
+              display: 'flex', alignItems: 'center', gap: 5,
+            }}
+          >
+            {filtroMod === 'todas' ? 'Todas' : filtroMod === 'bola8' ? 'Bola 8' : 'Bola 9'}
+            <span style={{ fontSize: 9, opacity: .7, transition: 'transform .15s', display: 'inline-block', transform: filtroOpen ? 'rotate(180deg)' : 'none' }}>▾</span>
+          </button>
+          {filtroOpen && (
+            <div style={{
+              position: 'absolute', top: 'calc(100% + 6px)', left: 0, zIndex: 200,
+              background: 'var(--surface)', border: '1px solid var(--border)',
+              borderRadius: 12, padding: '6px', display: 'flex', flexDirection: 'column', gap: 4,
+              boxShadow: '0 4px 16px rgba(0,0,0,.4)',
+            }}>
+              {[['todas', 'Todas'], ['bola8', 'Bola 8'], ['bola9', 'Bola 9']].map(([val, label]) => (
+                <button key={val} onClick={() => { setFiltroMod(val); setFiltroOpen(false) }} style={{
+                  padding: '4px 14px', borderRadius: 10, fontSize: 11, fontWeight: 700, cursor: 'pointer',
+                  background: filtroMod === val ? 'rgba(6,182,212,.15)' : 'transparent',
+                  color: filtroMod === val ? 'var(--accent)' : 'var(--text-dim)',
+                  border: `1px solid ${filtroMod === val ? 'rgba(6,182,212,.4)' : 'transparent'}`,
+                  whiteSpace: 'nowrap', textAlign: 'left',
+                }}>{label}</button>
+              ))}
+            </div>
+          )}
         </div>
         {/* Fila 2: controles de orden — solo en vista jugador */}
         {jugadorId !== null && (
