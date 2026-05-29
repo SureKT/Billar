@@ -109,7 +109,7 @@ export default function Partida() {
     const ids = [...partida.equipo1_jugadores, ...partida.equipo2_jugadores]
     const pid = parseInt(id)
     const toastKey = `logros_creation_shown_${pid}`
-    const yaShown = sessionStorage.getItem(toastKey) === '1'
+    const yaShown = localStorage.getItem(toastKey) === '1'
     Promise.all(ids.map(jid => api.getLogrosJugador(jid)))
       .then(results => {
         logrosSnapshotRef.current = Object.fromEntries(ids.map((jid, i) => [jid, results[i]]))
@@ -120,7 +120,7 @@ export default function Partida() {
           (logro.niveles_partida_id && Object.values(logro.niveles_partida_id).includes(pid))
         ))
         if (isNueva && !yaShown) {
-          sessionStorage.setItem(toastKey, '1')
+          localStorage.setItem(toastKey, '1')
           for (let i = 0; i < ids.length; i++) {
             const jid = ids[i]
             const jugNombre = jugadores.find(j => j.id === jid)?.nombre ?? `#${jid}`
