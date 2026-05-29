@@ -8,6 +8,10 @@ import FormularioTurno from '../components/partida/FormularioTurno'
 import HistorialTurnos from '../components/partida/HistorialTurnos'
 import { showToast } from '../utils/toast'
 
+// Partidas cuyas creation-toasts ya se mostraron en esta sesión de app.
+// Module-level: persiste en navegación pero se limpia en page refresh.
+const _logrosCreationShown = new Set()
+
 export default function Partida() {
   const { id } = useParams()
   const navigate = useNavigate()
@@ -107,11 +111,42 @@ export default function Partida() {
   useEffect(() => {
     if (!partida || partida.estado !== 'en_curso' || logrosSnapshotRef.current) return
     const ids = [...partida.equipo1_jugadores, ...partida.equipo2_jugadores]
+    const pid = partida.id
     Promise.all(ids.map(jid => api.getLogrosJugador(jid)))
       .then(results => {
         logrosSnapshotRef.current = Object.fromEntries(ids.map((jid, i) => [jid, results[i]]))
+        // Mostrar logros desbloqueados al crear la partida (ej. "Primera partida").
+        // Solo una vez por sesión de app — el Set module-level evita re-mostrar al navegar.
+        if (_logrosCreationShown.has(pid)) return
+        const isNueva = results.some(r => r.some(logro =>
+          (logro.desbloqueado && logro.partida_id === pid) ||
+          (logro.niveles_partida_id && Object.values(logro.niveles_partida_id).includes(pid))
+        ))
+        if (!isNueva) return
+        _logrosCreationShown.add(pid)
+        for (let i = 0; i < ids.length; i++) {
+          const jid = ids[i]
+          const jugNombre = jugadores.find(j => j.id === jid)?.nombre ?? `#${jid}`
+          for (const logro of results[i]) {
+            if (logro.desbloqueado && logro.partida_id === pid) {
+              showToast({ quien: jugNombre, emoji: logro.icono, nombre: logro.nombre }, 'logro', 5000)
+            }
+            if (logro.niveles_partida_id) {
+              for (const [nivel, npid] of Object.entries(logro.niveles_partida_id)) {
+                if (npid === pid) {
+                  const nivelObj = logro.niveles?.find(n => n.nivel === nivel) ?? null
+                  const nivelLabel = nivelObj
+                    ? `${nivelObj.emoji} ${nivelObj.nivel.charAt(0).toUpperCase() + nivelObj.nivel.slice(1)}`
+                    : null
+                  showToast({ quien: jugNombre, emoji: logro.icono, nombre: logro.nombre, nivel: nivelLabel }, 'logro', 5000)
+                }
+              }
+            }
+          }
+        }
       })
       .catch(() => {})
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [partida?.id, partida?.estado])
 
   // ── Logros desbloqueados en esta partida (para ResultadoBanner) ───────────────
