@@ -1,20 +1,17 @@
 import { useState, useEffect, useRef } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { api } from '../api/client'
 import { usePartidaData } from '../hooks/usePartidaData'
 import BolasEquipo from '../components/partida/BolasEquipo'
 import ResultadoBanner from '../components/partida/ResultadoBanner'
 import FormularioTurno from '../components/partida/FormularioTurno'
 import HistorialTurnos from '../components/partida/HistorialTurnos'
-import { showToast } from '../utils/toast'
-
-// Partidas cuyas creation-toasts ya se mostraron en esta sesión de app.
-// Module-level: persiste en navegación pero se limpia en page refresh.
-const _logrosCreationShown = new Set()
+import { toastLogrosNuevos } from '../utils/toast'
 
 export default function Partida() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const location = useLocation()
   const { partida, estado, turnos, jugadores, faltas, stats, loading, reload, ultimoReload } = usePartidaData(id)
 
   const [bolas, setBolas]             = useState([])
@@ -22,7 +19,10 @@ export default function Partida() {
   const [faltasAutoIds, setFaltasAutoIds] = useState(new Set())
   const [registrando, setRegistrando] = useState(false)
   const [confirmarBorrar, setConfirmarBorrar] = useState(false)
+  const [borrando, setBorrando]       = useState(false)
+  const pendingDelRef = useRef(null)
   const [confirmarSalir, setConfirmarSalir]   = useState(false)
+  const [menuAbierto, setMenuAbierto] = useState(false)
   const [flash, setFlash]             = useState(null)
   const [editandoTiempos, setEditandoTiempos] = useState(false)
   const [editandoTurnos, setEditandoTurnos] = useState(false)
@@ -32,7 +32,6 @@ export default function Partida() {
   const [duracionActiva, setDuracionActiva] = useState('')
   const [logrosPartida, setLogrosPartida] = useState(null)
   const wakeLockRef = useRef(null)
-  const logrosSnapshotRef = useRef(null) // { [jugador_id]: LogroEstado[] }
 
   // ── Cronómetro partida activa ─────────────────────────────────────────────────
   useEffect(() => {
@@ -103,51 +102,15 @@ export default function Partida() {
     return () => window.removeEventListener('beforeunload', onBeforeUnload)
   }, [bolas.length])
 
-  // ── Snapshot de logros al arrancar partida en curso ───────────────────────────
+  // ── Toast de logros de creación (vienen por navigate state desde NuevaPartida) ─
   useEffect(() => {
-    logrosSnapshotRef.current = null
-  }, [partida?.id])
-
-  useEffect(() => {
-    if (!partida || partida.estado !== 'en_curso' || logrosSnapshotRef.current) return
-    const ids = [...partida.equipo1_jugadores, ...partida.equipo2_jugadores]
-    const pid = partida.id
-    Promise.all(ids.map(jid => api.getLogrosJugador(jid)))
-      .then(results => {
-        logrosSnapshotRef.current = Object.fromEntries(ids.map((jid, i) => [jid, results[i]]))
-        // Mostrar logros desbloqueados al crear la partida (ej. "Primera partida").
-        // Solo una vez por sesión de app — el Set module-level evita re-mostrar al navegar.
-        if (_logrosCreationShown.has(pid)) return
-        const isNueva = results.some(r => r.some(logro =>
-          (logro.desbloqueado && logro.partida_id === pid) ||
-          (logro.niveles_partida_id && Object.values(logro.niveles_partida_id).includes(pid))
-        ))
-        if (!isNueva) return
-        _logrosCreationShown.add(pid)
-        for (let i = 0; i < ids.length; i++) {
-          const jid = ids[i]
-          const jugNombre = jugadores.find(j => j.id === jid)?.nombre ?? `#${jid}`
-          for (const logro of results[i]) {
-            if (logro.desbloqueado && logro.partida_id === pid) {
-              showToast({ quien: jugNombre, emoji: logro.icono, nombre: logro.nombre }, 'logro', 5000)
-            }
-            if (logro.niveles_partida_id) {
-              for (const [nivel, npid] of Object.entries(logro.niveles_partida_id)) {
-                if (npid === pid) {
-                  const nivelObj = logro.niveles?.find(n => n.nivel === nivel) ?? null
-                  const nivelLabel = nivelObj
-                    ? `${nivelObj.emoji} ${nivelObj.nivel.charAt(0).toUpperCase() + nivelObj.nivel.slice(1)}`
-                    : null
-                  showToast({ quien: jugNombre, emoji: logro.icono, nombre: logro.nombre, nivel: nivelLabel }, 'logro', 5000)
-                }
-              }
-            }
-          }
-        }
-      })
-      .catch(() => {})
+    const ln = location.state?.logrosNuevos
+    if (ln?.length) {
+      toastLogrosNuevos(ln)
+      navigate(location.pathname, { replace: true, state: null })
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [partida?.id, partida?.estado])
+  }, [])
 
   // ── Logros desbloqueados en esta partida (para ResultadoBanner) ───────────────
   useEffect(() => {
@@ -212,56 +175,6 @@ export default function Partida() {
     navigate(-1)
   }
 
-  function detectarNuevosLogros(antes, despues) {
-    const nuevos = []
-    for (const logro of despues) {
-      if (!logro.desbloqueado) continue
-      const prevLogro = antes.find(l => l.id === logro.id)
-      if (!prevLogro) continue
-      if (logro.niveles_desbloqueados.length > 0) {
-        const prevNiveles = new Set(prevLogro.niveles_desbloqueados ?? [])
-        for (const nivel of logro.niveles_desbloqueados) {
-          if (!prevNiveles.has(nivel)) nuevos.push({ ...logro, nivel_nuevo: nivel })
-        }
-      } else {
-        if (!prevLogro.desbloqueado) nuevos.push(logro)
-      }
-    }
-    return nuevos
-  }
-
-  async function checkNuevosLogros() {
-    if (!logrosSnapshotRef.current) return
-    const ids = [...partida.equipo1_jugadores, ...partida.equipo2_jugadores]
-    try {
-      const results = await Promise.all(ids.map(jid => api.getLogrosJugador(jid)))
-      for (let i = 0; i < ids.length; i++) {
-        const jid = ids[i]
-        const nuevos = detectarNuevosLogros(logrosSnapshotRef.current[jid] ?? [], results[i])
-        const jugNombre = jugadores.find(j => j.id === jid)?.nombre ?? `#${jid}`
-        for (const logro of nuevos) {
-          const nivelObj = logro.nivel_nuevo
-            ? (logro.niveles?.find(n => n.nivel === logro.nivel_nuevo) ?? null)
-            : null
-          const nivelLabel = nivelObj
-            ? `${nivelObj.emoji} ${nivelObj.nivel.charAt(0).toUpperCase() + nivelObj.nivel.slice(1)}`
-            : null
-          showToast({
-            quien: jugNombre,
-            emoji: logro.icono,
-            nombre: logro.nombre,
-            nivel: nivelLabel,
-            umbral: nivelObj?.umbral ?? null,
-            descripcion: logro.descripcion,
-          }, 'logro', 5000)
-        }
-        logrosSnapshotRef.current[jid] = results[i]
-      }
-    } catch {
-      // fallo silencioso — los toasts de logros no son críticos
-    }
-  }
-
   async function registrar() {
     setRegistrando(true)
     setFlash(null)
@@ -274,7 +187,7 @@ export default function Partida() {
         )
         faltaEfectivaId = conPierde.length > 0 ? conPierde[0] : todasFaltasIds[0]
       }
-      await api.registrarTurno(id, {
+      const res = await api.registrarTurno(id, {
         jugador_id:   partida.siguiente_jugador_id,
         bolas_metidas: bolas,
         falta_id:     faltaEfectivaId,
@@ -284,8 +197,9 @@ export default function Partida() {
       setBolas([])
       setFaltasIds(new Set())
       setFaltasAutoIds(new Set())
+      navigator.vibrate?.(30)   // feedback háptico al confirmar turno (móvil en mano)
       await reload()
-      await checkNuevosLogros()
+      toastLogrosNuevos(res?.logros_nuevos)   // fuente única — backend devuelve el delta
     } catch (err) {
       setFlash({ texto: err.message, tipo: 'error' })
     } finally {
@@ -302,29 +216,42 @@ export default function Partida() {
       setFaltasIds(new Set())
       setFaltasAutoIds(new Set())
       await reload()
-      // Refresh snapshot post-undo so re-earned logros disparan toast correctamente
-      if (logrosSnapshotRef.current) {
-        const pids = [...partida.equipo1_jugadores, ...partida.equipo2_jugadores]
-        Promise.all(pids.map(jid => api.getLogrosJugador(jid)))
-          .then(results => {
-            logrosSnapshotRef.current = Object.fromEntries(pids.map((jid, i) => [jid, results[i]]))
-          })
-          .catch(() => {})
-      }
     } catch (err) {
       setFlash({ texto: err.message, tipo: 'error' })
     }
   }
 
-  async function eliminar() {
-    try {
-      await api.eliminarPartida(id)
-      navigate(partida?.torneo_id ? `/torneo/${partida.torneo_id}` : '/')
-    } catch (err) {
-      setFlash({ texto: err.message, tipo: 'error' })
-      setConfirmarBorrar(false)
-    }
+  // Borrado diferido con ventana de deshacer (5s). No deja loose ends:
+  // si el componente se desmonta con borrado pendiente, se confirma igualmente.
+  function eliminar() {
+    setConfirmarBorrar(false)
+    const timer = setTimeout(commitBorrado, 5000)
+    pendingDelRef.current = { timer }
+    setBorrando(true)
   }
+
+  function commitBorrado() {
+    const pd = pendingDelRef.current
+    if (!pd) return
+    clearTimeout(pd.timer)
+    pendingDelRef.current = null
+    api.eliminarPartida(id)
+      .then(() => navigate(partida?.torneo_id ? `/torneo/${partida.torneo_id}` : '/'))
+      .catch(err => { setBorrando(false); setFlash({ texto: err.message, tipo: 'error' }) })
+  }
+
+  function deshacerBorrado() {
+    const pd = pendingDelRef.current
+    if (pd) clearTimeout(pd.timer)
+    pendingDelRef.current = null
+    setBorrando(false)
+  }
+
+  // Desmontaje con borrado pendiente → confirmar (el usuario navegó sin deshacer).
+  useEffect(() => () => {
+    const pd = pendingDelRef.current
+    if (pd) { clearTimeout(pd.timer); api.eliminarPartida(id).catch(() => {}) }
+  }, [id])
 
   function revancha() {
     navigate('/nueva', {
@@ -423,7 +350,106 @@ export default function Partida() {
             </span>
           )}
         </div>
+        <button
+          onClick={() => setMenuAbierto(v => !v)}
+          title="Más opciones"
+          style={{
+            background: menuAbierto ? 'var(--surface2)' : 'none', border: 'none', cursor: 'pointer',
+            color: menuAbierto ? 'var(--text)' : 'var(--text-dim)', fontSize: '22px', lineHeight: 1,
+            padding: '2px 8px', borderRadius: 8, flexShrink: 0,
+          }}
+        >⋯</button>
       </div>
+
+      {/* Menú de administración (⋯) */}
+      {menuAbierto && (
+        <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 4, padding: 6 }}>
+          <button
+            className="btn btn-ghost btn-full"
+            onClick={() => { abrirEditarTiempos(); setMenuAbierto(false) }}
+            style={{ color: 'var(--text-dim)', fontSize: '13px', justifyContent: 'flex-start' }}
+          >✎ Editar tiempos</button>
+          <button
+            className="btn btn-ghost btn-full"
+            onClick={() => { setEditandoTurnos(v => !v); setMenuAbierto(false) }}
+            style={{
+              fontSize: '13px', justifyContent: 'flex-start',
+              color: editandoTurnos ? 'var(--accent)' : 'var(--text-dim)',
+            }}
+          >{editandoTurnos ? '✓ Terminar edición de turnos' : '✎ Editar turnos'}</button>
+          <button
+            className="btn btn-ghost btn-full"
+            onClick={() => { setConfirmarBorrar(true); setMenuAbierto(false) }}
+            style={{ color: 'rgba(239,68,68,.65)', fontSize: '13px', justifyContent: 'flex-start' }}
+          >❌ Eliminar partida</button>
+        </div>
+      )}
+
+      {/* Editar tiempos (expandido) */}
+      {editandoTiempos && (
+        <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <p style={{ fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.05em', color: 'var(--text-dim)' }}>
+            Editar tiempos
+          </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <span style={{ fontSize: '11px', color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '.04em' }}>Inicio</span>
+              <input type="datetime-local" value={fechaEdit} onChange={e => setFechaEdit(e.target.value)} style={{ fontSize: '14px' }} />
+            </label>
+            <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <span style={{ fontSize: '11px', color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '.04em' }}>Fin</span>
+              <input type="datetime-local" value={fechaFinEdit} onChange={e => setFechaFinEdit(e.target.value)} style={{ fontSize: '14px' }} />
+            </label>
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button className="btn btn-primary btn-full" onClick={guardarTiempos} disabled={guardandoTiempos}>
+              {guardandoTiempos ? 'Guardando…' : 'Guardar'}
+            </button>
+            <button className="btn btn-ghost btn-full" onClick={() => setEditandoTiempos(false)} disabled={guardandoTiempos}>
+              Cancelar
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Eliminar partida (confirmación) */}
+      {confirmarBorrar && !borrando && (
+        <div className="card" style={{ display: 'flex', gap: 8 }}>
+          <button className="btn btn-danger" onClick={eliminar} style={{ flex: 1 }}>Confirmar borrado</button>
+          <button className="btn btn-ghost" style={{ flex: 1 }} onClick={() => setConfirmarBorrar(false)}>Cancelar</button>
+        </div>
+      )}
+
+      {/* Borrado diferido — barra de deshacer (5s) */}
+      {borrando && (
+        <div style={{
+          position: 'fixed', bottom: 16, left: '50%', transform: 'translateX(-50%)',
+          zIndex: 9999, width: '90%', maxWidth: 380,
+          background: 'rgba(127,29,29,.96)', borderRadius: 10, overflow: 'hidden',
+          boxShadow: '0 4px 20px rgba(0,0,0,.5)', backdropFilter: 'blur(8px)',
+          animation: 'slideUp .2s ease',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px' }}>
+            <span style={{ flex: 1, color: '#fff', fontSize: 13, fontWeight: 600 }}>
+              🗑 Partida eliminada
+            </span>
+            <button
+              onClick={deshacerBorrado}
+              style={{
+                background: 'rgba(255,255,255,.15)', border: '1px solid rgba(255,255,255,.3)',
+                color: '#fff', fontSize: 13, fontWeight: 700, padding: '6px 14px',
+                borderRadius: 8, cursor: 'pointer', flexShrink: 0,
+              }}
+            >↩ Deshacer</button>
+          </div>
+          <div style={{ height: 3, background: 'rgba(255,255,255,.5)', animation: 'timerShrink 5s linear forwards' }} />
+        </div>
+      )}
+      {finalizada && flash?.tipo === 'error' && !confirmarBorrar && (
+        <div style={{ padding: '10px 14px', borderRadius: 8, fontSize: 13, fontWeight: 600, background: 'rgba(239,68,68,.12)', color: '#fca5a5' }}>
+          {flash.texto}
+        </div>
+      )}
 
       {/* Confirmar salida */}
       {confirmarSalir && (
@@ -508,113 +534,17 @@ export default function Partida() {
         />
       )}
 
-      {/* Historial + acciones — gap uniforme */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-        <HistorialTurnos
-          turnos={turnos}
-          jugadores={jugadores}
-          faltas={faltas}
-          equipo1Jugadores={partida.equipo1_jugadores}
-          equipo2Jugadores={partida.equipo2_jugadores}
-          partida={partida}
-          onReload={reload}
-          modoEdicion={editandoTurnos}
-        />
-
-        {/* Botones de edición — fila */}
-        {!editandoTiempos && (
-          <div style={{ display: 'flex', gap: 6 }}>
-            <button
-              className="btn btn-ghost btn-full"
-              onClick={abrirEditarTiempos}
-              style={{ color: 'var(--text-dim)', fontSize: '13px' }}
-            >
-              ✎ Editar tiempos
-            </button>
-            <button
-              className="btn btn-ghost btn-full"
-              onClick={() => setEditandoTurnos(v => !v)}
-              style={{
-                fontSize: '13px',
-                color: editandoTurnos ? 'var(--accent)' : 'var(--text-dim)',
-                borderColor: editandoTurnos ? 'var(--accent)' : undefined,
-              }}
-            >
-              {editandoTurnos ? '✓ Listo' : '✎ Editar turnos'}
-            </button>
-          </div>
-        )}
-
-        {/* Editar tiempos (expandido) */}
-        {editandoTiempos && (
-          <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <p style={{ fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.05em', color: 'var(--text-dim)' }}>
-              Editar tiempos
-            </p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                <span style={{ fontSize: '11px', color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '.04em' }}>Inicio</span>
-                <input
-                  type="datetime-local"
-                  value={fechaEdit}
-                  onChange={e => setFechaEdit(e.target.value)}
-                  style={{ fontSize: '14px' }}
-                />
-              </label>
-              <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                <span style={{ fontSize: '11px', color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '.04em' }}>Fin</span>
-                <input
-                  type="datetime-local"
-                  value={fechaFinEdit}
-                  onChange={e => setFechaFinEdit(e.target.value)}
-                  style={{ fontSize: '14px' }}
-                />
-              </label>
-            </div>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button
-                className="btn btn-primary btn-full"
-                onClick={guardarTiempos}
-                disabled={guardandoTiempos}
-              >
-                {guardandoTiempos ? 'Guardando…' : 'Guardar'}
-              </button>
-              <button
-                className="btn btn-ghost btn-full"
-                onClick={() => setEditandoTiempos(false)}
-                disabled={guardandoTiempos}
-              >
-                Cancelar
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Error eliminar */}
-        {flash?.tipo === 'error' && !confirmarBorrar && (
-          <div style={{ padding: '10px 14px', borderRadius: 8, fontSize: 13, fontWeight: 600, background: 'rgba(239,68,68,.12)', color: '#fca5a5' }}>
-            {flash.texto}
-          </div>
-        )}
-
-        {/* Eliminar partida */}
-        {!confirmarBorrar ? (
-          <button
-            className="btn btn-ghost btn-full"
-            onClick={() => setConfirmarBorrar(true)}
-            style={{ color: 'rgba(239,68,68,.65)', fontSize: '13px' }}
-          >
-            ❌ Eliminar partida
-          </button>
-        ) : (
-          <div className="card" style={{ display: 'flex', gap: 8 }}>
-            <button className="btn btn-danger" onClick={eliminar} style={{ flex: 1 }}>
-              Confirmar
-            </button>
-            <button className="btn btn-ghost" style={{ flex: 1 }} onClick={() => setConfirmarBorrar(false)}>Cancelar</button>
-          </div>
-        )}
-      </div>
+      {/* Historial de turnos */}
+      <HistorialTurnos
+        turnos={turnos}
+        jugadores={jugadores}
+        faltas={faltas}
+        equipo1Jugadores={partida.equipo1_jugadores}
+        equipo2Jugadores={partida.equipo2_jugadores}
+        partida={partida}
+        onReload={reload}
+        modoEdicion={editandoTurnos}
+      />
 
     </div>
   )

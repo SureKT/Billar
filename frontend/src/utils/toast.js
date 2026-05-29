@@ -10,3 +10,22 @@ export function subscribeToast(fn) {
   listeners.add(fn)
   return () => listeners.delete(fn)
 }
+
+// Pinta los logros recién desbloqueados (formato backend LogroNuevo).
+// Fuente única — usado tras registrar turno y tras crear partida.
+export function toastLogrosNuevos(lista, duration = 5000) {
+  if (!lista?.length) return
+  for (const l of lista) {
+    const nivelLabel = l.nivel
+      ? `${l.nivel_emoji ?? ''} ${l.nivel.charAt(0).toUpperCase() + l.nivel.slice(1)}`.trim()
+      : null
+    showToast({
+      quien: l.jugador_nombre,
+      emoji: l.icono,
+      nombre: l.nombre,
+      nivel: nivelLabel,
+      umbral: l.umbral ?? null,
+      descripcion: l.descripcion,
+    }, 'logro', duration)
+  }
+}

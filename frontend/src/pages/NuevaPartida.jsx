@@ -5,6 +5,15 @@ import { api } from '../api/client'
 import Sugerencias from './Sugerencias'
 import { SkeletonList } from '../components/Skeleton'
 
+// Plantillas de grupo habitual — persistidas en localStorage (uso local, sin backend)
+const PLANTILLAS_KEY = 'billar_plantillas'
+function cargarPlantillas() {
+  try { return JSON.parse(localStorage.getItem(PLANTILLAS_KEY)) || [] } catch { return [] }
+}
+function persistirPlantillas(arr) {
+  try { localStorage.setItem(PLANTILLAS_KEY, JSON.stringify(arr)) } catch {}
+}
+
 function RachaChip({ racha }) {
   if (!racha) return null
   return (
@@ -137,7 +146,7 @@ const TEAM_COLOR = {
   2: { main: 'var(--team2)', bg: 'rgba(233,69,96,.14)',  border: 'var(--team2)'  },
 }
 
-function SelectorEquipo({ titulo, teamNum, nombre, onNombreChange, jugadores, seleccionados, onChange, excluidos, statsMap }) {
+function SelectorEquipo({ titulo, teamNum, nombre, onNombreChange, jugadores, seleccionados, onChange, excluidos, statsMap, mostrarOrden = true }) {
   const tc = TEAM_COLOR[teamNum]
 
   function toggle(id) {
@@ -200,7 +209,7 @@ function SelectorEquipo({ titulo, teamNum, nombre, onNombreChange, jugadores, se
           )
         })}
       </div>
-      <ListaOrdenable ids={seleccionados} jugadores={jugadores} onChange={onChange} />
+      {mostrarOrden && <ListaOrdenable ids={seleccionados} jugadores={jugadores} onChange={onChange} />}
     </div>
   )
 }
@@ -221,6 +230,10 @@ export default function NuevaPartida() {
   const [ultimoSaqueId, setUltimoSaqueId] = useState(null)
   const [error, setError] = useState(null)
   const [creando, setCreando] = useState(false)
+  const [ajustes, setAjustes] = useState(false)
+  const [plantillas, setPlantillas] = useState(() => cargarPlantillas())
+  const [guardandoPlantilla, setGuardandoPlantilla] = useState(false)
+  const [nombrePlantilla, setNombrePlantilla] = useState('')
   const navigate = useNavigate()
 
   // Sugerencia de quién saca: el que NO sacó la última vez
@@ -287,11 +300,43 @@ export default function NuevaPartida() {
       // Persist team names for future auto-fill
       if (n1) api.upsertNombreEquipo(equipo1, n1).catch(() => {})
       if (n2) api.upsertNombreEquipo(equipo2, n2).catch(() => {})
-      navigate(`/partida/${p.id}`)
+      navigate(`/partida/${p.id}`, { state: { logrosNuevos: p.logros_nuevos } })
     } catch (err) {
       setError(err.message)
       setCreando(false)
     }
+  }
+
+  function nombresDe(ids) {
+    return ids.map(id => (jugadores || []).find(j => j.id === id)?.nombre).filter(Boolean).join(', ')
+  }
+
+  function aplicarPlantilla(p) {
+    const activos = new Set((jugadores || []).filter(j => j.activo !== false).map(j => j.id))
+    const e1 = (p.equipo1 || []).filter(id => activos.has(id))
+    const e2 = (p.equipo2 || []).filter(id => activos.has(id))
+    setModalidad(p.modalidad || 'bola8')
+    setEquipo1(e1)
+    setEquipo2(e2)
+    setNombre1(p.nombre1 || '')
+    setNombre2(p.nombre2 || '')
+    setPrimerJugador(e1[0] ?? e2[0] ?? null)
+  }
+
+  function guardarComoPlantilla() {
+    const nom = nombrePlantilla.trim() || `${nombre1.trim() || 'Equipo 1'} vs ${nombre2.trim() || 'Equipo 2'}`
+    const nueva = {
+      id: Date.now(), nombre: nom, modalidad,
+      equipo1, equipo2, nombre1: nombre1.trim(), nombre2: nombre2.trim(),
+    }
+    const next = [nueva, ...plantillas].slice(0, 6)
+    setPlantillas(next); persistirPlantillas(next)
+    setGuardandoPlantilla(false); setNombrePlantilla('')
+  }
+
+  function borrarPlantilla(pid) {
+    const next = plantillas.filter(p => p.id !== pid)
+    setPlantillas(next); persistirPlantillas(next)
   }
 
   if (loading) return <SkeletonList n={3} />
@@ -324,6 +369,35 @@ export default function NuevaPartida() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--gap)' }}>
       <Tabs />
+
+      {/* Plantillas de grupo habitual */}
+      {jList.length > 0 && plantillas.length > 0 && (
+        <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <p style={{ fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.05em', color: 'var(--text-dim)', margin: 0 }}>
+            Plantillas
+          </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {plantillas.map(p => (
+              <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <button onClick={() => aplicarPlantilla(p)} style={{
+                  flex: 1, textAlign: 'left', cursor: 'pointer', minWidth: 0,
+                  background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 8,
+                  padding: '8px 10px', color: 'var(--text)',
+                }}>
+                  <span style={{ fontSize: 13, fontWeight: 700 }}>▶ {p.nombre}</span>
+                  <span style={{ display: 'block', fontSize: 11, color: 'var(--text-dim)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {nombresDe(p.equipo1)} vs {nombresDe(p.equipo2)} · {p.modalidad === 'bola8' ? 'Bola 8' : 'Bola 9'}
+                  </span>
+                </button>
+                <button onClick={() => borrarPlantilla(p.id)} title="Borrar plantilla" style={{
+                  background: 'none', border: 'none', color: 'var(--text-dim)', fontSize: 18, cursor: 'pointer',
+                  padding: '0 4px', flexShrink: 0,
+                }}>×</button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Modalidad */}
       <div className="card">
@@ -372,6 +446,7 @@ export default function NuevaPartida() {
             onChange={setEquipo1Safe}
             excluidos={equipo2}
             statsMap={statsMap}
+            mostrarOrden={ajustes}
           />
           <SelectorEquipo
             titulo="Equipo 2" teamNum={2}
@@ -381,46 +456,94 @@ export default function NuevaPartida() {
             onChange={setEquipo2Safe}
             excluidos={equipo1}
             statsMap={statsMap}
+            mostrarOrden={ajustes}
           />
 
-          {/* ¿Quién saca? — solo si ambos equipos tienen jugadores */}
-          {equipo1.length > 0 && equipo2.length > 0 && (
-            <div className="card">
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 10 }}>
-                <p style={{ fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.05em', color: 'var(--text-dim)', margin: 0 }}>
-                  ¿Quién saca?
-                </p>
-                {ultimoSaqueId && (
-                  <span style={{ fontSize: '11px', color: 'var(--text-dim)' }}>
-                    última vez: {jList.find(j => j.id === ultimoSaqueId)?.nombre ?? `#${ultimoSaqueId}`}
+          {/* Ajustes opcionales — plegados por defecto (orden, quién saca, plantilla) */}
+          {listo && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--gap)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <button
+                  onClick={() => setAjustes(v => !v)}
+                  className="btn btn-ghost"
+                  style={{ fontSize: 13, color: ajustes ? 'var(--accent)' : 'var(--text-dim)', padding: '6px 12px' }}
+                >
+                  Ajustes {ajustes ? '▲' : '▼'}
+                </button>
+                {!ajustes && primerJugador && (
+                  <span style={{ fontSize: 12, color: 'var(--text-dim)' }}>
+                    Saca: <strong style={{ color: 'var(--text)' }}>{jList.find(j => j.id === primerJugador)?.nombre}</strong>
                   </span>
                 )}
               </div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                {[...equipo1, ...equipo2].map(id => {
-                  const j = jList.find(j => j.id === id)
-                  const sel = primerJugador === id
-                  const enEq2 = equipo2.includes(id)
-                  const esUltimo = ultimoSaqueId === id
-                  return (
+
+              {ajustes && (
+                <>
+                  {/* ¿Quién saca? */}
+                  <div className="card">
+                    <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 10 }}>
+                      <p style={{ fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.05em', color: 'var(--text-dim)', margin: 0 }}>
+                        ¿Quién saca?
+                      </p>
+                      {ultimoSaqueId && (
+                        <span style={{ fontSize: '11px', color: 'var(--text-dim)' }}>
+                          última vez: {jList.find(j => j.id === ultimoSaqueId)?.nombre ?? `#${ultimoSaqueId}`}
+                        </span>
+                      )}
+                    </div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                      {[...equipo1, ...equipo2].map(id => {
+                        const j = jList.find(j => j.id === id)
+                        const sel = primerJugador === id
+                        const enEq2 = equipo2.includes(id)
+                        const esUltimo = ultimoSaqueId === id
+                        return (
+                          <button
+                            key={id}
+                            onClick={() => setPrimerJugador(id)}
+                            style={{
+                              padding: '8px 14px', borderRadius: 8, fontSize: '14px', fontWeight: 600,
+                              border: sel ? '1.5px solid var(--accent)' : '1px solid var(--border)',
+                              background: sel ? 'var(--accent-bg)' : 'var(--surface2)',
+                              color: sel ? 'var(--accent)' : 'var(--text-dim)',
+                              transition: 'background .15s, border-color .15s',
+                              opacity: esUltimo && !sel ? 0.5 : 1,
+                            }}
+                          >
+                            {sel ? '✓ ' : ''}{j?.nombre}
+                            <span style={{ fontSize: '11px', marginLeft: 5, color: enEq2 ? 'var(--team2)' : 'var(--team1)', opacity: .8 }}>Eq{enEq2 ? 2 : 1}</span>
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Guardar como plantilla */}
+                  {!guardandoPlantilla ? (
                     <button
-                      key={id}
-                      onClick={() => setPrimerJugador(id)}
-                      style={{
-                        padding: '8px 14px', borderRadius: 8, fontSize: '14px', fontWeight: 600,
-                        border: sel ? '1.5px solid var(--accent)' : '1px solid var(--border)',
-                        background: sel ? 'var(--accent-bg)' : 'var(--surface2)',
-                        color: sel ? 'var(--accent)' : 'var(--text-dim)',
-                        transition: 'background .15s, border-color .15s',
-                        opacity: esUltimo && !sel ? 0.5 : 1,
-                      }}
+                      className="btn btn-ghost btn-full"
+                      onClick={() => setGuardandoPlantilla(true)}
+                      style={{ fontSize: 13, color: 'var(--text-dim)' }}
                     >
-                      {sel ? '✓ ' : ''}{j?.nombre}
-                      <span style={{ fontSize: '11px', marginLeft: 5, color: enEq2 ? 'var(--team2)' : 'var(--team1)', opacity: .8 }}>Eq{enEq2 ? 2 : 1}</span>
+                      ☆ Guardar como plantilla
                     </button>
-                  )
-                })}
-              </div>
+                  ) : (
+                    <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      <input
+                        value={nombrePlantilla}
+                        onChange={e => setNombrePlantilla(e.target.value)}
+                        placeholder={`${nombre1.trim() || 'Equipo 1'} vs ${nombre2.trim() || 'Equipo 2'}`}
+                        maxLength={32}
+                        style={{ fontSize: 14, padding: '8px 10px', background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 8, color: 'var(--text)', outline: 'none' }}
+                      />
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        <button className="btn btn-primary btn-full" onClick={guardarComoPlantilla}>Guardar</button>
+                        <button className="btn btn-ghost btn-full" onClick={() => { setGuardandoPlantilla(false); setNombrePlantilla('') }}>Cancelar</button>
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
             </div>
           )}
         </>

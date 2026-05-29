@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useApi } from '../hooks/useApi'
 import { useSessionState } from '../hooks/useSessionState'
 import { api } from '../api/client'
+import { pct, WinRateBar, fechaCorta } from '../components/stats/StatPrimitives'
 
 function NombresEquipoSection({ statsMap }) {
   const { data: nombres, reload } = useApi(api.getNombresEquipo)
@@ -66,25 +67,6 @@ const PALETA = [
   '#06b6d4', '#84cc16', '#6366f1', '#f43f5e',
 ]
 
-function WinRate({ ganadas, jugadas }) {
-  const pct = jugadas === 0 ? 0 : Math.round((ganadas / jugadas) * 100)
-  return (
-    <div style={{ marginTop: 10 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: 'var(--text-dim)', marginBottom: 4 }}>
-        <span>Win rate</span>
-        <span style={{ fontWeight: 700, color: 'var(--text)' }}>{pct}%</span>
-      </div>
-      <div style={{ height: 6, borderRadius: 3, background: 'var(--border)', overflow: 'hidden' }}>
-        <div style={{
-          height: '100%', width: `${pct}%`,
-          background: pct >= 50 ? '#16a34a' : 'var(--accent)',
-          borderRadius: 3, transition: 'width .4s ease',
-        }} />
-      </div>
-    </div>
-  )
-}
-
 function StatBox({ label, value, color, sub }) {
   return (
     <div style={{ textAlign: 'center', flex: 1, padding: '8px 4px' }}>
@@ -100,7 +82,7 @@ function StatBox({ label, value, color, sub }) {
 }
 
 function ModalidadChip({ label, ganadas, jugadas, color, falta }) {
-  const p = jugadas === 0 ? 0 : Math.round((ganadas / jugadas) * 100)
+  const p = pct(ganadas, jugadas)
   return (
     <div style={{
       flex: 1, display: 'flex', flexDirection: 'column', gap: 3,
@@ -127,10 +109,6 @@ function ModalidadChip({ label, ganadas, jugadas, color, falta }) {
   )
 }
 
-function fechaCorta(isoStr) {
-  return new Date(isoStr).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })
-}
-
 function JugadorCard({ j, onReload, todosStats }) {
   const navigate = useNavigate()
   const coloresTomados = new Set(
@@ -140,8 +118,6 @@ function JugadorCard({ j, onReload, todosStats }) {
   const [expandido, setExpandido] = useState(false)
   const [modo, setModo] = useState(null) // null | 'editar' | 'eliminar'
   const [nombreEdit, setNombreEdit] = useState(j.nombre)
-  const [recursivoOk, setRecursivoOk] = useState(false)
-  const [confirmEliminar2, setConfirmEliminar2] = useState(false)
   const [cargando, setCargando] = useState(false)
   const [error, setError] = useState(null)
   const [mostrarUltimas, setMostrarUltimas] = useState(false)
@@ -238,8 +214,7 @@ function JugadorCard({ j, onReload, todosStats }) {
   }
 
   function cancelar() {
-    setModo(null); setNombreEdit(j.nombre)
-    setRecursivoOk(false); setConfirmEliminar2(false); setError(null)
+    setModo(null); setNombreEdit(j.nombre); setError(null)
   }
 
   function handleExpand() {
@@ -364,32 +339,11 @@ function JugadorCard({ j, onReload, todosStats }) {
           display: 'flex', flexDirection: 'column', gap: 10,
         }}>
           {tienePartidas ? (
-            <>
-              <p style={{ fontSize: '13px', color: '#fca5a5', lineHeight: 1.5 }}>
-                Este jugador tiene <strong>{j.partidas_jugadas}</strong> partida{j.partidas_jugadas > 1 ? 's' : ''} registrada{j.partidas_jugadas > 1 ? 's' : ''}.{' '}
-                Se borrarán sus turnos y se eliminará de las partidas — <strong>las partidas en sí se conservan</strong> en el historial.
-              </p>
-              <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', userSelect: 'none' }}>
-                <div
-                  onClick={() => setRecursivoOk(v => !v)}
-                  style={{
-                    width: 40, height: 22, borderRadius: 11, flexShrink: 0,
-                    background: recursivoOk ? 'var(--accent)' : 'var(--border)',
-                    position: 'relative', transition: 'background .2s',
-                  }}
-                >
-                  <div style={{
-                    width: 18, height: 18, borderRadius: 9, background: '#fff',
-                    position: 'absolute', top: 2,
-                    left: recursivoOk ? 20 : 2,
-                    transition: 'left .2s',
-                  }} />
-                </div>
-                <span style={{ fontSize: '13px', color: recursivoOk ? 'var(--text)' : 'var(--text-dim)' }}>
-                  Confirmo que quiero borrar todos sus datos
-                </span>
-              </label>
-            </>
+            <p style={{ fontSize: '13px', color: '#fca5a5', lineHeight: 1.5 }}>
+              ¿Eliminar a <strong style={{ color: 'var(--text)' }}>{j.nombre}</strong>?{' '}
+              Tiene <strong>{j.partidas_jugadas}</strong> partida{j.partidas_jugadas > 1 ? 's' : ''}: se borrarán sus turnos y se quitará de ellas —{' '}
+              <strong>las partidas se conservan</strong> en el historial.
+            </p>
           ) : (
             <p style={{ fontSize: '13px', color: 'var(--text-dim)', lineHeight: 1.5 }}>
               ¿Eliminar a <strong style={{ color: 'var(--text)' }}>{j.nombre}</strong>?{' '}
@@ -397,14 +351,24 @@ function JugadorCard({ j, onReload, todosStats }) {
             </p>
           )}
           {error && <p style={{ fontSize: '12px', color: '#fca5a5' }}>{error}</p>}
-          <button
-            className={`btn btn-full ${confirmEliminar2 ? '' : 'btn-danger'}`}
-            onClick={() => confirmEliminar2 ? confirmarEliminar() : setConfirmEliminar2(true)}
-            disabled={cargando || (tienePartidas && !recursivoOk)}
-            style={{ padding: '10px', ...(confirmEliminar2 ? { background: '#dc2626', color: '#fff', border: 'none', transition: 'background .15s' } : {}) }}
-          >
-            {cargando ? 'Eliminando…' : confirmEliminar2 ? '⚠ Confirmar eliminación' : 'Eliminar jugador'}
-          </button>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button
+              className="btn btn-danger btn-full"
+              onClick={confirmarEliminar}
+              disabled={cargando}
+              style={{ padding: '10px' }}
+            >
+              {cargando ? 'Eliminando…' : 'Eliminar'}
+            </button>
+            <button
+              className="btn btn-ghost btn-full"
+              onClick={cancelar}
+              disabled={cargando}
+              style={{ padding: '10px' }}
+            >
+              Cancelar
+            </button>
+          </div>
         </div>
       )}
 
@@ -441,7 +405,7 @@ function JugadorCard({ j, onReload, todosStats }) {
           )}
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <div style={{ flex: 1 }}>
-              <WinRate ganadas={j.partidas_ganadas} jugadas={j.partidas_jugadas} />
+              <WinRateBar ganadas={j.partidas_ganadas} jugadas={j.partidas_jugadas} />
             </div>
             {j.racha_actual !== 0 && (
               <span style={{
@@ -532,7 +496,7 @@ function JugadorCard({ j, onReload, todosStats }) {
                   {ultimas?.map(p => (
                     <button key={p.id} onClick={() => navigate(`/partida/${p.id}`)} style={{
                       display: 'flex', alignItems: 'center', gap: 8,
-                      padding: '6px 0', borderBottom: '1px solid var(--border)',
+                      padding: '6px 0',
                       width: '100%', background: 'none', border: 'none', borderBottom: '1px solid var(--border)',
                       cursor: 'pointer', textAlign: 'left',
                     }}>
@@ -727,6 +691,7 @@ const ORDENES = [
 ]
 
 export default function Jugadores() {
+  const navigate = useNavigate()
   const { data: stats, loading, reload } = useApi(() => api.getAllStats(true))
   const [nombre, setNombre] = useState('')
   const [error, setError] = useState(null)
@@ -755,6 +720,15 @@ export default function Jugadores() {
             {stats.length} registrado{stats.length !== 1 ? 's' : ''}
           </span>
         )}
+        <div style={{ flex: 1 }} />
+        <button
+          onClick={() => navigate('/stats')}
+          style={{
+            padding: '4px 10px', borderRadius: 8, cursor: 'pointer',
+            background: 'var(--surface2)', border: '1px solid var(--border)',
+            color: 'var(--text-dim)', fontSize: 12, fontWeight: 600, flexShrink: 0,
+          }}
+        >📊 Estadísticas globales →</button>
       </div>
 
       {/* Formulario de nuevo jugador */}

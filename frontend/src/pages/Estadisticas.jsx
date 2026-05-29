@@ -4,47 +4,11 @@ import { useApi } from '../hooks/useApi'
 import { useSessionState } from '../hooks/useSessionState'
 import { api } from '../api/client'
 import { SkeletonList } from '../components/Skeleton'
+import { pct, winrate, StatTile } from '../components/stats/StatPrimitives'
 
 const FALTAS_INTERNAS = ['Bola 8 ilegal', 'Tres faltas consecutivas', 'Blanca dentro (Scratch)']
 
-// ─── helpers ─────────────────────────────────────────────────────────────────
-
-function winrate(j) {
-  return j.partidas_jugadas > 0 ? j.partidas_ganadas / j.partidas_jugadas : -1
-}
-
-function pct(ganadas, jugadas) {
-  return jugadas === 0 ? 0 : Math.round((ganadas / jugadas) * 100)
-}
-
 // ─── sub-componentes ──────────────────────────────────────────────────────────
-
-function ContadorCard({ label, value, sub, color, compact }) {
-  return (
-    <div style={{
-      flex: 1, background: 'var(--surface2)', borderRadius: 10,
-      padding: '12px 8px', textAlign: 'center',
-      display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2,
-      minWidth: 0,
-    }}>
-      <span style={{
-        fontSize: compact ? '15px' : '22px', fontWeight: 800,
-        color: color ?? 'var(--text)', lineHeight: 1,
-        whiteSpace: 'nowrap',
-      }}>
-        {value}
-      </span>
-      {sub != null && (
-        <span style={{ fontSize: '10px', color: color ? `${color}99` : 'var(--accent)', fontWeight: 600, lineHeight: 1 }}>
-          {sub}
-        </span>
-      )}
-      <span style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '.05em', color: 'var(--text-dim)', marginTop: 1 }}>
-        {label}
-      </span>
-    </div>
-  )
-}
 
 // Gráfica de barras horizontal
 // labelAbove=true → etiqueta encima de la barra (para textos largos)
@@ -585,26 +549,26 @@ export default function Estadisticas() {
               </span>
             </div>
             <div style={{ display: 'flex', gap: 6 }}>
-              <ContadorCard label="Partidas"    value={todasFiltradas.length} />
-              <ContadorCard label="Finalizadas" value={finalizadasFiltradas.length} color="#86efac" />
-              <ContadorCard label="En curso"    value={enCursoFiltradas.length}     color="#fbbf24" />
-              <ContadorCard label="Jugadores"   value={(stats ?? []).length} />
+              <StatTile label="Partidas"    value={todasFiltradas.length} />
+              <StatTile label="Finalizadas" value={finalizadasFiltradas.length} color="#86efac" />
+              <StatTile label="En curso"    value={enCursoFiltradas.length}     color="#fbbf24" />
+              <StatTile label="Jugadores"   value={(stats ?? []).length} />
             </div>
             <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
               {filtro === 'todas' && (
                 <>
-                  <ContadorCard label="Bola 8" value={bola8.length}
+                  <StatTile label="Bola 8" value={bola8.length}
                     sub={todasPartidas.length > 0 ? `${Math.round((bola8.length / todasPartidas.length) * 100)}%` : undefined} />
-                  <ContadorCard label="Bola 9" value={bola9.length}
+                  <StatTile label="Bola 9" value={bola9.length}
                     sub={todasPartidas.length > 0 ? `${Math.round((bola9.length / todasPartidas.length) * 100)}%` : undefined} />
                 </>
               )}
               {duracionMedia != null
-                ? <ContadorCard label="Duración media" value={duracionMedia.str} color="#c4b5fd" compact />
+                ? <StatTile label="Duración media" value={duracionMedia.str} color="#c4b5fd" compact />
                 : null}
-              <ContadorCard label="Total faltas" value={totalFaltas} color="#f97316" />
+              <StatTile label="Total faltas" value={totalFaltas} color="#f97316" />
               {faltasPorPartida != null && (
-                <ContadorCard label="Faltas / partida" value={faltasPorPartida} color="#fb923c" />
+                <StatTile label="Faltas / partida" value={faltasPorPartida} color="#fb923c" />
               )}
             </div>
           </div>

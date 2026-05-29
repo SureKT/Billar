@@ -129,8 +129,8 @@ export default function TorneoDetalle() {
     if (!pickEnf) return
     setPickEnf(null)
     try {
-      const { partida_id } = await api.jugarEnfrentamiento(id, pickEnf.enfId, primerJugadorId)
-      navigate(`/partida/${partida_id}`)
+      const { partida_id, logros_nuevos } = await api.jugarEnfrentamiento(id, pickEnf.enfId, primerJugadorId)
+      navigate(`/partida/${partida_id}`, { state: { logrosNuevos: logros_nuevos } })
     } catch (e) {
       setError(e.message)
     }

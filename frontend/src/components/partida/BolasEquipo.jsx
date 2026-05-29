@@ -22,8 +22,11 @@ export default function BolasEquipo({
     <div style={{
       background: esActivo ? t.bg : 'var(--surface2)',
       border: `1px solid ${esActivo ? t.border : 'var(--border)'}`,
+      borderLeft: esActivo ? `3px solid ${t.color}` : '1px solid var(--border)',
+      boxShadow: esActivo ? `0 0 0 1px ${t.border}, 0 2px 10px -4px ${t.color}` : 'none',
       borderRadius: 10, padding: '8px 10px',
       flex: 1, display: 'flex', flexDirection: 'column', gap: 6,
+      transition: 'box-shadow .2s, border-color .2s',
     }}>
       {/* Encabezado: nombre equipo + grupo */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>

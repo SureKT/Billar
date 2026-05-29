@@ -10,6 +10,7 @@ from typing import Optional
 
 from app.models import Partida, PartidaJugador, Jugador, Turno, TorneoEnfrentamiento, Torneo
 from app.database import get_session
+from app.logic_logros import LogroNuevo, snapshot_logros, calcular_logros_nuevos
 from app import events
 
 router = APIRouter(prefix="/api/partidas", tags=["partidas"])
@@ -51,6 +52,7 @@ class PartidaResumen(BaseModel):
     equipo2_jugadores: list[int]
     torneo_id: Optional[int] = None
     torneo_nombre: Optional[str] = None
+    logros_nuevos: list[LogroNuevo] = []
 
 
 def _build_torneo_map(session: Session) -> dict:
@@ -252,9 +254,15 @@ def crear_partida(datos: PartidaCreate, session: Session = Depends(get_session))
     if len(todos_ids) != len(set(todos_ids)):
         raise HTTPException(status_code=400, detail="Un jugador no puede estar en ambos equipos")
 
+    nombres_map: dict[int, str] = {}
     for jid in todos_ids:
-        if not session.get(Jugador, jid):
+        jugador = session.get(Jugador, jid)
+        if not jugador:
             raise HTTPException(status_code=404, detail=f"Jugador {jid} no encontrado")
+        nombres_map[jid] = jugador.nombre
+
+    # Snapshot de logros ANTES de crear la partida (detecta primera_partida, rodaje, …)
+    antes_map = snapshot_logros(todos_ids, session)
 
     partida = Partida(
         modalidad=datos.modalidad,
@@ -279,7 +287,10 @@ def crear_partida(datos: PartidaCreate, session: Session = Depends(get_session))
         partida.siguiente_jugador_id = datos.equipo1.jugador_ids[0]
     session.commit()
     session.refresh(partida)
-    return _build_resumen(session, partida)
+
+    resumen = _build_resumen(session, partida)
+    resumen.logros_nuevos = calcular_logros_nuevos(antes_map, nombres_map, session)
+    return resumen
 
 
 @router.get("/{partida_id}", response_model=PartidaResumen)

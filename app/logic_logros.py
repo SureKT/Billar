@@ -54,6 +54,19 @@ class LogroGlobal(LogroCatalogo):
     porcentaje: float                      # % sobre total de jugadores activos
 
 
+class LogroNuevo(BaseModel):
+    """Logro recién desbloqueado en la última mutación (turno o creación)."""
+    jugador_id: int
+    jugador_nombre: str
+    logro_id: str
+    nombre: str
+    icono: str
+    descripcion: str
+    nivel: Optional[str] = None        # nivel desbloqueado (solo nivelados)
+    nivel_emoji: Optional[str] = None
+    umbral: Optional[int] = None
+
+
 # ---------------------------------------------------------------------------
 # Niveles
 # ---------------------------------------------------------------------------
@@ -780,3 +793,57 @@ def calcular_logros_todos(jugadores: list, session: Session) -> list[LogroGlobal
             porcentaje=porcentaje,
         ))
     return output
+
+
+# ---------------------------------------------------------------------------
+# Delta de logros nuevos (antes/después de una mutación)
+# ---------------------------------------------------------------------------
+
+def _diff_logros(
+    antes: list[LogroEstado], despues: list[LogroEstado],
+    jugador_id: int, jugador_nombre: str,
+) -> list[LogroNuevo]:
+    nuevos: list[LogroNuevo] = []
+    antes_map = {l.id: l for l in antes}
+    for logro in despues:
+        prev = antes_map.get(logro.id)
+        if logro.niveles:  # nivelado → comparar niveles desbloqueados
+            prev_niveles = set(prev.niveles_desbloqueados) if prev else set()
+            for nivel in logro.niveles_desbloqueados:
+                if nivel in prev_niveles:
+                    continue
+                nobj = next((n for n in logro.niveles if n.nivel == nivel), None)
+                nuevos.append(LogroNuevo(
+                    jugador_id=jugador_id, jugador_nombre=jugador_nombre,
+                    logro_id=logro.id, nombre=logro.nombre, icono=logro.icono,
+                    descripcion=logro.descripcion, nivel=nivel,
+                    nivel_emoji=nobj.emoji if nobj else None,
+                    umbral=nobj.umbral if nobj else None,
+                ))
+        else:  # simple → desbloqueado por primera vez
+            if logro.desbloqueado and (prev is None or not prev.desbloqueado):
+                nuevos.append(LogroNuevo(
+                    jugador_id=jugador_id, jugador_nombre=jugador_nombre,
+                    logro_id=logro.id, nombre=logro.nombre, icono=logro.icono,
+                    descripcion=logro.descripcion,
+                ))
+    return nuevos
+
+
+def snapshot_logros(jugador_ids: list[int], session: Session) -> dict[int, list[LogroEstado]]:
+    """Estado de logros de varios jugadores ANTES de una mutación."""
+    return {jid: calcular_logros(jid, session) for jid in jugador_ids}
+
+
+def calcular_logros_nuevos(
+    antes_map: dict[int, list[LogroEstado]],
+    nombres_map: dict[int, str],
+    session: Session,
+) -> list[LogroNuevo]:
+    """Compara el snapshot previo con el estado actual y devuelve los logros nuevos."""
+    nuevos: list[LogroNuevo] = []
+    for jid, antes in antes_map.items():
+        despues = calcular_logros(jid, session)
+        nombre = nombres_map.get(jid, f"#{jid}")
+        nuevos.extend(_diff_logros(antes, despues, jid, nombre))
+    return nuevos

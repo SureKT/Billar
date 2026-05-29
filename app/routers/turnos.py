@@ -6,7 +6,20 @@ from typing import Optional
 from app.models import Partida, PartidaJugador, Turno, Jugador, Bola, Falta
 from app.database import get_session
 from app.logic import evaluar_turno
+from app.logic_logros import LogroNuevo, snapshot_logros, calcular_logros_nuevos
 from app import events
+
+
+def _jugadores_de_partida(session: Session, partida_id: int) -> dict[int, str]:
+    """{jugador_id: nombre} de todos los participantes de la partida."""
+    pjs = session.exec(
+        select(PartidaJugador).where(PartidaJugador.partida_id == partida_id)
+    ).all()
+    ids = [pj.jugador_id for pj in pjs]
+    if not ids:
+        return {}
+    jugadores = session.exec(select(Jugador).where(Jugador.id.in_(ids))).all()
+    return {j.id: j.nombre for j in jugadores}
 
 router = APIRouter(prefix="/api/partidas", tags=["turnos"])
 
@@ -96,6 +109,7 @@ class TurnoResponse(BaseModel):
     ganador_equipo: Optional[int] = None
     siguiente_jugador_id: Optional[int] = None
     bola_en_mano_siguiente: bool = False
+    logros_nuevos: list[LogroNuevo] = []
 
 
 @router.get("/{partida_id}/turnos", response_model=list[TurnoResponse])
@@ -159,6 +173,10 @@ def registrar_turno(
             detail="Conflicto: otro turno fue registrado simultáneamente. Recarga la partida.",
         )
 
+    # Snapshot de logros ANTES de mutar (para detectar los recién desbloqueados)
+    nombres_map = _jugadores_de_partida(session, partida_id)
+    antes_map = snapshot_logros(list(nombres_map.keys()), session)
+
     # Auto-detección: blanca dentro (ver _aplicar_auto_scratch)
     falta_id = _aplicar_auto_scratch(session, partida, datos.bolas_metidas, datos.falta_id)
 
@@ -188,6 +206,8 @@ def registrar_turno(
     session.refresh(turno)
     events.broadcast(partida_id)
 
+    logros_nuevos = calcular_logros_nuevos(antes_map, nombres_map, session)
+
     return TurnoResponse(
         id=turno.id,
         partida_id=turno.partida_id,
@@ -202,6 +222,7 @@ def registrar_turno(
         ganador_equipo=resultado["ganador_equipo"],
         siguiente_jugador_id=resultado["siguiente_jugador_id"],
         bola_en_mano_siguiente=resultado["bola_en_mano_siguiente"],
+        logros_nuevos=logros_nuevos,
     )
 
 

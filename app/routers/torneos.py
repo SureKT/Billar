@@ -7,6 +7,7 @@ from typing import Optional
 
 from app.models import Torneo, TorneoJugador, TorneoEnfrentamiento, Jugador, Partida, PartidaJugador, Turno  # noqa: F401 (Turno/PartidaJugador used in delete)
 from app.database import get_session
+from app.logic_logros import snapshot_logros, calcular_logros_nuevos
 
 router = APIRouter(prefix="/api/torneos", tags=["torneos"])
 
@@ -230,6 +231,12 @@ def jugar_enfrentamiento(
 
     j1 = session.get(Jugador, eq1_id)
     j2 = session.get(Jugador, eq2_id)
+
+    # Snapshot de logros ANTES de crear la partida (detecta primera_partida, rodaje, …)
+    nombres_map = {eq1_id: j1.nombre if j1 else f"#{eq1_id}",
+                   eq2_id: j2.nombre if j2 else f"#{eq2_id}"}
+    antes_map = snapshot_logros([eq1_id, eq2_id], session)
+
     partida = Partida(
         modalidad=torneo.modalidad,
         equipo1_nombre=j1.nombre if j1 else None,
@@ -245,7 +252,9 @@ def jugar_enfrentamiento(
     enf.partida_id = partida.id
     session.add(enf)
     session.commit()
-    return {"partida_id": partida.id}
+
+    logros_nuevos = calcular_logros_nuevos(antes_map, nombres_map, session)
+    return {"partida_id": partida.id, "logros_nuevos": [l.model_dump() for l in logros_nuevos]}
 
 
 @router.patch("/{torneo_id}/finalizar", response_model=TorneoResumen)

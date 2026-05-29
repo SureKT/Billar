@@ -165,7 +165,7 @@ export default function Sugerencias() {
         equipo1: { jugador_ids: sug.equipo1.map(j => j.id) },
         equipo2: { jugador_ids: sug.equipo2.map(j => j.id) },
       })
-      navigate(`/partida/${partida.id}`)
+      navigate(`/partida/${partida.id}`, { state: { logrosNuevos: partida.logros_nuevos } })
     } catch (e) {
       setError(e.message)
       setCreando(null)

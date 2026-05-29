@@ -2,7 +2,7 @@ import { useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useApi } from '../hooks/useApi'
 import { api } from '../api/client'
-import { useSessionState, useSessionSet } from '../hooks/useSessionState'
+import { useSessionState } from '../hooks/useSessionState'
 import { SkeletonList } from '../components/Skeleton'
 import AvatarJugador from '../components/AvatarJugador'
 
@@ -30,14 +30,49 @@ function etiquetaDia(isoStr) {
   return d.toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short' })
 }
 
-function agruparPorDia(partidas) {
-  const map = {}
-  for (const p of partidas) {
-    const clave = new Date(p.fecha).toLocaleDateString('es-ES')
-    if (!map[clave]) map[clave] = { clave, fechaRef: p.fecha, partidas: [] }
-    map[clave].partidas.push(p)
+const SESION_GAP_MS = 4 * 60 * 60 * 1000  // 4h: hueco que separa una sesión de otra
+
+// Sesión = partidas consecutivas con hueco < 4h entre el fin de una y el inicio de la siguiente.
+function agruparPorSesion(partidas) {
+  const orden = [...partidas].sort((a, b) => new Date(a.fecha) - new Date(b.fecha))
+  const sesiones = []
+  let actual = null
+  let prevFin = null
+  for (const p of orden) {
+    const ini = new Date(p.fecha).getTime()
+    const fin = p.fecha_fin ? new Date(p.fecha_fin).getTime() : ini
+    if (actual && prevFin != null && (ini - prevFin) < SESION_GAP_MS) {
+      actual.partidas.push(p)
+    } else {
+      actual = { clave: `s${p.id}`, partidas: [p] }
+      sesiones.push(actual)
+    }
+    prevFin = fin
   }
-  return Object.values(map).sort((a, b) => new Date(b.fechaRef) - new Date(a.fechaRef))
+  for (const s of sesiones) {
+    s.partidas.sort((a, b) => new Date(b.fecha) - new Date(a.fecha))
+    s.fechaRef   = s.partidas[0].fecha                                  // última partida (display)
+    s.fechaInicio = s.partidas[s.partidas.length - 1].fecha             // primera partida (etiqueta hora)
+  }
+  return sesiones.sort((a, b) => new Date(b.fechaRef) - new Date(a.fechaRef))
+}
+
+// Marcador: victorias por jugador dentro de un conjunto de partidas finalizadas.
+function marcadorSesion(partidas, jugadores) {
+  const tally = {}
+  for (const p of partidas) {
+    for (const eq of [1, 2]) {
+      const ids = eq === 1 ? p.equipo1_jugadores : p.equipo2_jugadores
+      for (const id of ids) {
+        if (!tally[id]) tally[id] = { id, victorias: 0, jugadas: 0 }
+        tally[id].jugadas += 1
+        if (p.ganador_equipo === eq) tally[id].victorias += 1
+      }
+    }
+  }
+  return Object.values(tally)
+    .map(t => ({ ...t, jugador: jugadores?.find(j => j.id === t.id) }))
+    .sort((a, b) => b.victorias - a.victorias || b.jugadas - a.jugadas)
 }
 
 function duracionSesion(partidas) {
@@ -53,7 +88,7 @@ function duracionSesion(partidas) {
   return m > 0 ? `${h}h ${m}'` : `${h}h`
 }
 
-function SesionHeader({ etiqueta, count, duracion, colapsada, onClick }) {
+function SesionHeader({ etiqueta, hora, count, duracion, colapsada, onClick }) {
   return (
     <button
       onClick={onClick}
@@ -70,13 +105,66 @@ function SesionHeader({ etiqueta, count, duracion, colapsada, onClick }) {
         fontSize: '12px', fontWeight: 700, textTransform: 'uppercase',
         letterSpacing: '.06em', color: 'var(--text-dim)', flexShrink: 0,
       }}>
-        {etiqueta}
+        {etiqueta}{hora ? ` · ${hora}` : ''}
       </span>
       <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
       <span style={{ fontSize: '11px', color: 'var(--text-dim)', flexShrink: 0 }}>
         {count} partida{count !== 1 ? 's' : ''}{duracion ? ` · ${duracion}` : ''}
       </span>
     </button>
+  )
+}
+
+function MarcadorNoche({ sesion, jugadores, onVerJugador }) {
+  const marcador = marcadorSesion(sesion.partidas, jugadores)
+  if (marcador.length < 2) return null
+  const maxV = marcador[0].victorias
+  return (
+    <div style={{
+      background: 'linear-gradient(135deg, rgba(99,102,241,.10), rgba(99,102,241,.03))',
+      border: '1px solid rgba(99,102,241,.25)', borderRadius: 12, padding: '12px 14px',
+    }}>
+      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 6, marginBottom: 10 }}>
+        <span style={{ fontSize: 13, fontWeight: 800, color: '#a5b4fc' }}>🌙 Marcador de la noche</span>
+        <span style={{ fontSize: 11, color: 'var(--text-dim)', flexShrink: 0 }}>
+          {etiquetaDia(sesion.fechaRef)} · {sesion.partidas.length} partidas
+        </span>
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        {marcador.map((m, i) => {
+          const lider = m.victorias === maxV && maxV > 0
+          return (
+            <button
+              key={m.id}
+              onClick={() => m.jugador && onVerJugador(m.id)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 8, width: '100%',
+                background: 'none', border: 'none', padding: '2px 0',
+                cursor: m.jugador ? 'pointer' : 'default', textAlign: 'left',
+              }}
+            >
+              <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-dim)', width: 16, flexShrink: 0 }}>
+                {i + 1}
+              </span>
+              {m.jugador
+                ? <AvatarJugador nombre={m.jugador.nombre} color={m.jugador.color} size={24} />
+                : <div style={{ width: 24, height: 24, flexShrink: 0 }} />}
+              <span style={{
+                flex: 1, minWidth: 0, fontSize: 14, fontWeight: lider ? 800 : 600,
+                color: lider ? '#fcd34d' : 'var(--text)',
+                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+              }}>
+                {lider ? '🏆 ' : ''}{m.jugador?.nombre ?? `#${m.id}`}
+              </span>
+              <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--text)', flexShrink: 0 }}>
+                {m.victorias}
+                <span style={{ fontSize: 11, fontWeight: 500, color: 'var(--text-dim)' }}>/{m.jugadas}</span>
+              </span>
+            </button>
+          )
+        })}
+      </div>
+    </div>
   )
 }
 
@@ -118,18 +206,7 @@ export default function Inicio() {
     setPullY(0)
     setPulling(false)
   }
-  const [filtroModal, setFiltroModal]     = useSessionState('inicio_filtro_modal', 'todas')
-  const [filtrosJugadores, setFiltrosJugadores] = useSessionSet('inicio_filtros_jugadores')
-  const [panelJugadores, setPanelJugadores]     = useState(false)
   const [colapsadas, setColapsadas]       = useState(new Set())
-
-  function toggleJugador(id) {
-    setFiltrosJugadores(prev => {
-      const next = new Set(prev)
-      next.has(id) ? next.delete(id) : next.add(id)
-      return next
-    })
-  }
 
   function toggleSesion(clave) {
     setColapsadas(prev => {
@@ -146,15 +223,15 @@ export default function Inicio() {
 
   const partidasFiltradas = todasLasPartidas
     .filter(p => filtroEstado === 'todas' || p.estado === filtroEstado)
-    .filter(p => filtroModal  === 'todas' || p.modalidad === filtroModal)
-    .filter(p => filtrosJugadores.size === 0 ||
-      [...filtrosJugadores].every(id => [...p.equipo1_jugadores, ...p.equipo2_jugadores].includes(id)))
 
   const enCurso     = partidasFiltradas.filter(p => p.estado === 'en_curso')
   const finalizadas = partidasFiltradas.filter(p => p.estado === 'finalizada')
-  const sesiones    = agruparPorDia(finalizadas)
+  const sesiones    = agruparPorSesion(finalizadas)
 
-  const hayFiltroActivo = filtroEstado !== 'todas' || filtroModal !== 'todas' || filtrosJugadores.size > 0
+  // Marcador de la noche: sesión más reciente sobre TODAS las finalizadas (estable ante filtros).
+  const sesionReciente = agruparPorSesion(todasLasPartidas.filter(p => p.estado === 'finalizada'))[0]
+
+  const hayFiltroActivo = filtroEstado !== 'todas'
 
   return (
     <div
@@ -213,101 +290,23 @@ export default function Inicio() {
         )
       })}
 
-      {/* Filtros — solo cuando hay partidas */}
-      {todasLasPartidas.length > 0 && (() => {
-        const idsEnPartidas = new Set(todasLasPartidas.flatMap(p => [...p.equipo1_jugadores, ...p.equipo2_jugadores]))
-        const jugadoresConPartidas = (jugadores ?? []).filter(j => idsEnPartidas.has(j.id))
-        const hayJugadores = jugadoresConPartidas.length >= 2
-        return (
-          <div style={{
-            position: 'sticky', top: 'var(--nav-height)', zIndex: 50,
-            background: 'var(--bg)', padding: '14px 16px 6px', margin: '0 -16px',
-            display: 'flex', flexDirection: 'column', gap: 6,
-          }}>
-            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-              <ChipFiltro label="Todas"       activo={filtroEstado === 'todas'}      onClick={() => setFiltroEstado('todas')} />
-              <ChipFiltro label="En curso"    activo={filtroEstado === 'en_curso'}   onClick={() => setFiltroEstado('en_curso')} />
-              <ChipFiltro label="Finalizadas" activo={filtroEstado === 'finalizada'} onClick={() => setFiltroEstado('finalizada')} />
-              <div style={{ width: 1, background: 'var(--border)', margin: '0 2px' }} />
-              <ChipFiltro label="Bola 8" activo={filtroModal === 'bola8'} onClick={() => setFiltroModal(filtroModal === 'bola8' ? 'todas' : 'bola8')} />
-              <ChipFiltro label="Bola 9" activo={filtroModal === 'bola9'} onClick={() => setFiltroModal(filtroModal === 'bola9' ? 'todas' : 'bola9')} />
-              {hayJugadores && (
-                <button
-                  onClick={() => setPanelJugadores(v => !v)}
-                  style={{
-                    padding: '5px 10px', borderRadius: 20, fontSize: '12px', fontWeight: 600,
-                    border: filtrosJugadores.size > 0 ? '1.5px solid var(--accent)' : '1px solid var(--border)',
-                    background: filtrosJugadores.size > 0 ? 'var(--accent-bg)' : 'var(--surface2)',
-                    color: filtrosJugadores.size > 0 ? 'var(--accent)' : 'var(--text-dim)',
-                    cursor: 'pointer', transition: 'all .15s',
-                    display: 'flex', alignItems: 'center', gap: 5, lineHeight: 1,
-                  }}
-                >
-                  <span style={{ fontSize: '14px', lineHeight: 1, display: 'flex', alignItems: 'center' }}>👥</span>
-                  {filtrosJugadores.size > 0 && (
-                    <span style={{ fontSize: '11px', fontWeight: 700 }}>{filtrosJugadores.size}</span>
-                  )}
-                  <span style={{ fontSize: '9px', opacity: .7 }}>{panelJugadores ? '▲' : '▼'}</span>
-                </button>
-              )}
-            </div>
+      {/* Marcador de la noche — sesión más reciente */}
+      {filtroEstado !== 'en_curso' && sesionReciente && (
+        <MarcadorNoche sesion={sesionReciente} jugadores={jugadores} onVerJugador={() => navigate('/jugadores')} />
+      )}
 
-            {/* Panel jugadores desplegable */}
-            {panelJugadores && hayJugadores && (
-              <div style={{
-                borderRadius: 10, overflow: 'hidden',
-                background: 'var(--surface2)', border: '1px solid var(--border)',
-              }}>
-                <div style={{
-                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                  padding: '6px 12px', borderBottom: '1px solid var(--border)',
-                }}>
-                  <span style={{ fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.05em', color: 'var(--text-dim)' }}>
-                    Filtrar por jugador
-                  </span>
-                  <button
-                    onClick={() => setFiltrosJugadores(new Set())}
-                    disabled={filtrosJugadores.size === 0}
-                    title="Quitar filtros"
-                    style={{
-                      background: 'none', border: 'none', cursor: filtrosJugadores.size > 0 ? 'pointer' : 'default',
-                      fontSize: '15px', lineHeight: 1, padding: '2px 4px', borderRadius: 4,
-                      color: filtrosJugadores.size > 0 ? '#fca5a5' : 'var(--border)',
-                      transition: 'color .15s',
-                    }}
-                  >
-                    <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
-                      <path d="M1 2.5h14l-5.5 6.5V13l-3-1.5V9L1 2.5z" opacity=".55" />
-                      <line x1="9.5" y1="9.5" x2="14.5" y2="14.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
-                      <line x1="14.5" y1="9.5" x2="9.5" y2="14.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
-                    </svg>
-                  </button>
-                </div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, padding: '10px 12px' }}>
-                {jugadoresConPartidas.map(j => {
-                  const sel = filtrosJugadores.has(j.id)
-                  return (
-                    <button
-                      key={j.id}
-                      onClick={() => toggleJugador(j.id)}
-                      style={{
-                        padding: '5px 12px', borderRadius: 20, fontSize: '12px', fontWeight: 600,
-                        border: sel ? '1.5px solid var(--accent)' : '1px solid var(--border)',
-                        background: sel ? 'var(--accent-bg)' : 'transparent',
-                        color: sel ? 'var(--accent)' : 'var(--text-dim)',
-                        cursor: 'pointer', transition: 'all .15s',
-                      }}
-                    >
-                      {sel ? '✓ ' : ''}{j.nombre}
-                    </button>
-                  )
-                })}
-                </div>
-              </div>
-            )}
-          </div>
-        )
-      })()}
+      {/* Filtros — solo cuando hay partidas finalizadas que filtrar */}
+      {todasLasPartidas.length > 0 && (
+        <div style={{
+          position: 'sticky', top: 'var(--nav-height)', zIndex: 50,
+          background: 'var(--bg)', padding: '14px 16px 6px', margin: '0 -16px',
+          display: 'flex', gap: 6, flexWrap: 'wrap',
+        }}>
+          <ChipFiltro label="Todas"       activo={filtroEstado === 'todas'}      onClick={() => setFiltroEstado('todas')} />
+          <ChipFiltro label="En curso"    activo={filtroEstado === 'en_curso'}   onClick={() => setFiltroEstado('en_curso')} />
+          <ChipFiltro label="Finalizadas" activo={filtroEstado === 'finalizada'} onClick={() => setFiltroEstado('finalizada')} />
+        </div>
+      )}
 
       {/* Sin resultados con filtro activo */}
       {hayFiltroActivo && partidasFiltradas.length === 0 && (
@@ -318,11 +317,11 @@ export default function Inicio() {
 
       {enCurso.length > 0 && (
         <section>
-          <p style={{ fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.06em', color: 'var(--text-dim)', marginBottom: 8 }}>
-            En curso
+          <p style={{ fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.06em', color: 'var(--accent)', marginBottom: 8 }}>
+            ▶ Continuar
           </p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {enCurso.map(p => <PartidaCard key={p.id} p={p} jugadores={jugadores} onClick={() => navigate(`/partida/${p.id}`)} />)}
+            {enCurso.map(p => <PartidaCard key={p.id} p={p} jugadores={jugadores} continuar onClick={() => navigate(`/partida/${p.id}`)} />)}
           </div>
         </section>
       )}
@@ -335,6 +334,7 @@ export default function Inicio() {
               <div key={s.clave}>
                 <SesionHeader
                   etiqueta={etiquetaDia(s.fechaRef)}
+                  hora={new Date(s.fechaInicio).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
                   count={s.partidas.length}
                   duracion={duracionSesion(s.partidas)}
                   colapsada={colapsada}
@@ -360,7 +360,7 @@ function jugadoresDeEquipo(ids, jugadores) {
   return ids.map(id => jugadores?.find(j => j.id === id)).filter(Boolean)
 }
 
-function PartidaCard({ p, jugadores, onClick }) {
+function PartidaCard({ p, jugadores, onClick, continuar = false }) {
   const finalizada = p.estado === 'finalizada'
   const eq1js = jugadoresDeEquipo(p.equipo1_jugadores, jugadores)
   const eq2js = jugadoresDeEquipo(p.equipo2_jugadores, jugadores)
@@ -372,8 +372,8 @@ function PartidaCard({ p, jugadores, onClick }) {
       onClick={onClick}
       style={{
         width: '100%', textAlign: 'left', cursor: 'pointer',
-        background: 'var(--surface)', color: 'var(--text)',
-        border: '1px solid var(--border)',
+        background: continuar ? 'var(--accent-bg)' : 'var(--surface)', color: 'var(--text)',
+        border: continuar ? '1.5px solid var(--accent)' : '1px solid var(--border)',
         borderRadius: 'var(--radius)', padding: 14,
         transition: 'border-color .15s, transform .1s',
         animation: 'slideUp .2s ease both',
@@ -418,11 +418,18 @@ function PartidaCard({ p, jugadores, onClick }) {
         />
       </div>
 
-      {!finalizada && p.siguiente_jugador_id && jugadores && (
-        <p style={{ fontSize: '11px', marginTop: 6,
-          color: p.equipo1_jugadores.includes(p.siguiente_jugador_id) ? 'var(--team1)' : 'var(--team2)' }}>
-          Turno: {nombreJugador(p.siguiente_jugador_id, jugadores)}
-        </p>
+      {!finalizada && (
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 6 }}>
+          {p.siguiente_jugador_id && jugadores ? (
+            <span style={{ fontSize: '11px',
+              color: p.equipo1_jugadores.includes(p.siguiente_jugador_id) ? 'var(--team1)' : 'var(--team2)' }}>
+              Turno: {nombreJugador(p.siguiente_jugador_id, jugadores)}
+            </span>
+          ) : <span />}
+          {continuar && (
+            <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--accent)', flexShrink: 0 }}>Continuar →</span>
+          )}
+        </div>
       )}
       {finalizada && p.fecha_fin && (
         <p style={{ fontSize: '11px', color: 'var(--text-dim)', marginTop: 4 }}>
