@@ -33,6 +33,12 @@ export default function Partida() {
   const [logrosPartida, setLogrosPartida] = useState(null)
   const wakeLockRef = useRef(null)
 
+  // Desmontaje con borrado diferido pendiente → confirmar (usuario navegó sin deshacer). Sin loose ends.
+  useEffect(() => () => {
+    const pd = pendingDelRef.current
+    if (pd) { clearTimeout(pd.timer); api.eliminarPartida(id).catch(() => {}) }
+  }, [id])
+
   // ── Cronómetro partida activa ─────────────────────────────────────────────────
   useEffect(() => {
     if (!partida || partida.estado !== 'en_curso') { setDuracionActiva(''); return }
@@ -246,12 +252,6 @@ export default function Partida() {
     pendingDelRef.current = null
     setBorrando(false)
   }
-
-  // Desmontaje con borrado pendiente → confirmar (el usuario navegó sin deshacer).
-  useEffect(() => () => {
-    const pd = pendingDelRef.current
-    if (pd) { clearTimeout(pd.timer); api.eliminarPartida(id).catch(() => {}) }
-  }, [id])
 
   function revancha() {
     navigate('/nueva', {
