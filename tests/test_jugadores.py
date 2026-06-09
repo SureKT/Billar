@@ -46,6 +46,111 @@ def test_stats_faltas_por_partida(session):
     assert stats.faltas_por_partida == 1.0
 
 
+def test_stats_filtro_desde_excluye_antiguas(session):
+    """desde= posterior a la partida vieja → solo cuenta la nueva."""
+    from datetime import datetime
+    vieja, j1, j2 = crear_partida(session, "bola8")
+    vieja.fecha = datetime(2026, 1, 10, 20, 0)
+    crear_turno_contextual(session, vieja, j1, [1, 2], 1)
+
+    nueva, _, _ = crear_partida(session, "bola8")
+    nueva.fecha = datetime(2026, 6, 1, 20, 0)
+    crear_turno_contextual(session, nueva, j1, [3], 1)
+    session.commit()
+
+    stats = _calcular_stats(session, j1, desde=datetime(2026, 5, 1))
+    assert stats.partidas_jugadas == 1
+    assert stats.bolas_metidas == 1
+
+
+def test_stats_filtro_hasta_excluye_nuevas(session):
+    """hasta= anterior a la partida nueva → solo cuenta la vieja."""
+    from datetime import datetime
+    vieja, j1, j2 = crear_partida(session, "bola8")
+    vieja.fecha = datetime(2026, 1, 10, 20, 0)
+    crear_turno_contextual(session, vieja, j1, [1, 2], 1)
+
+    nueva, _, _ = crear_partida(session, "bola8")
+    nueva.fecha = datetime(2026, 6, 1, 20, 0)
+    crear_turno_contextual(session, nueva, j1, [3], 1)
+    session.commit()
+
+    stats = _calcular_stats(session, j1, hasta=datetime(2026, 5, 1))
+    assert stats.partidas_jugadas == 1
+    assert stats.bolas_metidas == 2
+
+
+def test_stats_filtro_temporal_y_modalidad(session):
+    """desde + modalidad se combinan: bola9 reciente no cuenta para bola8."""
+    from datetime import datetime
+    p8, j1, j2 = crear_partida(session, "bola8")
+    p8.fecha = datetime(2026, 1, 10, 20, 0)
+    crear_turno_contextual(session, p8, j1, [1], 1)
+
+    p9, _, _ = crear_partida(session, "bola9")
+    p9.fecha = datetime(2026, 6, 1, 20, 0)
+    crear_turno_contextual(session, p9, j1, [1], 1)
+    session.commit()
+
+    stats = _calcular_stats(session, j1, modalidad="bola8", desde=datetime(2026, 5, 1))
+    assert stats.partidas_jugadas == 0
+    assert stats.bolas_metidas == 0
+
+
+def test_stats_endpoint_acepta_desde_hasta():
+    """El endpoint /api/jugadores/stats acepta desde/hasta ISO y filtra."""
+    from datetime import datetime
+    from fastapi.testclient import TestClient
+    from sqlmodel import SQLModel, Session, create_engine
+    from sqlalchemy.pool import StaticPool
+    from app.main import app
+    from app.database import get_session, FALTAS
+    from app.models import Jugador, Falta, Turno, Partida, PartidaJugador
+
+    # StaticPool: el thread de TestClient comparte la misma BD en memoria
+    engine = create_engine(
+        "sqlite:///:memory:",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+    SQLModel.metadata.create_all(engine)
+    with Session(engine) as s:
+        for f in FALTAS:
+            s.add(Falta(nombre=f["nombre"], penalizacion=f["penalizacion"]))
+        j1 = Jugador(nombre="J1")
+        s.add(j1)
+        s.add(Jugador(nombre="J2"))
+        s.commit()
+        s.refresh(j1)
+        partida = Partida(modalidad="bola8", fecha=datetime(2026, 1, 10, 20, 0))
+        s.add(partida)
+        s.flush()
+        s.add(PartidaJugador(partida_id=partida.id, jugador_id=j1.id, equipo=1, orden=0))
+        t = Turno(partida_id=partida.id, jugador_id=j1.id, numero=1)
+        t.bolas_metidas = [1, 2]
+        s.add(t)
+        s.commit()
+
+    def override_session():
+        with Session(engine) as s:
+            yield s
+
+    app.dependency_overrides[get_session] = override_session
+    try:
+        client = TestClient(app)
+        r = client.get("/api/jugadores/stats?desde=2026-05-01T00:00:00")
+        assert r.status_code == 200
+        j1_stats = next(x for x in r.json() if x["nombre"] == "J1")
+        assert j1_stats["partidas_jugadas"] == 0
+
+        r = client.get("/api/jugadores/stats?desde=2026-01-01T00:00:00&hasta=2026-02-01T00:00:00")
+        j1_stats = next(x for x in r.json() if x["nombre"] == "J1")
+        assert j1_stats["partidas_jugadas"] == 1
+        assert j1_stats["bolas_metidas"] == 2
+    finally:
+        app.dependency_overrides.clear()
+
+
 def test_stats_bolas_por_partida_finalizada(session):
     """
     Partida finalizada: j1 mete todas las lisas + la 8 → gana.

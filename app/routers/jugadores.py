@@ -60,17 +60,33 @@ class PartidaResumenJugador(BaseModel):
     rival_nombres: list[str]
 
 
-def _calcular_stats(session: Session, jugador: Jugador, modalidad: Optional[str] = None) -> JugadorStats:
+def _calcular_stats(
+    session: Session,
+    jugador: Jugador,
+    modalidad: Optional[str] = None,
+    desde: Optional[datetime] = None,
+    hasta: Optional[datetime] = None,
+) -> JugadorStats:
     participaciones = session.exec(
         select(PartidaJugador).where(PartidaJugador.jugador_id == jugador.id)
     ).all()
     all_partida_ids = [p.partida_id for p in participaciones]
 
-    # Filter by modalidad if requested (filters everything: bolas, rachas, duración)
-    if modalidad:
+    # Filtro por modalidad y rango temporal — todo lo derivado (bolas, rachas,
+    # breaks, duraciones) hereda el filtro porque se computa sobre estos ids
+    def _pasa_filtro(p: Partida) -> bool:
+        if modalidad and p.modalidad != modalidad:
+            return False
+        if desde and p.fecha < desde:
+            return False
+        if hasta and p.fecha > hasta:
+            return False
+        return True
+
+    if modalidad or desde or hasta:
         partida_ids = [
             pid for pid in all_partida_ids
-            if (p := session.get(Partida, pid)) and p.modalidad == modalidad
+            if (p := session.get(Partida, pid)) and _pasa_filtro(p)
         ]
     else:
         partida_ids = all_partida_ids
@@ -275,12 +291,18 @@ def editar_jugador(jugador_id: int, datos: JugadorCreate, session: Session = Dep
 
 
 @router.get("/stats", response_model=list[JugadorStats])
-def stats_todos(incluir_inactivos: bool = False, modalidad: Optional[str] = None, session: Session = Depends(get_session)):
+def stats_todos(
+    incluir_inactivos: bool = False,
+    modalidad: Optional[str] = None,
+    desde: Optional[datetime] = None,
+    hasta: Optional[datetime] = None,
+    session: Session = Depends(get_session),
+):
     q = select(Jugador).order_by(Jugador.nombre)
     if not incluir_inactivos:
         q = q.where(Jugador.activo == True)  # noqa: E712
     jugadores = session.exec(q).all()
-    return [_calcular_stats(session, j, modalidad) for j in jugadores]
+    return [_calcular_stats(session, j, modalidad, desde, hasta) for j in jugadores]
 
 
 @router.get("/{jugador_id}/stats", response_model=JugadorStats)
