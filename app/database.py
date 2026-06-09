@@ -1,6 +1,8 @@
+import os
+
 from sqlmodel import SQLModel, Session, create_engine
 
-DATABASE_URL = "sqlite:///./billar.db"
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./billar.db")
 engine = create_engine(DATABASE_URL, echo=False, connect_args={"check_same_thread": False})
 
 FALTAS = [

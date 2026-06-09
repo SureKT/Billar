@@ -1,0 +1,33 @@
+# Datos — la DB vive en volumen, nunca en la imagen
+billar.db
+*.db
+
+# Frontend deps y build local (se reconstruye en la stage de build)
+frontend/node_modules/
+app/static/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+.pytest_cache/
+
+# Certificados SSL locales (solo dev Windows)
+cert.pem
+key.pem
+gen_cert.py
+
+# Git y agentes
+.git/
+.agents/
+.superpowers/
+skills-lock.json
+
+# Dev scripts Windows
+*.bat
+
+# Tests y docs (no necesarios en runtime)
+tests/
+docs/
+announcements/
