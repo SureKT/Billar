@@ -21,10 +21,12 @@ export const api = {
   editarJugador: (id, nombre) => request('PUT', `/jugadores/${id}`, { nombre }),
   eliminarJugador: (id) => request('DELETE', `/jugadores/${id}`),
   getStatsJugador: (id) => request('GET', `/jugadores/${id}/stats`),
-  getAllStats: (incluirInactivos = false, modalidad = null) => {
+  getAllStats: (incluirInactivos = false, modalidad = null, desde = null, hasta = null) => {
     const params = new URLSearchParams()
     if (incluirInactivos) params.set('incluir_inactivos', 'true')
     if (modalidad) params.set('modalidad', modalidad)
+    if (desde) params.set('desde', desde)
+    if (hasta) params.set('hasta', hasta)
     const qs = params.toString()
     return request('GET', `/jugadores/stats${qs ? `?${qs}` : ''}`)
   },

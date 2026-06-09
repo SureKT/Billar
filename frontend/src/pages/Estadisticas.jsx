@@ -2,9 +2,14 @@ import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useApi } from '../hooks/useApi'
 import { useSessionState } from '../hooks/useSessionState'
+import { useMediaQuery } from '../hooks/useMediaQuery'
 import { api } from '../api/client'
 import { SkeletonList } from '../components/Skeleton'
-import { pct, winrate, StatTile } from '../components/stats/StatPrimitives'
+import { pct, winrate, StatTile, colorJugador } from '../components/stats/StatPrimitives'
+import { agruparPorSesion } from '../utils/sesiones'
+import LineChart from '../components/stats/LineChart'
+import BarrasVerticales from '../components/stats/BarrasVerticales'
+import SesionesChart from '../components/stats/SesionesChart'
 
 const FALTAS_INTERNAS = ['Bola 8 ilegal', 'Tres faltas consecutivas', 'Blanca dentro (Scratch)']
 
@@ -75,36 +80,6 @@ function GraficaHorizontal({ datos, color, labelWidth = 80, labelAbove = false }
                 </span>
               )}
             </div>
-          </div>
-        )
-      })}
-    </div>
-  )
-}
-
-// Gráfica de barras verticales (para evolución temporal)
-function GraficaVertical({ datos, altura = 80 }) {
-  // datos: [{ label, wins, losses }]
-  const maxTotal = Math.max(...datos.map(d => d.wins + d.losses), 1)
-  return (
-    <div style={{ display: 'flex', gap: 4, alignItems: 'flex-end', height: altura + 24 }}>
-      {datos.map((d, i) => {
-        const total  = d.wins + d.losses
-        const hWins  = Math.round((d.wins   / maxTotal) * altura)
-        const hLoss  = Math.round((d.losses / maxTotal) * altura)
-        return (
-          <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
-            <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', height: altura, width: '100%', gap: 1 }}>
-              {d.wins > 0 && (
-                <div style={{ height: hWins, background: '#16a34a', borderRadius: '3px 3px 0 0', opacity: .85 }} />
-              )}
-              {d.losses > 0 && (
-                <div style={{ height: hLoss, background: 'var(--team2)', borderRadius: d.wins === 0 ? '3px 3px 0 0' : 0, opacity: .75 }} />
-              )}
-            </div>
-            <span style={{ fontSize: '9px', color: 'var(--text-dim)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%', textAlign: 'center' }}>
-              {d.label}
-            </span>
           </div>
         )
       })}
@@ -343,20 +318,93 @@ function SeccionTitulo({ children }) {
   )
 }
 
+function Chip({ label, activo, onClick }) {
+  return (
+    <button onClick={onClick} style={{
+      padding: '5px 12px', borderRadius: 20, fontSize: '12px', fontWeight: 600,
+      border: activo ? '1.5px solid var(--accent)' : '1px solid var(--border)',
+      background: activo ? 'var(--accent-bg)' : 'var(--surface2)',
+      color: activo ? 'var(--accent)' : 'var(--text-dim)',
+      transition: 'all .15s', cursor: 'pointer', whiteSpace: 'nowrap',
+    }}>
+      {label}
+    </button>
+  )
+}
+
+const MODALIDADES = [
+  { value: 'todas', label: 'Todas' },
+  { value: 'bola8', label: 'Bola 8' },
+  { value: 'bola9', label: 'Bola 9' },
+]
+
+const PERIODOS = [
+  { value: 'siempre', label: 'Siempre' },
+  { value: 'sesion',  label: 'Última sesión' },
+  { value: '7d',      label: '7 días' },
+  { value: '30d',     label: '30 días' },
+]
+
+const SECCIONES = [
+  { id: 'sec-resumen',     label: 'Resumen' },
+  { id: 'sec-actividad',   label: 'Actividad' },
+  { id: 'sec-records',     label: 'Récords' },
+  { id: 'sec-rendimiento', label: 'Rendimiento' },
+  { id: 'sec-faltas',      label: 'Faltas' },
+  { id: 'sec-ranking',     label: 'Ranking' },
+]
+
+// ISO local sin zona — coherente con Partida.fecha (datetime.now() naive)
+function toNaiveIso(d) {
+  const p = n => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`
+}
+
 // ─── página principal ─────────────────────────────────────────────────────────
 
 export default function Estadisticas() {
   const navigate = useNavigate()
+  const desktop = useMediaQuery('(min-width: 1024px)')
   const [searchParams, setSearchParams] = useSearchParams()
   const [filtro, setFiltroState] = useState(searchParams.get('filtro') ?? 'todas')
+  const [tiempo, setTiempoState] = useState(searchParams.get('tiempo') ?? 'siempre')
 
-  function setFiltro(val) {
-    setFiltroState(val)
-    setSearchParams(val === 'todas' ? {} : { filtro: val }, { replace: true })
+  function actualizarParams(f, t) {
+    const params = {}
+    if (f !== 'todas') params.filtro = f
+    if (t !== 'siempre') params.tiempo = t
+    setSearchParams(params, { replace: true })
   }
+  function setFiltro(val)  { setFiltroState(val);  actualizarParams(val, tiempo) }
+  function setTiempo(val)  { setTiempoState(val);  actualizarParams(filtro, val) }
+
+  // Vista ancha en desktop solo mientras Stats está montada
+  useEffect(() => {
+    document.body.classList.add('wide')
+    return () => document.body.classList.remove('wide')
+  }, [])
+
   const modalidadParam = filtro === 'todas' ? null : filtro
-  const { data: stats,   loading: loadingStats }  = useApi(() => api.getAllStats(false, modalidadParam), [filtro])
-  const { data: partidas, loading: loadingPart }  = useApi(api.getPartidas)
+  const { data: partidas, loading: loadingPart } = useApi(api.getPartidas)
+
+  // Rango temporal → desde (ISO naive local, coherente con Partida.fecha)
+  const rangoDesde = (() => {
+    if (tiempo === '7d')  return new Date(Date.now() - 7  * 86_400_000)
+    if (tiempo === '30d') return new Date(Date.now() - 30 * 86_400_000)
+    if (tiempo === 'sesion') {
+      const fin = (partidas ?? []).filter(p => p.estado === 'finalizada')
+      const ses = agruparPorSesion(fin)[0]
+      return ses ? new Date(ses.fechaInicio) : null
+    }
+    return null
+  })()
+  const desdeIso = rangoDesde ? toNaiveIso(rangoDesde) : null
+  const tiempoActivo = tiempo !== 'siempre'
+
+  const { data: stats } = useApi(
+    () => api.getAllStats(false, modalidadParam, desdeIso),
+    [filtro, tiempo, desdeIso]
+  )
   const [faltas, setFaltas] = useState(null)
 
   const activeIdsKey = (stats ?? []).map(j => j.id).sort((a, b) => a - b).join(',')
@@ -370,15 +418,20 @@ export default function Estadisticas() {
 
   const jugadoresConPartidas = (stats ?? []).filter(j => j.partidas_jugadas > 0)
   const activeIds = new Set((stats ?? []).map(j => j.id))
-  const todasPartidas = (partidas ?? []).filter(p =>
+  const partidasActivas = (partidas ?? []).filter(p =>
     [...(p.equipo1_jugadores ?? []), ...(p.equipo2_jugadores ?? [])].some(id => activeIds.has(id))
   )
-  const finalizadas   = todasPartidas.filter(p => p.estado === 'finalizada')
-  const enCurso       = todasPartidas.filter(p => p.estado === 'en_curso')
-  const bola8         = todasPartidas.filter(p => p.modalidad === 'bola8')
-  const bola9         = todasPartidas.filter(p => p.modalidad === 'bola9')
 
-  const totalBolasMetidas = (stats ?? []).reduce((s, j) => s + j.bolas_metidas, 0)
+  // Rango temporal aplicado client-side a las partidas (records, counts)
+  const todasPartidas = rangoDesde
+    ? partidasActivas.filter(p => new Date(p.fecha) >= rangoDesde)
+    : partidasActivas
+
+  const finalizadas = todasPartidas.filter(p => p.estado === 'finalizada')
+  const enCurso     = todasPartidas.filter(p => p.estado === 'en_curso')
+  const bola8       = todasPartidas.filter(p => p.modalidad === 'bola8')
+  const bola9       = todasPartidas.filter(p => p.modalidad === 'bola9')
+
   const faltaField = filtro === 'bola8' ? 'frecuencia_bola8' : filtro === 'bola9' ? 'frecuencia_bola9' : 'frecuencia'
   const totalFaltas = (faltas ?? []).reduce((s, f) => s + (f[faltaField] ?? 0), 0)
 
@@ -399,10 +452,10 @@ export default function Estadisticas() {
     return { str: `${min}' ${String(seg).padStart(2, '0')}"` }
   })()
 
-  const faltasPorPartida = finalizadasFiltradas.length > 0
+  // Faltas globales (el endpoint de frecuencia no conoce fechas → histórico completo)
+  const faltasPorPartida = !tiempoActivo && finalizadasFiltradas.length > 0
     ? (totalFaltas / finalizadasFiltradas.length).toFixed(1) : null
 
-  // Faltas más frecuentes (filtradas por modalidad)
   const faltasOrdenadas = (faltas ?? [])
     .filter(f => !FALTAS_INTERNAS.includes(f.nombre) && (f[faltaField] ?? 0) > 0)
     .sort((a, b) => (b[faltaField] ?? 0) - (a[faltaField] ?? 0))
@@ -414,7 +467,6 @@ export default function Estadisticas() {
   const rachaPos     = [...jugadoresConPartidas].filter(j => j.racha_actual > 0).sort((a, b) => b.racha_actual - a.racha_actual)[0]
   const masEficiente = [...jugadoresConPartidas].filter(j => j.bolas_por_turno > 0).sort((a, b) => b.bolas_por_turno - a.bolas_por_turno)[0]
 
-  // Duration helpers
   function nombresPartida(p) {
     return [...(p.equipo1_jugadores ?? []), ...(p.equipo2_jugadores ?? [])]
       .map(id => (stats ?? []).find(s => s.id === id)?.nombre ?? `J${id}`)
@@ -428,284 +480,446 @@ export default function Estadisticas() {
 
   const rachaHistorica = [...jugadoresConPartidas].filter(j => j.racha_mejor > 1).sort((a,b) => b.racha_mejor - a.racha_mejor)[0]
   const masMaxBolasT  = [...jugadoresConPartidas].filter(j => (j.max_bolas_turno ?? 0) > 0).sort((a,b) => b.max_bolas_turno - a.max_bolas_turno)[0]
-  const conDur = conDuracion  // already filtered
-  const masRapida = conDur.length > 0 ? conDur.reduce((m,p) => durMs(p) < durMs(m) ? p : m) : null
-  const masLenta  = conDur.length > 0 ? conDur.reduce((m,p) => durMs(p) > durMs(m) ? p : m) : null
+  const masRapida = conDuracion.length > 0 ? conDuracion.reduce((m,p) => durMs(p) < durMs(m) ? p : m) : null
+  const masLenta  = conDuracion.length > 0 ? conDuracion.reduce((m,p) => durMs(p) > durMs(m) ? p : m) : null
 
-  // Datos para gráficas
-  const COLORES_FALLBACK = ['#3b82f6','#06b6d4','#8b5cf6','#10b981','#f59e0b','#ef4444','#ec4899','#84cc16']
+  // ── Datos para gráficas de jugador (respetan filtros) ──
+  const idxJugador = new Map((stats ?? []).map((j, i) => [j.id, i]))
+  const cj = j => colorJugador(j, idxJugador.get(j.id) ?? 0)
 
   const grafBolas = [...jugadoresConPartidas]
     .filter(j => j.bolas_metidas > 0)
     .sort((a, b) => b.bolas_metidas - a.bolas_metidas)
     .slice(0, 8)
-    .map((j, i) => ({ label: j.nombre, value: j.bolas_metidas, playerColor: j.color ?? COLORES_FALLBACK[i % COLORES_FALLBACK.length] }))
+    .map(j => ({ label: j.nombre, value: j.bolas_metidas, playerColor: cj(j) }))
 
   const grafEficiencia = [...jugadoresConPartidas]
     .filter(j => j.bolas_por_turno > 0)
     .sort((a, b) => b.bolas_por_turno - a.bolas_por_turno)
     .slice(0, 8)
-    .map((j, i) => ({ label: j.nombre, value: j.bolas_por_turno, playerColor: j.color ?? COLORES_FALLBACK[i % COLORES_FALLBACK.length] }))
+    .map(j => ({ label: j.nombre, value: j.bolas_por_turno, playerColor: cj(j) }))
 
   const grafDuracion = [...jugadoresConPartidas]
     .filter(j => j.duracion_promedio_min != null)
     .sort((a, b) => b.duracion_promedio_min - a.duracion_promedio_min)
     .slice(0, 8)
-    .map((j, i) => ({
-      label: j.nombre,
-      value: Math.round(j.duracion_promedio_min),
-      playerColor: j.color ?? COLORES_FALLBACK[i % COLORES_FALLBACK.length],
-    }))
+    .map(j => ({ label: j.nombre, value: Math.round(j.duracion_promedio_min), playerColor: cj(j) }))
 
   const grafBreak = [...jugadoresConPartidas]
     .filter(j => (j.break_con_bola_pct ?? 0) > 0)
     .sort((a, b) => b.break_con_bola_pct - a.break_con_bola_pct)
     .slice(0, 8)
-    .map((j, i) => ({
+    .map(j => ({
       label: j.nombre,
       value: Math.round(j.break_con_bola_pct),
       sub: `${j.break_bolas_media?.toFixed(1)} x saque`,
-      playerColor: j.color ?? COLORES_FALLBACK[i % COLORES_FALLBACK.length],
+      playerColor: cj(j),
     }))
 
   const grafBolasPartida = [...jugadoresConPartidas]
     .filter(j => (j.bolas_por_partida ?? 0) > 0)
     .sort((a, b) => b.bolas_por_partida - a.bolas_por_partida)
     .slice(0, 8)
-    .map((j, i) => ({
-      label: j.nombre,
-      value: j.bolas_por_partida,
-      playerColor: j.color ?? COLORES_FALLBACK[i % COLORES_FALLBACK.length],
-    }))
+    .map(j => ({ label: j.nombre, value: j.bolas_por_partida, playerColor: cj(j) }))
 
-  // Evolución mensual de partidas (últimos 8 meses con actividad)
-  const evolucion = (() => {
-    if (finalizadasFiltradas.length === 0) return []
-    const porMes = {}
-    for (const p of finalizadasFiltradas) {
+  // ── Datos temporales (histórico completo, solo filtrados por modalidad —
+  //    son visualizaciones de línea de tiempo, recortarlas las vaciaría) ──
+  const finalizadasHist = partidasActivas
+    .filter(p => p.estado === 'finalizada')
+    .filter(p => filtro === 'todas' || p.modalidad === filtro)
+
+  const actividadMensual = (() => {
+    const porMes = new Map()
+    for (const p of finalizadasHist) {
       const d = new Date(p.fecha)
       const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
-      const label = d.toLocaleDateString('es-ES', { month: 'short', year: '2-digit' })
-      if (!porMes[key]) porMes[key] = { label, wins: 0, losses: 0 }
-      // wins = veces que ganó el equipo 1 (o alguno) — aquí sólo contamos partidas jugadas
-      // usamos wins = partidas finalizadas, losses = 0 para mostrar actividad
-      porMes[key].wins += 1
+      porMes.set(key, (porMes.get(key) ?? 0) + 1)
     }
-    return Object.entries(porMes)
+    return [...porMes.entries()]
       .sort(([a], [b]) => a.localeCompare(b))
-      .slice(-8)
-      .map(([, v]) => v)
+      .slice(-12)
+      .map(([key, value]) => {
+        const [yy, mm] = key.split('-')
+        const label = new Date(+yy, +mm - 1, 1).toLocaleDateString('es-ES', { month: 'short', year: '2-digit' })
+        return { label, value }
+      })
+  })()
+
+  const sesionesHist = agruparPorSesion(finalizadasHist)
+
+  const evolucionSeries = (() => {
+    if (!stats) return []
+    const porJugador = new Map()
+    const orden = [...finalizadasHist].sort((a, b) => new Date(a.fecha) - new Date(b.fecha))
+    for (const p of orden) {
+      if (!p.ganador_equipo) continue
+      for (const eq of [1, 2]) {
+        for (const id of (eq === 1 ? p.equipo1_jugadores : p.equipo2_jugadores) ?? []) {
+          if (!porJugador.has(id)) porJugador.set(id, { jugadas: 0, ganadas: 0, puntos: [] })
+          const r = porJugador.get(id)
+          r.jugadas += 1
+          if (p.ganador_equipo === eq) r.ganadas += 1
+          r.puntos.push({ t: new Date(p.fecha).getTime(), y: (r.ganadas / r.jugadas) * 100 })
+        }
+      }
+    }
+    return [...porJugador.entries()]
+      .filter(([id]) => idxJugador.has(id))
+      .sort(([, a], [, b]) => b.jugadas - a.jugadas)
+      .slice(0, 6)
+      .map(([id, r]) => {
+        const j = stats.find(s => s.id === id)
+        // Las 2 primeras partidas oscilan 0↔100% — ruido sin valor; empezar en la 3ª
+        const puntos = r.puntos.length > 3 ? r.puntos.slice(2) : r.puntos.slice(-1)
+        return { nombre: j.nombre, color: cj(j), puntos }
+      })
   })()
 
   const sinDatos = todasFiltradas.length === 0
+  const periodoLabel = PERIODOS.find(t => t.value === tiempo)?.label
 
+  // ── Bloques de contenido (única fuente — móvil y desktop los disponen distinto) ──
+
+  const tilesPrincipales = (
+    <div style={{ display: 'flex', gap: 6 }}>
+      <StatTile label="Partidas"    value={todasFiltradas.length} />
+      <StatTile label="Finalizadas" value={finalizadasFiltradas.length} color="#86efac" />
+      <StatTile label="En curso"    value={enCursoFiltradas.length}     color="#fbbf24" />
+      <StatTile label="Jugadores"   value={(stats ?? []).length} />
+    </div>
+  )
+  const tilesSecundarios = (
+    <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
+      {filtro === 'todas' && (
+        <>
+          <StatTile label="Bola 8" value={bola8.length}
+            sub={todasPartidas.length > 0 ? `${Math.round((bola8.length / todasPartidas.length) * 100)}%` : undefined} />
+          <StatTile label="Bola 9" value={bola9.length}
+            sub={todasPartidas.length > 0 ? `${Math.round((bola9.length / todasPartidas.length) * 100)}%` : undefined} />
+        </>
+      )}
+      {duracionMedia != null && (
+        <StatTile label="Duración media" value={duracionMedia.str} color="#c4b5fd" compact />
+      )}
+      {!tiempoActivo && <StatTile label="Total faltas" value={totalFaltas} color="#f97316" />}
+      {faltasPorPartida != null && (
+        <StatTile label="Faltas / partida" value={faltasPorPartida} color="#fb923c" />
+      )}
+    </div>
+  )
+
+  const bloqueResumen = (
+    <div className="card" style={{ padding: '12px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+        <SeccionTitulo>
+          Resumen {filtro === 'todas' ? 'global' : filtro === 'bola8' ? 'Bola 8' : 'Bola 9'}
+          {tiempoActivo ? ` · ${periodoLabel}` : ''}
+        </SeccionTitulo>
+        <span style={{ fontSize: '11px', color: 'var(--text-dim)', fontWeight: 600 }}>
+          {(stats ?? []).length} Jugador{(stats ?? []).length !== 1 ? 'es' : ''} activo{(stats ?? []).length !== 1 ? 's' : ''}
+        </span>
+      </div>
+      {tilesPrincipales}
+      {tilesSecundarios}
+    </div>
+  )
+
+  const hayRecords = mejorWinRate || masBolas || rachaPos || masEficiente
+  const bloqueRecords = hayRecords ? (
+    <div className="card" style={{ padding: '12px' }}>
+      <SeccionTitulo>Récords{tiempoActivo ? ` · ${periodoLabel}` : ''}</SeccionTitulo>
+      <div style={{
+        display: 'grid', gap: 8,
+        gridTemplateColumns: desktop ? 'repeat(auto-fill, minmax(250px, 1fr))' : '1fr',
+      }}>
+        {mejorWinRate && mejorWinRate.partidas_jugadas >= 2 && (
+          <RecordCard emoji="🏆" titulo="Mejor win rate"
+            nombre={mejorWinRate.nombre}
+            valor={`${pct(mejorWinRate.partidas_ganadas, mejorWinRate.partidas_jugadas)}% (${mejorWinRate.partidas_ganadas}/${mejorWinRate.partidas_jugadas})`}
+          />
+        )}
+        {masBolas && masBolas.bolas_metidas > 0 && (
+          <RecordCard emoji="🎱" titulo="Más bolas metidas"
+            nombre={masBolas.nombre}
+            valor={`${masBolas.bolas_metidas} bolas · ${masBolas.bolas_por_turno} x turno`}
+          />
+        )}
+        {masEficiente && masEficiente !== masBolas && (
+          <RecordCard emoji="⚡" titulo="Más eficiente (bolas/turno)"
+            nombre={masEficiente.nombre}
+            valor={`${masEficiente.bolas_por_turno} bolas por turno`}
+          />
+        )}
+        {rachaPos && (
+          <RecordCard emoji="🔥" titulo="Racha ganadora actual"
+            nombre={rachaPos.nombre}
+            valor={`${rachaPos.racha_actual} seguidas`}
+          />
+        )}
+        {rachaHistorica && (
+          <RecordCard emoji="📈" titulo="Racha histórica"
+            nombre={rachaHistorica.nombre}
+            valor={`${rachaHistorica.racha_mejor} victorias seguidas`}
+          />
+        )}
+        {masMaxBolasT && (
+          <RecordCard emoji="💥" titulo="Máx bolas en un turno"
+            nombre={masMaxBolasT.nombre}
+            valor={`${masMaxBolasT.max_bolas_turno} bolas`}
+          />
+        )}
+        {masRapida && (
+          <RecordCard emoji="⚡" titulo="Partida más rápida"
+            nombre={nombresPartida(masRapida)}
+            valor={fmtMin(durMs(masRapida))}
+            partidaId={masRapida.id}
+            partidaNumero={masRapida.numero}
+            onNavigate={id => navigate(`/partida/${id}`)}
+          />
+        )}
+        {masLenta && masLenta !== masRapida && (
+          <RecordCard emoji="🐢" titulo="Partida más larga"
+            nombre={nombresPartida(masLenta)}
+            valor={fmtMin(durMs(masLenta))}
+            partidaId={masLenta.id}
+            partidaNumero={masLenta.numero}
+            onNavigate={id => navigate(`/partida/${id}`)}
+          />
+        )}
+      </div>
+    </div>
+  ) : null
+
+  const graficasJugador = [
+    grafBolas.length > 0        && { titulo: 'Bolas metidas por jugador',          nodo: <GraficaHorizontal datos={grafBolas} /> },
+    grafEficiencia.length > 1   && { titulo: 'Eficiencia · bolas por turno',       nodo: <GraficaHorizontal datos={grafEficiencia} /> },
+    grafDuracion.length > 1     && { titulo: 'Duración media por jugador (min)',   nodo: <GraficaHorizontal datos={grafDuracion} /> },
+    grafBreak.length > 1        && { titulo: 'Break con bola (%)',                 nodo: <GraficaHorizontal datos={grafBreak} /> },
+    grafBolasPartida.length > 1 && { titulo: 'Bolas metidas por partida',          nodo: <GraficaHorizontal datos={grafBolasPartida} /> },
+  ].filter(Boolean)
+
+  const graficasTemporales = [
+    actividadMensual.length > 1 && { titulo: 'Partidas por mes',     nodo: <BarrasVerticales datos={actividadMensual} /> },
+    sesionesHist.length > 1     && { titulo: 'Victorias por sesión', nodo: <SesionesChart sesiones={sesionesHist} jugadores={stats ?? []} /> },
+    evolucionSeries.length > 0  && {
+      titulo: 'Evolución win rate', ancho: true,
+      nodo: <LineChart series={evolucionSeries} viewW={desktop ? 1000 : 600} />,
+    },
+  ].filter(Boolean)
+
+  const bloqueFaltas = faltasOrdenadas.length > 0 ? (
+    <div className="card" style={{ padding: '12px' }}>
+      <SeccionTitulo>
+        Faltas más frecuentes
+        {tiempoActivo && (
+          <span style={{
+            marginLeft: 8, padding: '1px 7px', borderRadius: 8, fontSize: 10,
+            background: 'var(--surface2)', border: '1px solid var(--border)',
+            color: 'var(--text-dim)', textTransform: 'none', letterSpacing: 0,
+          }}>histórico completo</span>
+        )}
+      </SeccionTitulo>
+      <GraficaHorizontal
+        datos={faltasOrdenadas.map(f => ({ label: f.nombre, value: f[faltaField] ?? 0 }))}
+        color={() => '#f97316'}
+        labelAbove
+      />
+    </div>
+  ) : null
+
+  const bloqueRanking = jugadoresConPartidas.length > 0 ? (
+    <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+      <div style={{ padding: '12px 14px 10px', borderBottom: '1px solid var(--border)' }}>
+        <p style={{ fontSize: '13px', fontWeight: 700 }}>Ranking{tiempoActivo ? ` · ${periodoLabel}` : ''}</p>
+      </div>
+      {rankingFiltrado.length === 0 ? (
+        <p style={{ padding: '16px 14px', fontSize: '13px', color: 'var(--text-dim)' }}>
+          Sin datos para este filtro
+        </p>
+      ) : (
+        <div style={{ padding: '10px 12px 4px' }}>
+          <TablaComparativa jugadores={rankingFiltrado} />
+        </div>
+      )}
+    </div>
+  ) : null
+
+  const vacio = (
+    <div style={{ textAlign: 'center', padding: '60px 20px' }}>
+      <div style={{ fontSize: '48px', marginBottom: 12 }}>📊</div>
+      <p style={{ color: 'var(--text-dim)' }}>
+        {tiempoActivo ? 'Sin partidas en este periodo' : 'Aún no hay partidas registradas'}
+      </p>
+    </div>
+  )
+
+  // ─── Desktop: sidebar sticky + grid de contenido ───
+  if (desktop) {
+    return (
+      <div style={{ display: 'grid', gridTemplateColumns: '210px 1fr', gap: 20, alignItems: 'start', paddingTop: 14 }}>
+        <aside style={{
+          position: 'sticky', top: 'calc(var(--nav-height) + 14px)',
+          display: 'flex', flexDirection: 'column', gap: 18,
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <h2 style={{ fontSize: '20px', margin: 0 }}>Estadísticas</h2>
+            <button
+              onClick={() => navigate('/tv')}
+              style={{
+                padding: '3px 8px', borderRadius: 6, cursor: 'pointer',
+                background: 'rgba(255,255,255,.06)', border: '1px solid var(--border)',
+                color: 'var(--text-dim)', fontSize: 11, fontWeight: 600, flexShrink: 0,
+              }}
+            >📺 TV</button>
+          </div>
+
+          <nav style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            {SECCIONES.map(s => (
+              <button key={s.id}
+                onClick={() => document.getElementById(s.id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+                style={{
+                  textAlign: 'left', padding: '7px 10px', borderRadius: 8,
+                  background: 'none', border: 'none', cursor: 'pointer',
+                  fontSize: 13, fontWeight: 600, color: 'var(--text-dim)',
+                }}
+                onMouseEnter={e => { e.currentTarget.style.background = 'var(--surface2)'; e.currentTarget.style.color = 'var(--text)' }}
+                onMouseLeave={e => { e.currentTarget.style.background = 'none'; e.currentTarget.style.color = 'var(--text-dim)' }}
+              >
+                {s.label}
+              </button>
+            ))}
+          </nav>
+
+          <div>
+            <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.06em', color: 'var(--text-dim)', marginBottom: 6 }}>Modalidad</p>
+            <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+              {MODALIDADES.map(m => (
+                <Chip key={m.value} label={m.label} activo={filtro === m.value} onClick={() => setFiltro(m.value)} />
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.06em', color: 'var(--text-dim)', marginBottom: 6 }}>Periodo</p>
+            <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+              {PERIODOS.map(t => (
+                <Chip key={t.value} label={t.label} activo={tiempo === t.value} onClick={() => setTiempo(t.value)} />
+              ))}
+            </div>
+          </div>
+        </aside>
+
+        <main style={{ display: 'flex', flexDirection: 'column', gap: 'var(--gap)', minWidth: 0 }}>
+          {sinDatos ? vacio : (
+            <>
+              <section id="sec-resumen" style={{ scrollMarginTop: 80 }}>
+                {bloqueResumen}
+              </section>
+
+              {graficasTemporales.length > 0 && (
+                <section id="sec-actividad" style={{ scrollMarginTop: 80 }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(380px, 1fr))', gap: 'var(--gap)' }}>
+                    {graficasTemporales.map(g => (
+                      <div key={g.titulo} className="card"
+                        style={{ padding: '12px', minWidth: 0, ...(g.ancho ? { gridColumn: '1 / -1' } : {}) }}>
+                        <SeccionTitulo>{g.titulo}</SeccionTitulo>
+                        {g.nodo}
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              )}
+
+              {bloqueRecords && (
+                <section id="sec-records" style={{ scrollMarginTop: 80 }}>
+                  {bloqueRecords}
+                </section>
+              )}
+
+              {graficasJugador.length > 0 && (
+                <section id="sec-rendimiento" style={{ scrollMarginTop: 80 }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(380px, 1fr))', gap: 'var(--gap)' }}>
+                    {graficasJugador.map(g => (
+                      <div key={g.titulo} className="card" style={{ padding: '12px', minWidth: 0 }}>
+                        <SeccionTitulo>{g.titulo}</SeccionTitulo>
+                        {g.nodo}
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              )}
+
+              {bloqueFaltas && (
+                <section id="sec-faltas" style={{ scrollMarginTop: 80 }}>
+                  {bloqueFaltas}
+                </section>
+              )}
+
+              {bloqueRanking && (
+                <section id="sec-ranking" style={{ scrollMarginTop: 80 }}>
+                  {bloqueRanking}
+                </section>
+              )}
+            </>
+          )}
+        </main>
+      </div>
+    )
+  }
+
+  // ─── Móvil: stack vertical (versión adaptada funcional) ───
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--gap)' }}>
       <div style={{
         position: 'sticky', top: 'var(--nav-height)', zIndex: 50,
         background: 'var(--bg)', padding: '14px 16px 6px', margin: '0 -16px',
-        display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap',
+        display: 'flex', flexDirection: 'column', gap: 8,
       }}>
-        <h2 style={{ fontSize: '20px', margin: 0, flexShrink: 0 }}>Estadísticas</h2>
-        <button
-          onClick={() => navigate('/tv')}
-          style={{
-            padding: '3px 8px', borderRadius: 6, cursor: 'pointer',
-            background: 'rgba(255,255,255,.06)', border: '1px solid var(--border)',
-            color: 'var(--text-dim)', fontSize: 11, fontWeight: 600, flexShrink: 0,
-          }}
-        >
-          📺 TV
-        </button>
-        <div style={{ flex: 1 }} />
-        <div style={{ display: 'flex', gap: 4 }}>
-          {['todas', 'bola8', 'bola9'].map(f => (
-            <button key={f} onClick={() => setFiltro(f)} style={{
-              padding: '5px 12px', borderRadius: 20, fontSize: '12px', fontWeight: 600,
-              border: filtro === f ? '1.5px solid var(--accent)' : '1px solid var(--border)',
-              background: filtro === f ? 'var(--accent-bg)' : 'var(--surface2)',
-              color: filtro === f ? 'var(--accent)' : 'var(--text-dim)',
-              transition: 'all .15s', cursor: 'pointer',
-            }}>
-              {f === 'todas' ? 'Todas' : f === 'bola8' ? 'Bola 8' : 'Bola 9'}
-            </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+          <h2 style={{ fontSize: '20px', margin: 0, flexShrink: 0 }}>Estadísticas</h2>
+          <button
+            onClick={() => navigate('/tv')}
+            style={{
+              padding: '3px 8px', borderRadius: 6, cursor: 'pointer',
+              background: 'rgba(255,255,255,.06)', border: '1px solid var(--border)',
+              color: 'var(--text-dim)', fontSize: 11, fontWeight: 600, flexShrink: 0,
+            }}
+          >📺 TV</button>
+          <div style={{ flex: 1 }} />
+          <div style={{ display: 'flex', gap: 4 }}>
+            {MODALIDADES.map(m => (
+              <Chip key={m.value} label={m.label} activo={filtro === m.value} onClick={() => setFiltro(m.value)} />
+            ))}
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+          {PERIODOS.map(t => (
+            <Chip key={t.value} label={t.label} activo={tiempo === t.value} onClick={() => setTiempo(t.value)} />
           ))}
         </div>
       </div>
 
-      {sinDatos ? (
-        <div style={{ textAlign: 'center', padding: '60px 20px' }}>
-          <div style={{ fontSize: '48px', marginBottom: 12 }}>📊</div>
-          <p style={{ color: 'var(--text-dim)' }}>Aún no hay partidas registradas</p>
-        </div>
-      ) : (
+      {sinDatos ? vacio : (
         <>
-          {/* ── Cifras globales ── */}
-          <div className="card" style={{ padding: '12px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-              <SeccionTitulo style={{ margin: 0 }}>Resumen {filtro === 'todas' ? 'global' : filtro === 'bola8' ? 'Bola 8' : 'Bola 9'}</SeccionTitulo>
-              <span style={{ fontSize: '11px', color: 'var(--text-dim)', fontWeight: 600 }}>
-                {(stats ?? []).length} Jugador{(stats ?? []).length !== 1 ? 'es' : ''} activo{(stats ?? []).length !== 1 ? 's' : ''}
-              </span>
-            </div>
-            <div style={{ display: 'flex', gap: 6 }}>
-              <StatTile label="Partidas"    value={todasFiltradas.length} />
-              <StatTile label="Finalizadas" value={finalizadasFiltradas.length} color="#86efac" />
-              <StatTile label="En curso"    value={enCursoFiltradas.length}     color="#fbbf24" />
-              <StatTile label="Jugadores"   value={(stats ?? []).length} />
-            </div>
-            <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
-              {filtro === 'todas' && (
-                <>
-                  <StatTile label="Bola 8" value={bola8.length}
-                    sub={todasPartidas.length > 0 ? `${Math.round((bola8.length / todasPartidas.length) * 100)}%` : undefined} />
-                  <StatTile label="Bola 9" value={bola9.length}
-                    sub={todasPartidas.length > 0 ? `${Math.round((bola9.length / todasPartidas.length) * 100)}%` : undefined} />
-                </>
-              )}
-              {duracionMedia != null
-                ? <StatTile label="Duración media" value={duracionMedia.str} color="#c4b5fd" compact />
-                : null}
-              <StatTile label="Total faltas" value={totalFaltas} color="#f97316" />
-              {faltasPorPartida != null && (
-                <StatTile label="Faltas / partida" value={faltasPorPartida} color="#fb923c" />
-              )}
-            </div>
-          </div>
+          {bloqueResumen}
+          {bloqueRecords}
 
-          {/* ── Records ── */}
-          {(mejorWinRate || masBolas || rachaPos || masEficiente) && (
-            <div className="card" style={{ padding: '12px', display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <SeccionTitulo>Récords</SeccionTitulo>
-              {mejorWinRate && mejorWinRate.partidas_jugadas >= 2 && (
-                <RecordCard emoji="🏆" titulo="Mejor win rate"
-                  nombre={mejorWinRate.nombre}
-                  valor={`${pct(mejorWinRate.partidas_ganadas, mejorWinRate.partidas_jugadas)}% (${mejorWinRate.partidas_ganadas}/${mejorWinRate.partidas_jugadas})`}
-                />
-              )}
-              {masBolas && masBolas.bolas_metidas > 0 && (
-                <RecordCard emoji="🎱" titulo="Más bolas metidas"
-                  nombre={masBolas.nombre}
-                  valor={`${masBolas.bolas_metidas} bolas · ${masBolas.bolas_por_turno} x turno`}
-                />
-              )}
-              {masEficiente && masEficiente !== masBolas && (
-                <RecordCard emoji="⚡" titulo="Más eficiente (bolas/turno)"
-                  nombre={masEficiente.nombre}
-                  valor={`${masEficiente.bolas_por_turno} bolas por turno`}
-                />
-              )}
-              {rachaPos && (
-                <RecordCard emoji="🔥" titulo="Racha ganadora actual"
-                  nombre={rachaPos.nombre}
-                  valor={`${rachaPos.racha_actual} seguidas`}
-                />
-              )}
-              {rachaHistorica && (
-                <RecordCard emoji="📈" titulo="Racha histórica"
-                  nombre={rachaHistorica.nombre}
-                  valor={`${rachaHistorica.racha_mejor} victorias seguidas`}
-                />
-              )}
-              {masMaxBolasT && (
-                <RecordCard emoji="💥" titulo="Máx bolas en un turno"
-                  nombre={masMaxBolasT.nombre}
-                  valor={`${masMaxBolasT.max_bolas_turno} bolas`}
-                />
-              )}
-              {masRapida && (
-                <RecordCard emoji="⚡" titulo="Partida más rápida"
-                  nombre={nombresPartida(masRapida)}
-                  valor={fmtMin(durMs(masRapida))}
-                  partidaId={masRapida.id}
-                  partidaNumero={masRapida.numero}
-                  onNavigate={id => navigate(`/partida/${id}`)}
-                />
-              )}
-              {masLenta && masLenta !== masRapida && (
-                <RecordCard emoji="🐢" titulo="Partida más larga"
-                  nombre={nombresPartida(masLenta)}
-                  valor={fmtMin(durMs(masLenta))}
-                  partidaId={masLenta.id}
-                  partidaNumero={masLenta.numero}
-                  onNavigate={id => navigate(`/partida/${id}`)}
-                />
-              )}
+          {graficasJugador.map(g => (
+            <div key={g.titulo} className="card" style={{ padding: '12px' }}>
+              <SeccionTitulo>{g.titulo}</SeccionTitulo>
+              {g.nodo}
             </div>
-          )}
+          ))}
 
-          {/* ── Gráfica: bolas metidas ── */}
-          {grafBolas.length > 0 && (
-            <div className="card" style={{ padding: '12px' }}>
-              <SeccionTitulo>Bolas metidas por jugador</SeccionTitulo>
-              <GraficaHorizontal datos={grafBolas} />
+          {graficasTemporales.map(g => (
+            <div key={g.titulo} className="card" style={{ padding: '12px' }}>
+              <SeccionTitulo>{g.titulo}</SeccionTitulo>
+              {g.nodo}
             </div>
-          )}
+          ))}
 
-          {/* ── Gráfica: eficiencia ── */}
-          {grafEficiencia.length > 1 && (
-            <div className="card" style={{ padding: '12px' }}>
-              <SeccionTitulo>Eficiencia · bolas por turno</SeccionTitulo>
-              <GraficaHorizontal datos={grafEficiencia} />
-            </div>
-          )}
-
-          {/* ── Gráfica: duración media por jugador ── */}
-          {grafDuracion.length > 1 && (
-            <div className="card" style={{ padding: '12px' }}>
-              <SeccionTitulo>Duración media por jugador (min)</SeccionTitulo>
-              <GraficaHorizontal datos={grafDuracion} />
-            </div>
-          )}
-
-          {/* ── Gráfica: break con bola (%) ── */}
-          {grafBreak.length > 1 && (
-            <div className="card" style={{ padding: '12px' }}>
-              <SeccionTitulo>Break con bola (%)</SeccionTitulo>
-              <GraficaHorizontal datos={grafBreak} />
-            </div>
-          )}
-
-          {/* ── Gráfica: bolas por partida ── */}
-          {grafBolasPartida.length > 1 && (
-            <div className="card" style={{ padding: '12px' }}>
-              <SeccionTitulo>Bolas metidas por partida</SeccionTitulo>
-              <GraficaHorizontal datos={grafBolasPartida} />
-            </div>
-          )}
-
-          {/* ── Faltas más frecuentes ── */}
-          {faltasOrdenadas.length > 0 && (
-            <div className="card" style={{ padding: '12px' }}>
-              <SeccionTitulo>Faltas más frecuentes</SeccionTitulo>
-              <GraficaHorizontal
-                datos={faltasOrdenadas.map(f => ({ label: f.nombre, value: f[faltaField] ?? 0 }))}
-                color={() => '#f97316'}
-                labelAbove
-              />
-            </div>
-          )}
-
-          {/* ── Ranking ── */}
-          {jugadoresConPartidas.length > 0 && (
-            <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-              <div style={{
-                padding: '12px 14px 10px',
-                borderBottom: '1px solid var(--border)',
-              }}>
-                <p style={{ fontSize: '13px', fontWeight: 700 }}>Ranking</p>
-              </div>
-              {rankingFiltrado.length === 0 ? (
-                <p style={{ padding: '16px 14px', fontSize: '13px', color: 'var(--text-dim)' }}>
-                  Sin datos para este filtro
-                </p>
-              ) : (
-                <div style={{ padding: '10px 12px 4px' }}>
-                  <TablaComparativa jugadores={rankingFiltrado} />
-                </div>
-              )}
-            </div>
-          )}
+          {bloqueFaltas}
+          {bloqueRanking}
         </>
       )}
     </div>

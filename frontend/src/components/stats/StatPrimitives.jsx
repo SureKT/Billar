@@ -1,6 +1,13 @@
 // Primitivas de estadísticas compartidas entre Jugadores y Estadísticas.
 // Fuente única → el mismo dato se muestra igual en todos los contextos.
 
+// Paleta de respaldo cuando el jugador no tiene color asignado
+export const COLORES_FALLBACK = ['#3b82f6', '#06b6d4', '#8b5cf6', '#10b981', '#f59e0b', '#ef4444', '#ec4899', '#84cc16']
+
+export function colorJugador(jugador, i) {
+  return jugador?.color ?? COLORES_FALLBACK[i % COLORES_FALLBACK.length]
+}
+
 export function pct(ganadas, jugadas) {
   return jugadas === 0 ? 0 : Math.round((ganadas / jugadas) * 100)
 }
