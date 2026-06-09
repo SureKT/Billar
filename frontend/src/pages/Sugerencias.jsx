@@ -184,19 +184,16 @@ export default function Sugerencias() {
       </div>
 
       {/* Filtros */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-        <div style={{ display: 'flex', gap: 6 }}>
-          {FORMATO.map(f => (
-            <Chip key={f.value} label={f.label} activo={formato === f.value}
-              onClick={() => setFormato(f.value)} />
-          ))}
-        </div>
-        <div style={{ display: 'flex', gap: 6 }}>
-          {MODALIDADES.map(m => (
-            <Chip key={m.value} label={m.label} activo={modalidad === m.value}
-              onClick={() => setModalidad(m.value)} />
-          ))}
-        </div>
+      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+        {FORMATO.map(f => (
+          <Chip key={f.value} label={f.label} activo={formato === f.value}
+            onClick={() => setFormato(f.value)} />
+        ))}
+        <div style={{ width: 1, height: 18, background: 'var(--border)', flexShrink: 0 }} />
+        {MODALIDADES.map(m => (
+          <Chip key={m.value} label={m.label} activo={modalidad === m.value}
+            onClick={() => setModalidad(m.value)} />
+        ))}
       </div>
 
       {error && (
