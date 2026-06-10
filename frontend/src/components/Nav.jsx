@@ -42,7 +42,7 @@ function NavSidebar() {
   return (
     <nav style={{
       width: 200, flexShrink: 0,
-      position: 'sticky', top: 0, height: '100dvh', overflowY: 'auto',
+      position: 'sticky', top: 0, height: 'calc(100dvh / var(--zoom, 1))', overflowY: 'auto',
       display: 'flex', flexDirection: 'column', gap: 2,
       padding: '20px 12px',
       background: 'var(--surface)', borderRight: '1px solid var(--border)',
