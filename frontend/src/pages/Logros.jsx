@@ -361,7 +361,7 @@ export default function Logros() {
   const totalLogros = logros?.length ?? globalData?.length ?? 29
 
   return (
-    <div style={{ maxWidth: 900, margin: '0 auto', width: '100%' }}>
+    <div style={{ maxWidth: 1100, margin: '0 auto', width: '100%' }}>
       <div style={{ marginBottom: 14 }}>
         <h2 style={{ fontSize: 20, fontWeight: 800, color: 'var(--text)', margin: '0 0 4px' }}>
           🏅 Logros
