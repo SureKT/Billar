@@ -168,11 +168,8 @@ export default function Inicio() {
 
   const hayFiltroActivo = filtroEstado !== 'todas'
 
-  // Grid de cards: 1 col en móvil, multi-col en desktop
-  const gridCards = {
-    display: 'grid', gap: 8,
-    gridTemplateColumns: desktop ? 'repeat(auto-fill, minmax(330px, 1fr))' : '1fr',
-  }
+  // Móvil: cards verticales. Desktop: filas horizontales densas (1 col).
+  const gridCards = { display: 'grid', gap: 8, gridTemplateColumns: '1fr' }
 
   // ── Bloques (única fuente — móvil y desktop los disponen distinto) ──
 
@@ -238,7 +235,7 @@ export default function Inicio() {
             ▶ Continuar
           </p>
           <div style={gridCards}>
-            {enCurso.map(p => <PartidaCard key={p.id} p={p} jugadores={jugadores} continuar onClick={() => navigate(`/partida/${p.id}`)} />)}
+            {enCurso.map(p => <PartidaCard key={p.id} p={p} jugadores={jugadores} continuar horizontal={desktop} onClick={() => navigate(`/partida/${p.id}`)} />)}
           </div>
         </section>
       )}
@@ -260,7 +257,7 @@ export default function Inicio() {
                 {!colapsada && (
                   <div style={gridCards}>
                     {s.partidas.map(p => (
-                      <PartidaCard key={p.id} p={p} jugadores={jugadores} onClick={() => navigate(`/partida/${p.id}`)} />
+                      <PartidaCard key={p.id} p={p} jugadores={jugadores} horizontal={desktop} onClick={() => navigate(`/partida/${p.id}`)} />
                     ))}
                   </div>
                 )}
@@ -333,25 +330,74 @@ function jugadoresDeEquipo(ids, jugadores) {
   return ids.map(id => jugadores?.find(j => j.id === id)).filter(Boolean)
 }
 
-function PartidaCard({ p, jugadores, onClick, continuar = false }) {
+function PartidaCard({ p, jugadores, onClick, continuar = false, horizontal = false }) {
   const finalizada = p.estado === 'finalizada'
   const eq1js = jugadoresDeEquipo(p.equipo1_jugadores, jugadores)
   const eq2js = jugadoresDeEquipo(p.equipo2_jugadores, jugadores)
   const eq1nombres = p.equipo1_nombre || p.equipo1_jugadores.map(id => nombreJugador(id, jugadores)).join(', ')
   const eq2nombres = p.equipo2_nombre || p.equipo2_jugadores.map(id => nombreJugador(id, jugadores)).join(', ')
 
+  const shellStyle = {
+    width: '100%', textAlign: 'left', cursor: 'pointer',
+    background: continuar ? 'var(--accent-bg)' : 'var(--surface)', color: 'var(--text)',
+    border: continuar ? '1.5px solid var(--accent)' : '1px solid var(--border)',
+    borderRadius: 'var(--radius)',
+    transition: 'border-color .15s, transform .1s',
+    animation: 'slideUp .2s ease both',
+  }
+
+  // ── Desktop: una sola línea densa — sin huecos de layout móvil estirado ──
+  if (horizontal) {
+    return (
+      <button className="hoverable" onClick={onClick} style={{ ...shellStyle, padding: '10px 14px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <span style={{ fontWeight: 700, fontSize: '14px', whiteSpace: 'nowrap', flexShrink: 0, width: 86 }}>
+            {p.modalidad === 'bola8' ? 'Bola 8' : 'Bola 9'}
+            <span style={{ color: 'var(--text-dim)', fontWeight: 400, fontSize: '12px' }}> #{p.numero}</span>
+          </span>
+          {p.torneo_nombre && (
+            <span style={{
+              fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 6,
+              background: 'rgba(234,179,8,.12)', color: '#fbbf24',
+              border: '1px solid rgba(234,179,8,.25)', flexShrink: 0,
+              maxWidth: 110, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+            }}>🏆 {p.torneo_nombre}</span>
+          )}
+          {/* Equipos abrazando el vs, centrados en el espacio sobrante */}
+          <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+            <EquipoInfo nombres={eq1nombres} jugadoresObj={eq1js} grupo={p.equipo1_grupo}
+              ganador={finalizada && p.ganador_equipo === 1} align="left" compacto />
+            <span style={{ color: 'var(--text-dim)', fontSize: '12px', flexShrink: 0 }}>vs</span>
+            <EquipoInfo nombres={eq2nombres} jugadoresObj={eq2js} grupo={p.equipo2_grupo}
+              ganador={finalizada && p.ganador_equipo === 2} align="right" compacto />
+          </div>
+          {finalizada && p.fecha_fin && (
+            <span style={{ fontSize: '11px', color: 'var(--text-dim)', whiteSpace: 'nowrap', flexShrink: 0 }}>
+              {duracionMin(p.fecha, p.fecha_fin) && `⏱ ${duracionMin(p.fecha, p.fecha_fin)} · `}
+              {new Date(p.fecha_fin).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
+            </span>
+          )}
+          {!finalizada && p.siguiente_jugador_id && jugadores && (
+            <span style={{ fontSize: '11px', whiteSpace: 'nowrap', flexShrink: 0,
+              color: p.equipo1_jugadores.includes(p.siguiente_jugador_id) ? 'var(--team1)' : 'var(--team2)' }}>
+              Turno: {nombreJugador(p.siguiente_jugador_id, jugadores)}
+            </span>
+          )}
+          {continuar
+            ? <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--accent)', flexShrink: 0 }}>Continuar →</span>
+            : <span className={`badge ${finalizada ? 'badge-fin' : 'badge-curso'}`} style={{ flexShrink: 0 }}>
+                {finalizada ? 'Finalizada' : 'En curso'}
+              </span>}
+        </div>
+      </button>
+    )
+  }
+
   return (
     <button
       className="hoverable"
       onClick={onClick}
-      style={{
-        width: '100%', textAlign: 'left', cursor: 'pointer',
-        background: continuar ? 'var(--accent-bg)' : 'var(--surface)', color: 'var(--text)',
-        border: continuar ? '1.5px solid var(--accent)' : '1px solid var(--border)',
-        borderRadius: 'var(--radius)', padding: 14,
-        transition: 'border-color .15s, transform .1s',
-        animation: 'slideUp .2s ease both',
-      }}
+      style={{ ...shellStyle, padding: 14 }}
       onTouchStart={e => e.currentTarget.style.transform = 'scale(.985)'}
       onTouchEnd={e => e.currentTarget.style.transform = ''}
     >
@@ -415,7 +461,7 @@ function PartidaCard({ p, jugadores, onClick, continuar = false }) {
   )
 }
 
-function EquipoInfo({ nombres, jugadoresObj, grupo, ganador, align }) {
+function EquipoInfo({ nombres, jugadoresObj, grupo, ganador, align, compacto = false }) {
   const avatars = (
     <div style={{ display: 'flex', flexShrink: 0 }}>
       {jugadoresObj.map((j, i) => (
@@ -428,7 +474,10 @@ function EquipoInfo({ nombres, jugadoresObj, grupo, ganador, align }) {
 
   return (
     <div style={{
-      display: 'flex', alignItems: 'center', gap: 5, minWidth: 0, flex: 1,
+      display: 'flex', alignItems: 'center', gap: 5, minWidth: 0,
+      // compacto: se encoge a su contenido (los nombres abrazan el "vs") en vez de estirarse
+      flex: compacto ? '0 1 auto' : 1,
+      maxWidth: compacto ? '45%' : undefined,
       flexDirection: align === 'right' ? 'row-reverse' : 'row',
     }}>
       {jugadoresObj.length > 0 && avatars}
