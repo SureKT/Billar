@@ -29,7 +29,7 @@
 - Modify: `frontend/src/components/Nav.jsx` (reescritura completa)
 - Modify: `frontend/src/App.jsx:20`
 
-- [ ] **Step 1: `index.css` — `#root` en fila a ancho completo en desktop**
+- [x] **Step 1: `index.css` — `#root` en fila a ancho completo en desktop**
 
 Reemplazar el bloque de las líneas 39-45:
 
@@ -55,7 +55,7 @@ por:
 }
 ```
 
-- [ ] **Step 2: Reescribir `Nav.jsx` con dos variantes**
+- [x] **Step 2: Reescribir `Nav.jsx` con dos variantes**
 
 Contenido completo del fichero (sustituye al actual; elimina el fetch muerto de `jugadores`):
 
@@ -237,7 +237,7 @@ function NavMovil() {
 
 Nota: el `useApi(api.getJugadores)` del Nav actual es código muerto (no se usa en el render) — desaparece con la reescritura.
 
-- [ ] **Step 3: `App.jsx` — `<main>` con `minWidth: 0`**
+- [x] **Step 3: `App.jsx` — `<main>` con `minWidth: 0`**
 
 En `frontend/src/App.jsx:20`, cambiar:
 
@@ -253,19 +253,19 @@ por:
 
 (`minWidth: 0` evita que contenido ancho —tablas, grids— desborde el flex item en el layout de fila.)
 
-- [ ] **Step 4: Build**
+- [x] **Step 4: Build**
 
 Run: `cd frontend; npm run build`
 Expected: build OK, sin errores.
 
-- [ ] **Step 5: Verificación visual**
+- [x] **Step 5: Verificación visual**
 
 Con backend arrancado (`uvicorn app.main:app --host 0.0.0.0 --port 8000`), abrir `http://localhost:8000`:
 - A 1280px: sidebar izquierda con logo, 7 enlaces y "Modo TV" abajo; sin barra superior; activo resaltado en cian.
 - A 480px (devtools): nav horizontal idéntico al actual, compactación al scroll funciona.
 - Navegar a Inicio: los sticky de filtros pegan arriba del todo (sin hueco de 62px).
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add frontend/src/index.css frontend/src/components/Nav.jsx frontend/src/App.jsx
@@ -279,7 +279,7 @@ git commit -m "feat(ui): sidebar de navegación fijo en desktop"
 **Files:**
 - Modify: `frontend/src/pages/Partida.jsx:309` y `frontend/src/pages/Partida.jsx:467-470`
 
-- [ ] **Step 1: Wrapper de página con ancho máximo**
+- [x] **Step 1: Wrapper de página con ancho máximo**
 
 En `Partida.jsx:309`, cambiar:
 
@@ -298,7 +298,7 @@ por:
 
 (`desktop` ya existe en el componente, línea 16.)
 
-- [ ] **Step 2: Grid con historial capped**
+- [x] **Step 2: Grid con historial capped**
 
 En `Partida.jsx:467-470`, cambiar:
 
@@ -318,16 +318,16 @@ por:
       }>
 ```
 
-- [ ] **Step 3: Build**
+- [x] **Step 3: Build**
 
 Run: `cd frontend; npm run build`
 Expected: build OK.
 
-- [ ] **Step 4: Verificación visual**
+- [x] **Step 4: Verificación visual**
 
 Abrir una partida en curso a 1280px y 1920px: historial ya no supera ~400px; bloque acción + historial centrados; en móvil, stack vertical intacto.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add frontend/src/pages/Partida.jsx
@@ -341,7 +341,7 @@ git commit -m "fix(partida): tope de ancho al historial y conjunto centrado en d
 **Files:**
 - Modify: `frontend/src/pages/Inicio.jsx:285`
 
-- [ ] **Step 1: Cap del grid desktop**
+- [x] **Step 1: Cap del grid desktop**
 
 En `Inicio.jsx:285` (dentro del `if (desktop)`), cambiar:
 
@@ -355,12 +355,12 @@ por:
       <div style={{ display: 'grid', gridTemplateColumns: '320px 1fr', gap: 20, alignItems: 'start', maxWidth: 1100, margin: '0 auto', width: '100%' }}>
 ```
 
-- [ ] **Step 2: Build + verificación visual**
+- [x] **Step 2: Build + verificación visual**
 
 Run: `cd frontend; npm run build`
 Expected: build OK. A 1920px el conjunto aside+listado queda centrado a 1100px; filas de partida ya no ocupan ~1050px.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add frontend/src/pages/Inicio.jsx
@@ -374,7 +374,7 @@ git commit -m "fix(inicio): ancho máximo 1100px centrado en desktop"
 **Files:**
 - Modify: `frontend/src/pages/Jugadores.jsx:716`
 
-- [ ] **Step 1: Wrapper con tope**
+- [x] **Step 1: Wrapper con tope**
 
 En `Jugadores.jsx:716`, cambiar:
 
@@ -390,12 +390,12 @@ por:
 
 (Sin condicional: en móvil el viewport ya es < 1100px, no afecta. El grid interno `auto-fill minmax(360px, 1fr)` pasa de 3 columnas anchas a 2-3 columnas de ~350-360px.)
 
-- [ ] **Step 2: Build + verificación visual**
+- [x] **Step 2: Build + verificación visual**
 
 Run: `cd frontend; npm run build`
 Expected: build OK. A 1920px: cards de jugador en 2-3 columnas compactas centradas; sticky de orden funciona pegado arriba.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add frontend/src/pages/Jugadores.jsx
@@ -409,7 +409,7 @@ git commit -m "fix(jugadores): ancho máximo 1100px centrado en desktop"
 **Files:**
 - Modify: `frontend/src/pages/Logros.jsx:364`
 
-- [ ] **Step 1: Ajustar maxWidth**
+- [x] **Step 1: Ajustar maxWidth**
 
 En `Logros.jsx:364`, cambiar:
 
@@ -425,12 +425,12 @@ por:
 
 (El grid interno `auto-fill minmax(380px, 1fr)` pasa de 2 columnas justas a 2 columnas holgadas en 1100px — coherente con Jugadores.)
 
-- [ ] **Step 2: Build + verificación visual**
+- [x] **Step 2: Build + verificación visual**
 
 Run: `cd frontend; npm run build`
 Expected: build OK. Logros en 2 columnas a 1100px, centrado.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add frontend/src/pages/Logros.jsx
@@ -444,7 +444,7 @@ git commit -m "fix(logros): tope a 1100px coherente con jugadores"
 **Files:**
 - Modify: `frontend/src/pages/Reglas.jsx` (componentes `Seccion`, `ModoBola8`, `ModoBola9`, `Reglas`)
 
-- [ ] **Step 1: `Seccion` con modo siempre-abierta e id ancla**
+- [x] **Step 1: `Seccion` con modo siempre-abierta e id ancla**
 
 Cambiar el componente `Seccion` (líneas 4-26) a:
 
@@ -477,7 +477,7 @@ function Seccion({ titulo, children, defaultOpen = false, siempreAbierta = false
 }
 ```
 
-- [ ] **Step 2: `ModoBola8` y `ModoBola9` aceptan `abiertas` y propagan ids**
+- [x] **Step 2: `ModoBola8` y `ModoBola9` aceptan `abiertas` y propagan ids**
 
 Cambiar las firmas a `function ModoBola8({ abiertas })` y `function ModoBola9({ abiertas })`. En cada `<Seccion>` añadir `siempreAbierta={abiertas}` y su `id`:
 
@@ -497,7 +497,7 @@ ModoBola9:
 - `<Seccion id="faltas" titulo="Faltas" siempreAbierta={abiertas}>`
 - `<Seccion id="tabla" titulo="Tabla de resultados" siempreAbierta={abiertas}>`
 
-- [ ] **Step 3: Layout desktop con índice sticky**
+- [x] **Step 3: Layout desktop con índice sticky**
 
 Sustituir el componente `Reglas` (líneas 221-256) por:
 
@@ -592,12 +592,12 @@ Añadir el import al inicio del fichero:
 import { useMediaQuery } from '../hooks/useMediaQuery'
 ```
 
-- [ ] **Step 4: Build + verificación visual**
+- [x] **Step 4: Build + verificación visual**
 
 Run: `cd frontend; npm run build`
 Expected: build OK. Desktop: índice a la izquierda, todas las secciones abiertas sin chevron, click en índice hace scroll suave. Móvil: acordeón intacto a 800px max.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add frontend/src/pages/Reglas.jsx
@@ -608,12 +608,12 @@ git commit -m "feat(reglas): índice lateral y secciones abiertas en desktop"
 
 ### Task 7: Verificación final integral
 
-- [ ] **Step 1: Build limpio**
+- [x] **Step 1: Build limpio**
 
 Run: `cd frontend; npm run build`
 Expected: sin errores ni warnings nuevos.
 
-- [ ] **Step 2: Pasada visual completa**
+- [x] **Step 2: Pasada visual completa**
 
 Con backend en marcha, revisar a 1024px, 1280px y 1920px: Inicio, NuevaPartida, Partida (en curso y finalizada), Jugadores, Logros, Reglas, Torneos, TorneoDetalle, Estadísticas. Comprobar:
 - Sidebar visible y activo correcto en todas.
@@ -622,7 +622,7 @@ Con backend en marcha, revisar a 1024px, 1280px y 1920px: Inicio, NuevaPartida, 
 
 A 480px y 390px (devtools): nav horizontal, layouts idénticos a antes del rework.
 
-- [ ] **Step 3: Commit final si hubo retoques**
+- [x] **Step 3: Commit final si hubo retoques**
 
 ```bash
 git add -A frontend/src
