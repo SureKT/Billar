@@ -260,7 +260,7 @@ export default function Reglas() {
               border: modo === val ? '1.5px solid var(--accent)' : '1px solid var(--border)',
               background: modo === val ? 'rgba(6,182,212,.13)' : 'var(--surface2)',
               color: modo === val ? 'var(--accent)' : 'var(--text)',
-              transition: 'all .15s',
+              transition: 'background-color .15s, border-color .15s, color .15s',
             }}
           >{label}</button>
         ))}

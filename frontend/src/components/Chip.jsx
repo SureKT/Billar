@@ -7,7 +7,7 @@ export default function Chip({ label, activo, onClick }) {
       border: activo ? '1.5px solid var(--accent)' : '1px solid var(--border)',
       background: activo ? 'var(--accent-bg)' : 'var(--surface2)',
       color: activo ? 'var(--accent)' : 'var(--text-dim)',
-      cursor: 'pointer', transition: 'all .15s', whiteSpace: 'nowrap',
+      cursor: 'pointer', transition: 'background-color .15s, border-color .15s, color .15s', whiteSpace: 'nowrap',
     }}>
       {label}
     </button>

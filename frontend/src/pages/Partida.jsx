@@ -350,7 +350,7 @@ export default function Partida() {
             {finalizada ? 'Finalizada' : 'En curso'}
           </span>
           {!finalizada && duracionActiva && (
-            <span style={{ fontSize: '11px', color: 'var(--text-dim)', fontWeight: 600 }}>
+            <span style={{ fontSize: '11px', color: 'var(--text-dim)', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>
               ⏱ {duracionActiva}
             </span>
           )}

@@ -400,7 +400,7 @@ export default function HistorialTurnos({
                             border: editando ? '1px solid var(--accent)' : '1px solid var(--border)',
                             borderRadius: 6, color: editando ? 'var(--accent)' : 'var(--text-dim)',
                             fontSize: '12px', cursor: 'pointer', padding: '2px 7px', lineHeight: 1.4,
-                            transition: 'all .15s',
+                            transition: 'background-color .15s, border-color .15s, color .15s',
                           }}
                         >✎</button>
                         <button
@@ -410,7 +410,7 @@ export default function HistorialTurnos({
                             background: 'none', border: '1px solid var(--border)',
                             borderRadius: 6, color: 'var(--text-dim)', fontSize: '12px',
                             cursor: 'pointer', padding: '2px 7px', lineHeight: 1.4,
-                            transition: 'all .15s',
+                            transition: 'background-color .15s, border-color .15s, color .15s',
                           }}
                         >❌</button>
                       </>

@@ -355,7 +355,7 @@ export default function NuevaPartida() {
           border: tab === v ? '1.5px solid var(--accent)' : '1px solid var(--border)',
           background: tab === v ? 'var(--accent-bg)' : 'var(--surface2)',
           color: tab === v ? 'var(--accent)' : 'var(--text-dim)',
-          transition: 'all .15s',
+          transition: 'background-color .15s, border-color .15s, color .15s',
         }}>{l}</button>
       ))}
     </div>
@@ -427,7 +427,7 @@ export default function NuevaPartida() {
                 border: modalidad === val ? '1.5px solid var(--accent)' : '1px solid var(--border)',
                 background: modalidad === val ? 'rgba(6,182,212, 0.13)' : 'var(--surface2)',
                 color: modalidad === val ? 'var(--accent)' : 'var(--text)',
-                transition: 'all .15s',
+                transition: 'background-color .15s, border-color .15s, color .15s',
               }}
             >
               {label}
