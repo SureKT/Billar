@@ -41,8 +41,15 @@ html, body {
   #root {
     max-width: none;
     flex-direction: row;
+    /* Escala base: la tipografía viene de móvil (12-14px) y a 100% queda
+       minúscula en monitor. Equivale al zoom manual ~150% que pedía el uso
+       real. Escalonado: a menos ancho físico, menos zoom, para que los grids
+       de Partida/Stats no desborden. */
+    zoom: 1.15;
   }
 }
+@media (min-width: 1440px) { #root { zoom: 1.3; } }
+@media (min-width: 1920px) { #root { zoom: 1.5; } }
 
 a { color: inherit; text-decoration: none; }
 
