@@ -279,22 +279,16 @@ export default function Inicio() {
     </div>
   )
 
-  // ── Desktop: marcador + torneos en columna lateral · listado a la derecha ──
+  // ── Desktop: columna única centrada, mismo orden que móvil — sin aside que
+  //    deje columnas medio vacías cuando hay poco contenido lateral ──
   if (desktop) {
     return (
-      <div style={{ display: 'grid', gridTemplateColumns: '320px 1fr', gap: 20, alignItems: 'start', maxWidth: 1100, margin: '0 auto', width: '100%' }}>
-        <aside style={{
-          position: 'sticky', top: 'calc(var(--nav-height) + 16px)',
-          display: 'flex', flexDirection: 'column', gap: 12,
-        }}>
-          {bloqueMarcador}
-          {bloqueTorneos}
-        </aside>
-        <main style={{ display: 'flex', flexDirection: 'column', gap: 16, minWidth: 0 }}>
-          {vacio}
-          {bloqueFiltros}
-          {bloqueListado}
-        </main>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 16, maxWidth: 860, margin: '0 auto', width: '100%' }}>
+        {vacio}
+        {bloqueTorneos}
+        {bloqueMarcador}
+        {bloqueFiltros}
+        {bloqueListado}
       </div>
     )
   }
