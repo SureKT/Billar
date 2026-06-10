@@ -36,11 +36,11 @@ html, body {
   transition: max-width .25s ease;
 }
 
-/* Desktop: toda la app a ancho completo — cada página dispone sus bloques en grid */
+/* Desktop: sidebar lateral + main flexible — cada página fija su ancho máximo */
 @media (min-width: 1024px) {
   #root {
-    max-width: 1400px;
-    padding: 0 24px;
+    max-width: none;
+    flex-direction: row;
   }
 }
 

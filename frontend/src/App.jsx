@@ -17,7 +17,7 @@ export default function App() {
   return (
     <>
       <Nav />
-      <main style={{ flex: 1, padding: '16px', paddingBottom: '24px' }}>
+      <main style={{ flex: 1, minWidth: 0, padding: '16px', paddingBottom: '24px' }}>
         <ErrorBoundary>
           <Routes>
             <Route path="/" element={<Inicio />} />
