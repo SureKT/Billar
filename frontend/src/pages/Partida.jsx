@@ -306,7 +306,10 @@ export default function Partida() {
 
   // ── Render ────────────────────────────────────────────────────────────────────
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--gap)' }}>
+    <div style={{
+      display: 'flex', flexDirection: 'column', gap: 'var(--gap)',
+      maxWidth: desktop ? 1000 : undefined, margin: desktop ? '0 auto' : undefined, width: '100%',
+    }}>
 
       {/* Cabecera */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -465,7 +468,7 @@ export default function Partida() {
       {/* Desktop: acción (equipos + formulario/banner) izq · historial der.
           Móvil: stack vertical de siempre. */}
       <div style={desktop
-        ? { display: 'grid', gridTemplateColumns: 'minmax(440px, 540px) 1fr', gap: 'var(--gap)', alignItems: 'start' }
+        ? { display: 'grid', gridTemplateColumns: 'minmax(440px, 540px) minmax(320px, 400px)', gap: 'var(--gap)', alignItems: 'start', justifyContent: 'center' }
         : { display: 'flex', flexDirection: 'column', gap: 'var(--gap)' }
       }>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--gap)', minWidth: 0 }}>
