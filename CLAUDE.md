@@ -5,7 +5,7 @@ Sin hosting, sin auth, uso en red doméstica desde móvil.
 
 ## Stack
 - Backend: Python 3.11+ / FastAPI / SQLModel / SQLite
-- Frontend: React + Vite (mobile-first)
+- Frontend: React + Vite (mobile-first, con layout desktop dedicado ≥1024px)
 - DB: SQLite en `billar.db` en la raíz del proyecto
 
 ## Comandos
@@ -47,10 +47,29 @@ La app es una **herramienta de uso frecuente en pantalla pequeña**, no un showc
 
 **Completitud de las acciones.** Una acción tiene consecuencias — todas deben tratarse. Deshacer un turno deshace sus efectos secundarios. Volver navega al origen real, no a una ruta arbitraria. La app no deja loose ends.
 
+## Layout responsive (móvil + desktop)
+
+Breakpoint único **1024px** vía `useMediaQuery('(min-width: 1024px)')` (hook ya existente). Móvil es la base; desktop es una capa aparte detrás del media query — **nunca tocar móvil al ajustar desktop**.
+
+- **Shell** (`index.css` + `Nav.jsx` + `App.jsx`): móvil = nav horizontal sticky (compacta al scroll). Desktop = `#root` en `flex-direction: row` con **sidebar lateral fijo** de 200px; `Nav` renderiza `<NavSidebar/>` o `<NavMovil/>` según el media query. Sin sidebar, `--nav-height` se fija a `0px` para que los sticky de las páginas peguen arriba.
+- **Ancho por página, no global.** No hay tope de ancho heredado — cada página fija su `maxWidth` centrado en desktop (regla anti-estiramiento). Topes actuales: Partida 1000, Inicio/Jugadores/Logros 1100, Reglas 960 (índice 200 + texto 720), NuevaPartida 960, Torneos 1100, TorneoDetalle 760. Al crear página nueva: ponerle su tope, no dejarla a ancho completo.
+- **Recolocar, no rediseñar.** Desktop reutiliza los mismos componentes que móvil en otra disposición (grids de cards, dos paneles, índice lateral). El mismo dato se ve igual en ambos → coherencia total.
+- Spec + plan del rework: `docs/superpowers/specs/2026-06-10-desktop-rework-design.md` y `docs/superpowers/plans/2026-06-10-desktop-rework.md`.
+
+## Despliegue (homelab)
+
+Corre en el server `surehub-home` como imagen custom (build desde fuente). No es local.
+
+- Acceso app: **http://100.73.48.106:8020** (solo Tailscale, sin auth por diseño).
+- Flujo: `git push` → en server `cd /srv/billar/src && git pull` → `cd ~/homelab/docker-compose/billar && docker compose up -d --build`. El frontend se compila dentro del Dockerfile (multi-stage Node→Python); sin `npm run build` manual en el server.
+- **DB canónica = server** (`/srv/billar/data/billar.db`, volumen). El `billar.db` local quedó congelado como snapshot inicial — sus cambios en `git status` son ruido, no commitear ni copiar local→server.
+- Doc completo: repo homelab `docs/billar.md`.
+
 ## Decisiones de arquitectura
-- Frontend servido como estático desde FastAPI en local (un solo comando para todo)
+- Frontend servido como estático desde FastAPI (un solo comando para todo; mismo binario en local y server)
 - No hay sistema de usuarios ni autenticación
 - SQLite es suficiente — no migrar a Postgres salvo necesidad explícita
+- **1 worker uvicorn fijo** — SSE pub/sub (`app/events.py`) y detección de logros guardan estado en memoria del proceso; con 2+ workers se pierden los broadcasts
 
 ## Lógica de partida — Reglas completas Bola 8
 
