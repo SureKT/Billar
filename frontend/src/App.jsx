@@ -1,4 +1,5 @@
-import { Routes, Route } from 'react-router-dom'
+import { useEffect } from 'react'
+import { Routes, Route, useLocation } from 'react-router-dom'
 import Inicio from './pages/Inicio'
 import NuevaPartida from './pages/NuevaPartida'
 import Partida from './pages/Partida'
@@ -13,9 +14,18 @@ import Nav from './components/Nav'
 import ErrorBoundary from './components/ErrorBoundary'
 import ToastContainer from './components/Toast'
 
+// SPA: al cambiar de ruta la ventana conserva el scrollY anterior — la nueva
+// página aparecía scrolleada. Resetea al top en cada navegación.
+function ScrollToTop() {
+  const { pathname } = useLocation()
+  useEffect(() => { window.scrollTo(0, 0) }, [pathname])
+  return null
+}
+
 export default function App() {
   return (
     <>
+      <ScrollToTop />
       <Nav />
       <main style={{ flex: 1, minWidth: 0, padding: '16px', paddingBottom: '24px' }}>
         <ErrorBoundary>
