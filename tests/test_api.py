@@ -5,6 +5,7 @@ Usan FastAPI TestClient con BD en memoria para verificar el contrato de la API
 sin depender de la BD real ni del servidor arrancado.
 """
 import pytest
+from pathlib import Path
 from fastapi.testclient import TestClient
 from sqlmodel import SQLModel, Session, create_engine
 from sqlalchemy.pool import StaticPool
@@ -356,3 +357,28 @@ class TestUndo:
 
         partida = client.get(f"/api/partidas/{p['id']}").json()
         assert partida["equipo1_grupo"] is None
+
+
+# ---------------------------------------------------------------------------
+# Catch-all SPA: archivos reales del build (PWA) no deben devolver index.html
+# ---------------------------------------------------------------------------
+
+class TestArchivosEstaticos:
+    STATIC = Path(__file__).resolve().parents[1] / "app" / "static"
+
+    @pytest.mark.skipif(not (STATIC / "manifest.json").exists(), reason="frontend no compilado")
+    def test_manifest_no_devuelve_html(self, client):
+        r = client.get("/manifest.json")
+        assert r.status_code == 200
+        assert "html" not in r.headers["content-type"]
+
+    @pytest.mark.skipif(not (STATIC / "sw.js").exists(), reason="frontend no compilado")
+    def test_sw_devuelve_javascript(self, client):
+        r = client.get("/sw.js")
+        assert r.status_code == 200
+        assert "javascript" in r.headers["content-type"]
+
+    def test_ruta_spa_sigue_devolviendo_index(self, client):
+        # Las rutas del SPA (sin archivo real detrás) siguen cayendo a index.html
+        r = client.get("/jugadores")
+        assert r.status_code == 200

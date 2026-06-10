@@ -5,6 +5,7 @@ import { useSessionState } from '../hooks/useSessionState'
 import { useMediaQuery } from '../hooks/useMediaQuery'
 import { api } from '../api/client'
 import { SkeletonList } from '../components/Skeleton'
+import Chip from '../components/Chip'
 import { pct, winrate, StatTile, colorJugador } from '../components/stats/StatPrimitives'
 import { agruparPorSesion } from '../utils/sesiones'
 import LineChart from '../components/stats/LineChart'
@@ -297,7 +298,7 @@ function RecordCard({ emoji, titulo, nombre, valor, partidaId, partidaNumero, on
   }
   if (partidaId != null) {
     return (
-      <button onClick={() => onNavigate(partidaId)} style={{
+      <button className="hoverable" onClick={() => onNavigate(partidaId)} style={{
         ...sharedStyle,
         border: 'none', cursor: 'pointer', textAlign: 'left',
         font: 'inherit', lineHeight: 'inherit', color: 'inherit',
@@ -315,20 +316,6 @@ function SeccionTitulo({ children }) {
       letterSpacing: '.06em', color: 'var(--text-dim)', marginBottom: 10 }}>
       {children}
     </p>
-  )
-}
-
-function Chip({ label, activo, onClick }) {
-  return (
-    <button onClick={onClick} style={{
-      padding: '5px 12px', borderRadius: 20, fontSize: '12px', fontWeight: 600,
-      border: activo ? '1.5px solid var(--accent)' : '1px solid var(--border)',
-      background: activo ? 'var(--accent-bg)' : 'var(--surface2)',
-      color: activo ? 'var(--accent)' : 'var(--text-dim)',
-      transition: 'all .15s', cursor: 'pointer', whiteSpace: 'nowrap',
-    }}>
-      {label}
-    </button>
   )
 }
 
@@ -540,8 +527,9 @@ export default function Estadisticas() {
       .slice(-12)
       .map(([key, value]) => {
         const [yy, mm] = key.split('-')
-        const label = new Date(+yy, +mm - 1, 1).toLocaleDateString('es-ES', { month: 'short', year: '2-digit' })
-        return { label, value }
+        // "may '26" — con year:'2-digit' nativo sale "may 26" y parece un día
+        const mes = new Date(+yy, +mm - 1, 1).toLocaleDateString('es-ES', { month: 'short' })
+        return { label: `${mes} '${String(yy).slice(2)}`, value }
       })
   })()
 
@@ -703,7 +691,7 @@ export default function Estadisticas() {
     sesionesHist.length > 1     && { titulo: 'Victorias por sesión', nodo: <SesionesChart sesiones={sesionesHist} jugadores={stats ?? []} /> },
     evolucionSeries.length > 0  && {
       titulo: 'Evolución win rate', ancho: true,
-      nodo: <LineChart series={evolucionSeries} viewW={desktop ? 1000 : 600} />,
+      nodo: <LineChart series={evolucionSeries} viewW={desktop ? 1000 : 380} />,
     },
   ].filter(Boolean)
 
@@ -870,33 +858,33 @@ export default function Estadisticas() {
   // ─── Móvil: stack vertical (versión adaptada funcional) ───
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--gap)' }}>
+      {/* Solo título + modalidad quedan sticky — el periodo scrollea para no
+          comerse ~150px de viewport en móvil */}
       <div style={{
         position: 'sticky', top: 'var(--nav-height)', zIndex: 50,
         background: 'var(--bg)', padding: '14px 16px 6px', margin: '0 -16px',
-        display: 'flex', flexDirection: 'column', gap: 8,
+        display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap',
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-          <h2 style={{ fontSize: '20px', margin: 0, flexShrink: 0 }}>Estadísticas</h2>
-          <button
-            onClick={() => navigate('/tv')}
-            style={{
-              padding: '3px 8px', borderRadius: 6, cursor: 'pointer',
-              background: 'rgba(255,255,255,.06)', border: '1px solid var(--border)',
-              color: 'var(--text-dim)', fontSize: 11, fontWeight: 600, flexShrink: 0,
-            }}
-          >📺 TV</button>
-          <div style={{ flex: 1 }} />
-          <div style={{ display: 'flex', gap: 4 }}>
-            {MODALIDADES.map(m => (
-              <Chip key={m.value} label={m.label} activo={filtro === m.value} onClick={() => setFiltro(m.value)} />
-            ))}
-          </div>
-        </div>
-        <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-          {PERIODOS.map(t => (
-            <Chip key={t.value} label={t.label} activo={tiempo === t.value} onClick={() => setTiempo(t.value)} />
+        <h2 style={{ fontSize: '20px', margin: 0, flexShrink: 0 }}>Estadísticas</h2>
+        <button
+          onClick={() => navigate('/tv')}
+          style={{
+            padding: '3px 8px', borderRadius: 6, cursor: 'pointer',
+            background: 'rgba(255,255,255,.06)', border: '1px solid var(--border)',
+            color: 'var(--text-dim)', fontSize: 11, fontWeight: 600, flexShrink: 0,
+          }}
+        >📺 TV</button>
+        <div style={{ flex: 1 }} />
+        <div style={{ display: 'flex', gap: 4 }}>
+          {MODALIDADES.map(m => (
+            <Chip key={m.value} label={m.label} activo={filtro === m.value} onClick={() => setFiltro(m.value)} />
           ))}
         </div>
+      </div>
+      <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginTop: -6 }}>
+        {PERIODOS.map(t => (
+          <Chip key={t.value} label={t.label} activo={tiempo === t.value} onClick={() => setTiempo(t.value)} />
+        ))}
       </div>
 
       {sinDatos ? vacio : (

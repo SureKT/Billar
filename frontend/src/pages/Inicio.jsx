@@ -6,6 +6,7 @@ import { useSessionState } from '../hooks/useSessionState'
 import { SkeletonList } from '../components/Skeleton'
 import AvatarJugador from '../components/AvatarJugador'
 import { agruparPorSesion, marcadorSesion, duracionSesion } from '../utils/sesiones'
+import Chip from '../components/Chip'
 
 function nombreJugador(id, jugadores) {
   return jugadores?.find(j => j.id === id)?.nombre ?? `#${id}`
@@ -79,6 +80,7 @@ function MarcadorNoche({ sesion, jugadores, onVerJugador }) {
           return (
             <button
               key={m.id}
+              className="hoverable"
               onClick={() => m.jugador && onVerJugador(m.id)}
               style={{
                 display: 'flex', alignItems: 'center', gap: 8, width: '100%',
@@ -108,18 +110,6 @@ function MarcadorNoche({ sesion, jugadores, onVerJugador }) {
         })}
       </div>
     </div>
-  )
-}
-
-function ChipFiltro({ label, activo, onClick }) {
-  return (
-    <button onClick={onClick} style={{
-      padding: '5px 12px', borderRadius: 20, fontSize: '12px', fontWeight: 600,
-      border: activo ? '1.5px solid var(--accent)' : '1px solid var(--border)',
-      background: activo ? 'var(--accent-bg)' : 'var(--surface2)',
-      color: activo ? 'var(--accent)' : 'var(--text-dim)',
-      cursor: 'pointer', transition: 'all .15s',
-    }}>{label}</button>
   )
 }
 
@@ -208,7 +198,7 @@ export default function Inicio() {
         const pct = t.total > 0 ? (t.jugados / t.total) * 100 : 0
         const pendientes = t.total - t.jugados
         return (
-          <button key={t.id} onClick={() => navigate(`/torneo/${t.id}`)} style={{
+          <button key={t.id} className="hoverable" onClick={() => navigate(`/torneo/${t.id}`)} style={{
             width: '100%', textAlign: 'left', cursor: 'pointer',
             background: 'rgba(234,179,8,.07)', border: '1px solid rgba(234,179,8,.25)',
             borderRadius: 12, padding: '12px 14px',
@@ -245,9 +235,9 @@ export default function Inicio() {
           background: 'var(--bg)', padding: '14px 16px 6px', margin: '0 -16px',
           display: 'flex', gap: 6, flexWrap: 'wrap',
         }}>
-          <ChipFiltro label="Todas"       activo={filtroEstado === 'todas'}      onClick={() => setFiltroEstado('todas')} />
-          <ChipFiltro label="En curso"    activo={filtroEstado === 'en_curso'}   onClick={() => setFiltroEstado('en_curso')} />
-          <ChipFiltro label="Finalizadas" activo={filtroEstado === 'finalizada'} onClick={() => setFiltroEstado('finalizada')} />
+          <Chip label="Todas"       activo={filtroEstado === 'todas'}      onClick={() => setFiltroEstado('todas')} />
+          <Chip label="En curso"    activo={filtroEstado === 'en_curso'}   onClick={() => setFiltroEstado('en_curso')} />
+          <Chip label="Finalizadas" activo={filtroEstado === 'finalizada'} onClick={() => setFiltroEstado('finalizada')} />
         </div>
       )}
 
@@ -312,6 +302,7 @@ function PartidaCard({ p, jugadores, onClick, continuar = false }) {
 
   return (
     <button
+      className="hoverable"
       onClick={onClick}
       style={{
         width: '100%', textAlign: 'left', cursor: 'pointer',

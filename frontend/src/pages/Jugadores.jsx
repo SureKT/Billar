@@ -4,6 +4,7 @@ import { useApi } from '../hooks/useApi'
 import { useSessionState } from '../hooks/useSessionState'
 import { api } from '../api/client'
 import { pct, WinRateBar, fechaCorta } from '../components/stats/StatPrimitives'
+import Chip from '../components/Chip'
 
 function NombresEquipoSection({ statsMap }) {
   const { data: nombres, reload } = useApi(api.getNombresEquipo)
@@ -760,17 +761,7 @@ export default function Jugadores() {
             Ordenar:
           </span>
           {ORDENES.map(o => (
-            <button
-              key={o.key}
-              onClick={() => setOrden(o.key)}
-              style={{
-                padding: '5px 12px', borderRadius: 20, fontSize: '12px', fontWeight: 600,
-                border: orden === o.key ? '1.5px solid var(--accent)' : '1px solid var(--border)',
-                background: orden === o.key ? 'var(--accent-bg)' : 'var(--surface2)',
-                color: orden === o.key ? 'var(--accent)' : 'var(--text-dim)',
-                transition: 'all .15s',
-              }}
-            >{o.label}</button>
+            <Chip key={o.key} label={o.label} activo={orden === o.key} onClick={() => setOrden(o.key)} />
           ))}
         </div>
       )}

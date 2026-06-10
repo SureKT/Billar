@@ -21,7 +21,7 @@ function TorneoCard({ torneo, onClick }) {
   const top2 = torneo.clasificacion.slice(0, 2)
 
   return (
-    <div onClick={onClick} style={{
+    <div className="hoverable" onClick={onClick} style={{
       background: 'var(--surface)',
       border: '1px solid var(--border)',
       borderRadius: 12,

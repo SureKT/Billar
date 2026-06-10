@@ -43,7 +43,7 @@ export default function SelectorBolas({ seleccionadas, onChange, grupoPropio, bo
             <p style={{ fontSize: '11px', color: 'var(--text-dim)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '.05em' }}>
               {etiquetas[i]}
             </p>
-            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
               {grupo.map(n => {
                 const disabled = isDisabled(n)
                 const esObjetivo = n === bolaObjetivo && n !== 0
@@ -56,7 +56,7 @@ export default function SelectorBolas({ seleccionadas, onChange, grupoPropio, bo
                   }}>
                     <BolaPool
                       numero={n}
-                      size={44}
+                      size={40}
                       seleccionada={seleccionadas.includes(n)}
                       dimmed={false}
                       metida={disabled}
@@ -87,14 +87,14 @@ export default function SelectorBolas({ seleccionadas, onChange, grupoPropio, bo
           <p style={{ fontSize: '11px', color: 'var(--text-dim)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '.05em' }}>
             {etiquetas[i]}
           </p>
-          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
             {grupo.map(n => {
               const disabled = isDisabled(n)
               return (
                 <div key={n} style={{ position: 'relative' }}>
                   <BolaPool
                     numero={n}
-                    size={44}
+                    size={40}
                     seleccionada={seleccionadas.includes(n)}
                     dimmed={isDimmed(n)}
                     metida={disabled}

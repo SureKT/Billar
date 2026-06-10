@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../api/client'
 import { useApi } from '../hooks/useApi'
+import Chip from '../components/Chip'
 
 const FORMATO = [
   { label: '1 vs 1', value: 1 },
@@ -11,18 +12,6 @@ const MODALIDADES = [
   { label: 'Bola 8', value: 'bola8' },
   { label: 'Bola 9', value: 'bola9' },
 ]
-
-function Chip({ label, activo, onClick }) {
-  return (
-    <button onClick={onClick} style={{
-      padding: '5px 14px', borderRadius: 20, fontSize: '13px', fontWeight: 600,
-      border: activo ? '1.5px solid var(--accent)' : '1px solid var(--border)',
-      background: activo ? 'var(--accent-bg)' : 'var(--surface2)',
-      color: activo ? 'var(--accent)' : 'var(--text-dim)',
-      cursor: 'pointer', transition: 'all .15s',
-    }}>{label}</button>
-  )
-}
 
 function NombreJugador({ jugador }) {
   return (

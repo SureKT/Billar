@@ -50,7 +50,16 @@ def serve_spa(full_path: str):
     if full_path.startswith("api/") or full_path == "api":
         from fastapi import HTTPException
         raise HTTPException(status_code=404)
+    # Archivos reales del build (manifest.json, sw.js, iconos…) — si el catch-all
+    # se los traga devolviendo index.html, la PWA no registra (MIME text/html).
+    # no-cache: son archivos SIN hash en el nombre — el navegador debe revalidar
+    # o se queda pegado a un bundle viejo tras cada deploy (sw.js especialmente).
+    no_cache = {"Cache-Control": "no-cache"}
+    if full_path:
+        candidato = (STATIC_DIR / full_path).resolve()
+        if candidato.is_file() and candidato.is_relative_to(STATIC_DIR.resolve()):
+            return FileResponse(str(candidato), headers=no_cache)
     index = STATIC_DIR / "index.html"
     if index.exists():
-        return FileResponse(str(index))
+        return FileResponse(str(index), headers=no_cache)
     return {"message": "Frontend no compilado. Ejecuta: cd frontend && npm run build"}

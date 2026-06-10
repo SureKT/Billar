@@ -88,7 +88,12 @@ button {
 .btn-primary:hover:not(:disabled) { background: #0891b2; }
 .btn-danger { background: #7f1d1d; border-color: #991b1b; color: #fca5a5; }
 .btn-ghost { background: transparent; border-color: var(--border); color: var(--text-dim); }
-.btn:disabled { opacity: .35; cursor: not-allowed; }
+.btn:disabled {
+  background: var(--surface2);
+  border-color: var(--border);
+  color: var(--text-dim);
+  cursor: not-allowed;
+}
 .btn-full { width: 100%; }
 
 /* Badges */
@@ -136,6 +141,12 @@ input[type="text"]:focus { outline: none; border-color: var(--accent); }
 @keyframes fadeIn  { from { opacity: 0; } to { opacity: 1; } }
 @keyframes slideUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes pulse   { 0%,100% { opacity:1; } 50% { opacity:.55; } }
+
+/* Hover en cards/filas clicables — solo dispositivos con puntero real */
+@media (hover: hover) {
+  .hoverable { transition: filter .15s ease; }
+  .hoverable:hover { filter: brightness(1.15); }
+}
 
 /* Scroll horizontal sin barra visible (tabla comparativa) */
 .hide-scrollbar::-webkit-scrollbar { display: none; }

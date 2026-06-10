@@ -20,7 +20,10 @@ export default function ToastContainer() {
       alignItems: 'center', pointerEvents: 'none', width: '90%', maxWidth: 380,
     }}>
       {toasts.map(t => (
-        <div key={t.id} style={{
+        <div key={t.id}
+          onClick={() => setToasts(prev => prev.filter(x => x.id !== t.id))}
+          style={{
+          pointerEvents: 'auto', cursor: 'pointer',
           padding: '10px 18px', borderRadius: 10, width: '100%',
           background: t.type === 'logro'
             ? 'linear-gradient(135deg, rgba(88,28,135,.95) 0%, rgba(120,53,15,.95) 100%)'
