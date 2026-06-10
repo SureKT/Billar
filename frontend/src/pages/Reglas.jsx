@@ -6,7 +6,7 @@ function Seccion({ titulo, children, defaultOpen = false, siempreAbierta = false
   const [open, setOpen] = useState(defaultOpen)
   const abierta = siempreAbierta || open
   return (
-    <div id={id} style={{ borderBottom: '1px solid var(--border)', scrollMarginTop: 12 }}>
+    <div id={id} style={{ borderBottom: '1px solid var(--border)', scrollMarginTop: 56 }}>
       <button
         onClick={() => !siempreAbierta && setOpen(v => !v)}
         style={{
@@ -272,27 +272,25 @@ export default function Reglas() {
 
   if (desktop) {
     return (
-      <div style={{ display: 'grid', gridTemplateColumns: '200px minmax(0, 720px)', gap: 20, justifyContent: 'center', alignItems: 'start' }}>
-        <aside style={{ position: 'sticky', top: 16, display: 'flex', flexDirection: 'column', gap: 2 }}>
-          <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.05em', color: 'var(--text-dim)', margin: '0 0 6px', padding: '0 10px' }}>
-            Secciones
-          </p>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--gap)', maxWidth: 800, margin: '0 auto', width: '100%' }}>
+        {cabecera}
+        <div style={{
+          position: 'sticky', top: 0, zIndex: 50, background: 'var(--bg)',
+          display: 'flex', gap: 6, flexWrap: 'wrap', padding: '8px 0',
+        }}>
           {SECCIONES[modo].map(([id, titulo]) => (
             <button
               key={id}
               onClick={() => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' })}
               style={{
-                background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left',
-                padding: '6px 10px', borderRadius: 6, fontSize: 13, color: 'var(--text-dim)',
+                background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 16,
+                padding: '4px 12px', fontSize: 12, fontWeight: 600, color: 'var(--text-dim)', cursor: 'pointer',
               }}
               className="hoverable"
             >{titulo}</button>
           ))}
-        </aside>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--gap)', minWidth: 0 }}>
-          {cabecera}
-          {contenido}
         </div>
+        {contenido}
       </div>
     )
   }

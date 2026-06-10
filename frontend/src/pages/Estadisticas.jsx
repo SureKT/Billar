@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+﻿import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useApi } from '../hooks/useApi'
 import { useSessionState } from '../hooks/useSessionState'
@@ -735,71 +735,66 @@ export default function Estadisticas() {
     </div>
   )
 
-  // ─── Desktop: sidebar sticky + grid de contenido ───
+  // ─── Desktop: cabecera sticky (título + secciones + filtros) sobre el dashboard ───
   if (desktop) {
     return (
-      <div style={{ display: 'grid', gridTemplateColumns: '210px 1fr', gap: 20, alignItems: 'start' }}>
-        <aside style={{
-          position: 'sticky', top: 'calc(var(--nav-height) + 16px)',
-          display: 'flex', flexDirection: 'column', gap: 18,
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--gap)', maxWidth: 1200, margin: '0 auto', width: '100%' }}>
+        <div style={{
+          position: 'sticky', top: 0, zIndex: 50,
+          background: 'var(--bg)', padding: '8px 0 10px',
+          display: 'flex', flexDirection: 'column', gap: 8,
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <h2 style={{ fontSize: '20px', margin: 0 }}>Estadísticas</h2>
-            <button
-              onClick={() => navigate('/tv')}
-              style={{
-                padding: '3px 8px', borderRadius: 6, cursor: 'pointer',
-                background: 'rgba(255,255,255,.06)', border: '1px solid var(--border)',
-                color: 'var(--text-dim)', fontSize: 11, fontWeight: 600, flexShrink: 0,
-              }}
-            >📺 TV</button>
-          </div>
-
-          <nav style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-            {SECCIONES.map(s => (
-              <button key={s.id}
-                onClick={() => document.getElementById(s.id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+              <h2 style={{ fontSize: '20px', margin: 0 }}>Estadísticas</h2>
+              <button
+                onClick={() => navigate('/tv')}
                 style={{
-                  textAlign: 'left', padding: '7px 10px', borderRadius: 8,
-                  background: 'none', border: 'none', cursor: 'pointer',
-                  fontSize: 13, fontWeight: 600, color: 'var(--text-dim)',
+                  padding: '3px 8px', borderRadius: 6, cursor: 'pointer',
+                  background: 'rgba(255,255,255,.06)', border: '1px solid var(--border)',
+                  color: 'var(--text-dim)', fontSize: 11, fontWeight: 600, flexShrink: 0,
                 }}
-                onMouseEnter={e => { e.currentTarget.style.background = 'var(--surface2)'; e.currentTarget.style.color = 'var(--text)' }}
-                onMouseLeave={e => { e.currentTarget.style.background = 'none'; e.currentTarget.style.color = 'var(--text-dim)' }}
-              >
-                {s.label}
-              </button>
+              >📺 TV</button>
+            </div>
+
+            <nav style={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+              {SECCIONES.map(s => (
+                <button key={s.id}
+                  onClick={() => document.getElementById(s.id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+                  style={{
+                    padding: '5px 10px', borderRadius: 8,
+                    background: 'none', border: 'none', cursor: 'pointer',
+                    fontSize: 13, fontWeight: 600, color: 'var(--text-dim)',
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.background = 'var(--surface2)'; e.currentTarget.style.color = 'var(--text)' }}
+                  onMouseLeave={e => { e.currentTarget.style.background = 'none'; e.currentTarget.style.color = 'var(--text-dim)' }}
+                >
+                  {s.label}
+                </button>
+              ))}
+            </nav>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            {MODALIDADES.map(m => (
+              <Chip key={m.value} label={m.label} activo={filtro === m.value} onClick={() => setFiltro(m.value)} />
             ))}
-          </nav>
-
-          <div>
-            <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.06em', color: 'var(--text-dim)', marginBottom: 6 }}>Modalidad</p>
-            <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-              {MODALIDADES.map(m => (
-                <Chip key={m.value} label={m.label} activo={filtro === m.value} onClick={() => setFiltro(m.value)} />
-              ))}
-            </div>
+            <div style={{ width: 1, height: 16, background: 'var(--border)', flexShrink: 0, margin: '0 4px' }} />
+            {PERIODOS.map(t => (
+              <Chip key={t.value} label={t.label} activo={tiempo === t.value} onClick={() => setTiempo(t.value)} />
+            ))}
           </div>
-
-          <div>
-            <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.06em', color: 'var(--text-dim)', marginBottom: 6 }}>Periodo</p>
-            <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-              {PERIODOS.map(t => (
-                <Chip key={t.value} label={t.label} activo={tiempo === t.value} onClick={() => setTiempo(t.value)} />
-              ))}
-            </div>
-          </div>
-        </aside>
+        </div>
 
         <main style={{ display: 'flex', flexDirection: 'column', gap: 'var(--gap)', minWidth: 0 }}>
           {sinDatos ? vacio : (
             <>
-              <section id="sec-resumen" style={{ scrollMarginTop: 80 }}>
+              <section id="sec-resumen" style={{ scrollMarginTop: 110 }}>
                 {bloqueResumen}
               </section>
 
               {graficasTemporales.length > 0 && (
-                <section id="sec-actividad" style={{ scrollMarginTop: 80 }}>
+                <section id="sec-actividad" style={{ scrollMarginTop: 110 }}>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(380px, 1fr))', gap: 'var(--gap)' }}>
                     {graficasTemporales.map(g => (
                       <div key={g.titulo} className="card"
@@ -813,13 +808,13 @@ export default function Estadisticas() {
               )}
 
               {bloqueRecords && (
-                <section id="sec-records" style={{ scrollMarginTop: 80 }}>
+                <section id="sec-records" style={{ scrollMarginTop: 110 }}>
                   {bloqueRecords}
                 </section>
               )}
 
               {graficasJugador.length > 0 && (
-                <section id="sec-rendimiento" style={{ scrollMarginTop: 80 }}>
+                <section id="sec-rendimiento" style={{ scrollMarginTop: 110 }}>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(380px, 1fr))', gap: 'var(--gap)' }}>
                     {graficasJugador.map(g => (
                       <div key={g.titulo} className="card" style={{ padding: '12px', minWidth: 0 }}>
@@ -832,13 +827,13 @@ export default function Estadisticas() {
               )}
 
               {bloqueFaltas && (
-                <section id="sec-faltas" style={{ scrollMarginTop: 80 }}>
+                <section id="sec-faltas" style={{ scrollMarginTop: 110 }}>
                   {bloqueFaltas}
                 </section>
               )}
 
               {bloqueRanking && (
-                <section id="sec-ranking" style={{ scrollMarginTop: 80 }}>
+                <section id="sec-ranking" style={{ scrollMarginTop: 110 }}>
                   {bloqueRanking}
                 </section>
               )}
