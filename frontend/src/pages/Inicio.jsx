@@ -282,7 +282,7 @@ export default function Inicio() {
   // ── Desktop: marcador + torneos en columna lateral · listado a la derecha ──
   if (desktop) {
     return (
-      <div style={{ display: 'grid', gridTemplateColumns: '320px 1fr', gap: 20, alignItems: 'start' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '320px 1fr', gap: 20, alignItems: 'start', maxWidth: 1100, margin: '0 auto', width: '100%' }}>
         <aside style={{
           position: 'sticky', top: 'calc(var(--nav-height) + 16px)',
           display: 'flex', flexDirection: 'column', gap: 12,
