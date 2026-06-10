@@ -1,22 +1,26 @@
 import { useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useMediaQuery } from '../hooks/useMediaQuery'
 
-function Seccion({ titulo, children, defaultOpen = false }) {
+function Seccion({ titulo, children, defaultOpen = false, siempreAbierta = false, id }) {
   const [open, setOpen] = useState(defaultOpen)
+  const abierta = siempreAbierta || open
   return (
-    <div style={{ borderBottom: '1px solid var(--border)' }}>
+    <div id={id} style={{ borderBottom: '1px solid var(--border)', scrollMarginTop: 12 }}>
       <button
-        onClick={() => setOpen(v => !v)}
+        onClick={() => !siempreAbierta && setOpen(v => !v)}
         style={{
           width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          background: 'none', border: 'none', cursor: 'pointer',
+          background: 'none', border: 'none', cursor: siempreAbierta ? 'default' : 'pointer',
           padding: '13px 0', textAlign: 'left',
         }}
       >
         <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>{titulo}</span>
-        <span style={{ fontSize: 12, color: 'var(--text-dim)', transition: 'transform .15s', transform: open ? 'rotate(90deg)' : 'none' }}>▶</span>
+        {!siempreAbierta && (
+          <span style={{ fontSize: 12, color: 'var(--text-dim)', transition: 'transform .15s', transform: abierta ? 'rotate(90deg)' : 'none' }}>▶</span>
+        )}
       </button>
-      {open && (
+      {abierta && (
         <div style={{ paddingBottom: 14, display: 'flex', flexDirection: 'column', gap: 8 }}>
           {children}
         </div>
@@ -55,7 +59,7 @@ function Tabla({ rows }) {
   )
 }
 
-function ModoBola8() {
+function ModoBola8({ abiertas }) {
   return (
     <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, paddingBottom: 12, borderBottom: '1px solid var(--border)' }}>
@@ -66,7 +70,7 @@ function ModoBola8() {
         </div>
       </div>
 
-      <Seccion titulo="Objetivo" defaultOpen>
+      <Seccion id="objetivo" titulo="Objetivo" defaultOpen siempreAbierta={abiertas}>
         <Regla label="🎯">
           Meter todas las bolas de tu grupo (lisas 1–7 o rayadas 9–15) y después la bola 8.
         </Regla>
@@ -75,7 +79,7 @@ function ModoBola8() {
         </Regla>
       </Seccion>
 
-      <Seccion titulo="Saque (break)">
+      <Seccion id="saque" titulo="Saque (break)" siempreAbierta={abiertas}>
         <Regla label="✓">
           Si metes bolas en el saque, no se asignan grupos todavía — tienes que confirmarlos en un turno posterior.
         </Regla>
@@ -90,7 +94,7 @@ function ModoBola8() {
         </Regla>
       </Seccion>
 
-      <Seccion titulo="Asignación de grupos">
+      <Seccion id="grupos" titulo="Asignación de grupos" siempreAbierta={abiertas}>
         <Regla label="📋">
           El grupo se asigna en el primer turno (post-saque) donde metes al menos una bola, todas son del mismo tipo (todas lisas o todas rayadas), ninguna es la 8, y no hay falta.
         </Regla>
@@ -102,7 +106,7 @@ function ModoBola8() {
         </Regla>
       </Seccion>
 
-      <Seccion titulo="Bola 8">
+      <Seccion id="bola8" titulo="Bola 8" siempreAbierta={abiertas}>
         <Regla label="✓">
           Puedes intentar meter la 8 solo cuando no te queden bolas pendientes de tu grupo en la mesa.
         </Regla>
@@ -117,7 +121,7 @@ function ModoBola8() {
         </Regla>
       </Seccion>
 
-      <Seccion titulo="Faltas">
+      <Seccion id="faltas" titulo="Faltas" siempreAbierta={abiertas}>
         <Regla label="⚡">
           Falta normal (no toca objetivo legal, blanca dentro…) → bola en mano para el rival.
         </Regla>
@@ -129,7 +133,7 @@ function ModoBola8() {
         </Regla>
       </Seccion>
 
-      <Seccion titulo="Tabla de resultados">
+      <Seccion id="tabla" titulo="Tabla de resultados" siempreAbierta={abiertas}>
         <Tabla rows={[
           ['Metes la 8 sin pendientes, sin falta', 'Ganas'],
           ['Metes la 8 con pendientes de tu grupo', 'Pierdes'],
@@ -144,7 +148,7 @@ function ModoBola8() {
   )
 }
 
-function ModoBola9() {
+function ModoBola9({ abiertas }) {
   return (
     <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, paddingBottom: 12, borderBottom: '1px solid var(--border)' }}>
@@ -155,7 +159,7 @@ function ModoBola9() {
         </div>
       </div>
 
-      <Seccion titulo="Objetivo" defaultOpen>
+      <Seccion id="objetivo" titulo="Objetivo" defaultOpen siempreAbierta={abiertas}>
         <Regla label="🎯">
           Meter la bola 9. No hay grupos — cualquier jugador puede ganar en cualquier momento.
         </Regla>
@@ -164,7 +168,7 @@ function ModoBola9() {
         </Regla>
       </Seccion>
 
-      <Seccion titulo="Saque (break)">
+      <Seccion id="saque" titulo="Saque (break)" siempreAbierta={abiertas}>
         <Regla label="✓">
           Si metes la 9 en el saque → <strong>Golden Break, ganas</strong>.
         </Regla>
@@ -176,7 +180,7 @@ function ModoBola9() {
         </Regla>
       </Seccion>
 
-      <Seccion titulo="Durante la partida">
+      <Seccion id="durante" titulo="Durante la partida" siempreAbierta={abiertas}>
         <Regla label="📋">
           Debes golpear primero la bola de número más bajo. Puedes meter cualquier bola de carambola.
         </Regla>
@@ -191,13 +195,13 @@ function ModoBola9() {
         </Regla>
       </Seccion>
 
-      <Seccion titulo="Bola 9 + blanca">
+      <Seccion id="respot" titulo="Bola 9 + blanca" siempreAbierta={abiertas}>
         <Regla label="⚡">
           Si metes la 9 y la blanca en el mismo turno → la 9 vuelve a la mesa (respot), bola en mano para el rival. No ganas.
         </Regla>
       </Seccion>
 
-      <Seccion titulo="Faltas">
+      <Seccion id="faltas" titulo="Faltas" siempreAbierta={abiertas}>
         <Regla label="⚡">
           Falta (no golpear bola más baja, blanca dentro, no toca banda…) → bola en mano para el rival.
         </Regla>
@@ -206,7 +210,7 @@ function ModoBola9() {
         </Regla>
       </Seccion>
 
-      <Seccion titulo="Tabla de resultados">
+      <Seccion id="tabla" titulo="Tabla de resultados" siempreAbierta={abiertas}>
         <Tabla rows={[
           ['Metes la 9 sin falta (incluso en saque)', 'Ganas'],
           ['Metes la 9 + blanca simultáneas', 'Respot · bola en mano rival'],
@@ -218,13 +222,25 @@ function ModoBola9() {
   )
 }
 
+const SECCIONES = {
+  bola8: [
+    ['objetivo', 'Objetivo'], ['saque', 'Saque (break)'], ['grupos', 'Asignación de grupos'],
+    ['bola8', 'Bola 8'], ['faltas', 'Faltas'], ['tabla', 'Tabla de resultados'],
+  ],
+  bola9: [
+    ['objetivo', 'Objetivo'], ['saque', 'Saque (break)'], ['durante', 'Durante la partida'],
+    ['respot', 'Bola 9 + blanca'], ['faltas', 'Faltas'], ['tabla', 'Tabla de resultados'],
+  ],
+}
+
 export default function Reglas() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const [modo, setModo] = useState(searchParams.get('modo') === 'bola9' ? 'bola9' : 'bola8')
+  const desktop = useMediaQuery('(min-width: 1024px)')
 
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--gap)', maxWidth: 800, margin: '0 auto', width: '100%' }}>
+  const cabecera = (
+    <>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
         <button
           onClick={() => navigate(-1)}
@@ -249,8 +265,42 @@ export default function Reglas() {
           >{label}</button>
         ))}
       </div>
+    </>
+  )
 
-      {modo === 'bola8' ? <ModoBola8 /> : <ModoBola9 />}
+  const contenido = modo === 'bola8' ? <ModoBola8 abiertas={desktop} /> : <ModoBola9 abiertas={desktop} />
+
+  if (desktop) {
+    return (
+      <div style={{ display: 'grid', gridTemplateColumns: '200px minmax(0, 720px)', gap: 20, justifyContent: 'center', alignItems: 'start' }}>
+        <aside style={{ position: 'sticky', top: 16, display: 'flex', flexDirection: 'column', gap: 2 }}>
+          <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.05em', color: 'var(--text-dim)', margin: '0 0 6px', padding: '0 10px' }}>
+            Secciones
+          </p>
+          {SECCIONES[modo].map(([id, titulo]) => (
+            <button
+              key={id}
+              onClick={() => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' })}
+              style={{
+                background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left',
+                padding: '6px 10px', borderRadius: 6, fontSize: 13, color: 'var(--text-dim)',
+              }}
+              className="hoverable"
+            >{titulo}</button>
+          ))}
+        </aside>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--gap)', minWidth: 0 }}>
+          {cabecera}
+          {contenido}
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--gap)', maxWidth: 800, margin: '0 auto', width: '100%' }}>
+      {cabecera}
+      {contenido}
     </div>
   )
 }
