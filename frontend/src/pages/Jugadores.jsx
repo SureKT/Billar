@@ -713,7 +713,7 @@ export default function Jugadores() {
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--gap)' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--gap)', maxWidth: 1100, margin: '0 auto', width: '100%' }}>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
         <h2 style={{ fontSize: '20px' }}>Jugadores</h2>
         {stats != null && (
