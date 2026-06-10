@@ -224,7 +224,7 @@ export default function Reglas() {
   const [modo, setModo] = useState(searchParams.get('modo') === 'bola9' ? 'bola9' : 'bola8')
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--gap)' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--gap)', maxWidth: 800, margin: '0 auto', width: '100%' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
         <button
           onClick={() => navigate(-1)}

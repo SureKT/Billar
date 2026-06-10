@@ -112,7 +112,7 @@ export default function Torneos() {
   const nPartidas = (form.jugador_ids.length * (form.jugador_ids.length - 1)) / 2
 
   return (
-    <div style={{ maxWidth: 480, margin: '0 auto' }}>
+    <div style={{ maxWidth: 1100, margin: '0 auto', width: '100%' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
         <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700 }}>Torneos</h2>
         {!creando && (

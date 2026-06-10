@@ -738,9 +738,9 @@ export default function Estadisticas() {
   // ─── Desktop: sidebar sticky + grid de contenido ───
   if (desktop) {
     return (
-      <div style={{ display: 'grid', gridTemplateColumns: '210px 1fr', gap: 20, alignItems: 'start', paddingTop: 14 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '210px 1fr', gap: 20, alignItems: 'start' }}>
         <aside style={{
-          position: 'sticky', top: 'calc(var(--nav-height) + 14px)',
+          position: 'sticky', top: 'calc(var(--nav-height) + 16px)',
           display: 'flex', flexDirection: 'column', gap: 18,
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>

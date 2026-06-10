@@ -171,7 +171,7 @@ export default function TorneoDetalle() {
     </div>
   )
 
-  if (!torneo) return <div style={{ maxWidth: 480, margin: '0 auto' }}><SkeletonList n={5} /></div>
+  if (!torneo) return <div style={{ maxWidth: 760, margin: '0 auto', width: '100%' }}><SkeletonList n={5} /></div>
 
   const pct = torneo.total > 0 ? (torneo.jugados / torneo.total) * 100 : 0
   const todoJugado = torneo.jugados === torneo.total && torneo.total > 0
