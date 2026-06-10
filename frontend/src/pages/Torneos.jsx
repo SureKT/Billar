@@ -211,7 +211,7 @@ export default function Torneos() {
           <div style={{ fontSize: 14 }}>Sin torneos. Crea el primero.</div>
         </div>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <div style={{ display: 'grid', gap: 10, gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))', alignItems: 'start' }}>
           {torneos.map(t => (
             <TorneoCard key={t.id} torneo={t} onClick={() => navigate(`/torneo/${t.id}`)} />
           ))}

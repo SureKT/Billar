@@ -201,7 +201,7 @@ export default function Sugerencias() {
       )}
 
       {!loading && sugerencias && sugerencias.length > 0 && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <div style={{ display: 'grid', gap: 10, gridTemplateColumns: 'repeat(auto-fill, minmax(330px, 1fr))' }}>
           {sugerencias.map((sug, i) => (
             <SugerenciaCard
               key={i}

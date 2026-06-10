@@ -263,8 +263,9 @@ export default function HistorialTurnos({
   turnos, jugadores, faltas,
   equipo1Jugadores, equipo2Jugadores,
   partida, onReload, modoEdicion = false,
+  abiertoInicial = false,
 }) {
-  const [mostrar, setMostrar] = useState(false)
+  const [mostrar, setMostrar] = useState(abiertoInicial)
   const [editandoId, setEditandoId] = useState(null)
   const [insertandoDespuesDe, setInsertandoDespuesDe] = useState(null)
   const [confirmarEliminarId, setConfirmarEliminarId] = useState(null)

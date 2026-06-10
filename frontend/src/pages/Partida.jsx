@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { api } from '../api/client'
 import { usePartidaData } from '../hooks/usePartidaData'
+import { useMediaQuery } from '../hooks/useMediaQuery'
 import BolasEquipo from '../components/partida/BolasEquipo'
 import ResultadoBanner from '../components/partida/ResultadoBanner'
 import FormularioTurno from '../components/partida/FormularioTurno'
@@ -12,6 +13,7 @@ export default function Partida() {
   const { id } = useParams()
   const navigate = useNavigate()
   const location = useLocation()
+  const desktop = useMediaQuery('(min-width: 1024px)')
   const { partida, estado, turnos, jugadores, faltas, stats, loading, reload, ultimoReload } = usePartidaData(id)
 
   const [bolas, setBolas]             = useState([])
@@ -460,91 +462,104 @@ export default function Partida() {
         </div>
       )}
 
-      {/* Estado de equipos */}
-      <div style={{ display: 'flex', gap: 8 }}>
-        <BolasEquipo
-          titulo={partida.equipo1_nombre || 'Equipo 1'} teamNum={1}
-          pendientes={pendientesEq1}
-          grupo={partida.equipo1_grupo}
-          esActivo={!finalizada && equipoActual === 1}
-          ganador={finalizada && partida.ganador_equipo === 1}
-          jugadoresEquipo={buildEquipo(partida.equipo1_jugadores)}
-          siguienteJugadorId={partida.siguiente_jugador_id}
-          modalidad={partida.modalidad}
-          bolaMano={!finalizada && partida.bola_en_mano && equipoActual === 1}
-        />
-        <BolasEquipo
-          titulo={partida.equipo2_nombre || 'Equipo 2'} teamNum={2}
-          pendientes={pendientesEq2}
-          grupo={partida.equipo2_grupo}
-          esActivo={!finalizada && equipoActual === 2}
-          ganador={finalizada && partida.ganador_equipo === 2}
-          jugadoresEquipo={buildEquipo(partida.equipo2_jugadores)}
-          siguienteJugadorId={partida.siguiente_jugador_id}
-          modalidad={partida.modalidad}
-          bolaMano={!finalizada && partida.bola_en_mano && equipoActual === 2}
-        />
-      </div>
+      {/* Desktop: acción (equipos + formulario/banner) izq · historial der.
+          Móvil: stack vertical de siempre. */}
+      <div style={desktop
+        ? { display: 'grid', gridTemplateColumns: 'minmax(440px, 540px) 1fr', gap: 'var(--gap)', alignItems: 'start' }
+        : { display: 'flex', flexDirection: 'column', gap: 'var(--gap)' }
+      }>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--gap)', minWidth: 0 }}>
 
-      {/* Banner de resultado */}
-      {finalizada && (
-        <>
-          <ResultadoBanner
-            partida={partida}
+          {/* Estado de equipos */}
+          <div style={{ display: 'flex', gap: 8 }}>
+            <BolasEquipo
+              titulo={partida.equipo1_nombre || 'Equipo 1'} teamNum={1}
+              pendientes={pendientesEq1}
+              grupo={partida.equipo1_grupo}
+              esActivo={!finalizada && equipoActual === 1}
+              ganador={finalizada && partida.ganador_equipo === 1}
+              jugadoresEquipo={buildEquipo(partida.equipo1_jugadores)}
+              siguienteJugadorId={partida.siguiente_jugador_id}
+              modalidad={partida.modalidad}
+              bolaMano={!finalizada && partida.bola_en_mano && equipoActual === 1}
+            />
+            <BolasEquipo
+              titulo={partida.equipo2_nombre || 'Equipo 2'} teamNum={2}
+              pendientes={pendientesEq2}
+              grupo={partida.equipo2_grupo}
+              esActivo={!finalizada && equipoActual === 2}
+              ganador={finalizada && partida.ganador_equipo === 2}
+              jugadoresEquipo={buildEquipo(partida.equipo2_jugadores)}
+              siguienteJugadorId={partida.siguiente_jugador_id}
+              modalidad={partida.modalidad}
+              bolaMano={!finalizada && partida.bola_en_mano && equipoActual === 2}
+            />
+          </div>
+
+          {/* Banner de resultado */}
+          {finalizada && (
+            <>
+              <ResultadoBanner
+                partida={partida}
+                turnos={turnos}
+                jugadores={jugadores}
+                onRevancha={revancha}
+                onRepetir={repetir}
+                torneoId={partida.torneo_id}
+                logrosPartida={logrosPartida}
+              />
+              {partida.torneo_id && (
+                <button
+                  onClick={() => navigate(`/torneo/${partida.torneo_id}`)}
+                  style={{
+                    width: '100%', padding: '11px 0', borderRadius: 10,
+                    background: 'rgba(234,179,8,.1)', border: '1px solid rgba(234,179,8,.3)',
+                    color: '#fbbf24', fontWeight: 700, fontSize: 14, cursor: 'pointer',
+                  }}
+                >
+                  🏆 {partida.torneo_nombre ? `Ir a ${partida.torneo_nombre}` : 'Ir al torneo'}
+                </button>
+              )}
+            </>
+          )}
+
+          {/* Formulario del turno */}
+          {!finalizada && partida.siguiente_jugador_id && (
+            <FormularioTurno
+              partida={partida}
+              estado={estado}
+              turnos={turnos}
+              jugadores={jugadores}
+              faltas={faltas}
+              bolas={bolas}
+              setBolas={setBolas}
+              faltasIds={faltasIds}
+              setFaltasIds={setFaltasIds}
+              faltasAutoIds={faltasAutoIds}
+              faltaPersonalId={faltaPersonalId}
+              registrando={registrando}
+              flash={flash}
+              onRegistrar={registrar}
+              onDeshacer={deshacer}
+            />
+          )}
+        </div>
+
+        {/* Historial de turnos — en desktop tiene columna propia, abierto */}
+        <div style={{ minWidth: 0 }}>
+          <HistorialTurnos
             turnos={turnos}
             jugadores={jugadores}
-            onRevancha={revancha}
-            onRepetir={repetir}
-            torneoId={partida.torneo_id}
-            logrosPartida={logrosPartida}
+            faltas={faltas}
+            equipo1Jugadores={partida.equipo1_jugadores}
+            equipo2Jugadores={partida.equipo2_jugadores}
+            partida={partida}
+            onReload={reload}
+            modoEdicion={editandoTurnos}
+            abiertoInicial={desktop}
           />
-          {partida.torneo_id && (
-            <button
-              onClick={() => navigate(`/torneo/${partida.torneo_id}`)}
-              style={{
-                width: '100%', padding: '11px 0', borderRadius: 10,
-                background: 'rgba(234,179,8,.1)', border: '1px solid rgba(234,179,8,.3)',
-                color: '#fbbf24', fontWeight: 700, fontSize: 14, cursor: 'pointer',
-              }}
-            >
-              🏆 {partida.torneo_nombre ? `Ir a ${partida.torneo_nombre}` : 'Ir al torneo'}
-            </button>
-          )}
-        </>
-      )}
-
-      {/* Formulario del turno */}
-      {!finalizada && partida.siguiente_jugador_id && (
-        <FormularioTurno
-          partida={partida}
-          estado={estado}
-          turnos={turnos}
-          jugadores={jugadores}
-          faltas={faltas}
-          bolas={bolas}
-          setBolas={setBolas}
-          faltasIds={faltasIds}
-          setFaltasIds={setFaltasIds}
-          faltasAutoIds={faltasAutoIds}
-          faltaPersonalId={faltaPersonalId}
-          registrando={registrando}
-          flash={flash}
-          onRegistrar={registrar}
-          onDeshacer={deshacer}
-        />
-      )}
-
-      {/* Historial de turnos */}
-      <HistorialTurnos
-        turnos={turnos}
-        jugadores={jugadores}
-        faltas={faltas}
-        equipo1Jugadores={partida.equipo1_jugadores}
-        equipo2Jugadores={partida.equipo2_jugadores}
-        partida={partida}
-        onReload={reload}
-        modoEdicion={editandoTurnos}
-      />
+        </div>
+      </div>
 
     </div>
   )

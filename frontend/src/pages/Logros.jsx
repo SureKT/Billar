@@ -361,7 +361,7 @@ export default function Logros() {
   const totalLogros = logros?.length ?? globalData?.length ?? 29
 
   return (
-    <div style={{ maxWidth: 480, margin: '0 auto' }}>
+    <div style={{ maxWidth: 900, margin: '0 auto', width: '100%' }}>
       <div style={{ marginBottom: 14 }}>
         <h2 style={{ fontSize: 20, fontWeight: 800, color: 'var(--text)', margin: '0 0 4px' }}>
           🏅 Logros
@@ -487,7 +487,7 @@ export default function Logros() {
             Calculando…
           </div>
         ) : (
-          <div>
+          <div style={{ display: 'grid', gap: 8, gridTemplateColumns: 'repeat(auto-fill, minmax(380px, 1fr))', alignItems: 'start' }}>
             {sortedGlobal.map(logro => <LogroGlobalRow key={logro.id} logro={logro} />)}
           </div>
         )
@@ -501,7 +501,7 @@ export default function Logros() {
             Cargando…
           </div>
         ) : (
-          <div>
+          <div style={{ display: 'grid', gap: 8, gridTemplateColumns: 'repeat(auto-fill, minmax(380px, 1fr))', alignItems: 'start' }}>
             {sortedLogros.map(logro => <LogroRow key={logro.id} logro={logro} porcentaje={rarityMap[logro.id]} />)}
           </div>
         )

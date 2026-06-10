@@ -365,12 +365,6 @@ export default function Estadisticas() {
   function setFiltro(val)  { setFiltroState(val);  actualizarParams(val, tiempo) }
   function setTiempo(val)  { setTiempoState(val);  actualizarParams(filtro, val) }
 
-  // Vista ancha en desktop solo mientras Stats está montada
-  useEffect(() => {
-    document.body.classList.add('wide')
-    return () => document.body.classList.remove('wide')
-  }, [])
-
   const modalidadParam = filtro === 'todas' ? null : filtro
   const { data: partidas, loading: loadingPart } = useApi(api.getPartidas)
 

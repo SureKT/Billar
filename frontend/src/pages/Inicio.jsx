@@ -6,6 +6,7 @@ import { useSessionState } from '../hooks/useSessionState'
 import { SkeletonList } from '../components/Skeleton'
 import AvatarJugador from '../components/AvatarJugador'
 import { agruparPorSesion, marcadorSesion, duracionSesion } from '../utils/sesiones'
+import { useMediaQuery } from '../hooks/useMediaQuery'
 import Chip from '../components/Chip'
 
 function nombreJugador(id, jugadores) {
@@ -118,6 +119,7 @@ export default function Inicio() {
   const { data: jugadores } = useApi(api.getJugadores)
   const { data: torneos } = useApi(api.getTorneos)
   const navigate = useNavigate()
+  const desktop = useMediaQuery('(min-width: 1024px)')
   const [filtroEstado, setFiltroEstado]   = useSessionState('inicio_filtro_estado', 'todas')
   const touchStartY = useRef(0)
   const [pullY, setPullY]   = useState(0)
@@ -166,82 +168,64 @@ export default function Inicio() {
 
   const hayFiltroActivo = filtroEstado !== 'todas'
 
-  return (
-    <div
-      onTouchStart={onTouchStart}
-      onTouchMove={onTouchMove}
-      onTouchEnd={onTouchEnd}
-      style={{ display: 'flex', flexDirection: 'column', gap: 20 }}
-    >
-      {pullY > 8 && (
-        <div style={{
-          height: pullY, display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 12, color: 'var(--text-dim)', transition: pulling ? 'none' : 'height .2s',
-          overflow: 'hidden',
-        }}>
-          {pulling ? '↑ Suelta para actualizar' : '↓ Arrastra para actualizar'}
+  // Grid de cards: 1 col en móvil, multi-col en desktop
+  const gridCards = {
+    display: 'grid', gap: 8,
+    gridTemplateColumns: desktop ? 'repeat(auto-fill, minmax(330px, 1fr))' : '1fr',
+  }
+
+  // ── Bloques (única fuente — móvil y desktop los disponen distinto) ──
+
+  const bloqueTorneos = (torneos ?? []).filter(t => t.estado === 'en_curso').map(t => {
+    const pct = t.total > 0 ? (t.jugados / t.total) * 100 : 0
+    const pendientes = t.total - t.jugados
+    return (
+      <button key={t.id} className="hoverable" onClick={() => navigate(`/torneo/${t.id}`)} style={{
+        width: '100%', textAlign: 'left', cursor: 'pointer',
+        background: 'rgba(234,179,8,.07)', border: '1px solid rgba(234,179,8,.25)',
+        borderRadius: 12, padding: '12px 14px',
+        display: 'flex', alignItems: 'center', gap: 10,
+      }}>
+        <span style={{ fontSize: 20, flexShrink: 0 }}>🏆</span>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 6 }}>
+            <span style={{ fontSize: 13, fontWeight: 700, color: '#fbbf24', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {t.nombre}
+            </span>
+            <span style={{ fontSize: 11, color: 'var(--text-dim)', flexShrink: 0 }}>
+              {pendientes} pendiente{pendientes !== 1 ? 's' : ''}
+            </span>
+          </div>
+          <div style={{ height: 3, background: 'rgba(234,179,8,.2)', borderRadius: 2, marginTop: 5, overflow: 'hidden' }}>
+            <div style={{ height: '100%', width: `${pct}%`, background: '#fbbf24', borderRadius: 2, transition: 'width .3s' }} />
+          </div>
         </div>
-      )}
+        <span style={{ fontSize: 14, color: '#fbbf24', flexShrink: 0 }}>›</span>
+      </button>
+    )
+  })
 
-      {todasLasPartidas.length === 0 && (
-        <div style={{ textAlign: 'center', padding: '60px 20px' }}>
-          <div style={{ fontSize: '48px', marginBottom: 12 }}>🎱</div>
-          <p style={{ color: 'var(--text-dim)', marginBottom: 16 }}>Sin partidas todavía</p>
-          <button className="btn btn-primary" onClick={() => navigate('/nueva')}>
-            ▶ Crear primera partida
-          </button>
-        </div>
-      )}
+  const bloqueMarcador = filtroEstado !== 'en_curso' && sesionReciente && (
+    <MarcadorNoche sesion={sesionReciente} jugadores={jugadores} onVerJugador={() => navigate('/jugadores')} />
+  )
 
-      {/* Widget torneos activos */}
-      {(torneos ?? []).filter(t => t.estado === 'en_curso').map(t => {
-        const pct = t.total > 0 ? (t.jugados / t.total) * 100 : 0
-        const pendientes = t.total - t.jugados
-        return (
-          <button key={t.id} className="hoverable" onClick={() => navigate(`/torneo/${t.id}`)} style={{
-            width: '100%', textAlign: 'left', cursor: 'pointer',
-            background: 'rgba(234,179,8,.07)', border: '1px solid rgba(234,179,8,.25)',
-            borderRadius: 12, padding: '12px 14px',
-            display: 'flex', alignItems: 'center', gap: 10,
-          }}>
-            <span style={{ fontSize: 20, flexShrink: 0 }}>🏆</span>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 6 }}>
-                <span style={{ fontSize: 13, fontWeight: 700, color: '#fbbf24', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {t.nombre}
-                </span>
-                <span style={{ fontSize: 11, color: 'var(--text-dim)', flexShrink: 0 }}>
-                  {pendientes} pendiente{pendientes !== 1 ? 's' : ''}
-                </span>
-              </div>
-              <div style={{ height: 3, background: 'rgba(234,179,8,.2)', borderRadius: 2, marginTop: 5, overflow: 'hidden' }}>
-                <div style={{ height: '100%', width: `${pct}%`, background: '#fbbf24', borderRadius: 2, transition: 'width .3s' }} />
-              </div>
-            </div>
-            <span style={{ fontSize: 14, color: '#fbbf24', flexShrink: 0 }}>›</span>
-          </button>
-        )
-      })}
-
-      {/* Marcador de la noche — sesión más reciente */}
-      {filtroEstado !== 'en_curso' && sesionReciente && (
-        <MarcadorNoche sesion={sesionReciente} jugadores={jugadores} onVerJugador={() => navigate('/jugadores')} />
-      )}
-
-      {/* Filtros — solo cuando hay partidas finalizadas que filtrar */}
-      {todasLasPartidas.length > 0 && (
-        <div style={{
+  const bloqueFiltros = todasLasPartidas.length > 0 && (
+    <div style={desktop
+      ? { display: 'flex', gap: 6, flexWrap: 'wrap' }
+      : {
           position: 'sticky', top: 'var(--nav-height)', zIndex: 50,
           background: 'var(--bg)', padding: '14px 16px 6px', margin: '0 -16px',
           display: 'flex', gap: 6, flexWrap: 'wrap',
-        }}>
-          <Chip label="Todas"       activo={filtroEstado === 'todas'}      onClick={() => setFiltroEstado('todas')} />
-          <Chip label="En curso"    activo={filtroEstado === 'en_curso'}   onClick={() => setFiltroEstado('en_curso')} />
-          <Chip label="Finalizadas" activo={filtroEstado === 'finalizada'} onClick={() => setFiltroEstado('finalizada')} />
-        </div>
-      )}
+        }
+    }>
+      <Chip label="Todas"       activo={filtroEstado === 'todas'}      onClick={() => setFiltroEstado('todas')} />
+      <Chip label="En curso"    activo={filtroEstado === 'en_curso'}   onClick={() => setFiltroEstado('en_curso')} />
+      <Chip label="Finalizadas" activo={filtroEstado === 'finalizada'} onClick={() => setFiltroEstado('finalizada')} />
+    </div>
+  )
 
-      {/* Sin resultados con filtro activo */}
+  const bloqueListado = (
+    <>
       {hayFiltroActivo && partidasFiltradas.length === 0 && (
         <p style={{ color: 'var(--text-dim)', fontSize: '14px', textAlign: 'center', padding: '20px 0' }}>
           Sin partidas con este filtro
@@ -253,7 +237,7 @@ export default function Inicio() {
           <p style={{ fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.06em', color: 'var(--accent)', marginBottom: 8 }}>
             ▶ Continuar
           </p>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <div style={gridCards}>
             {enCurso.map(p => <PartidaCard key={p.id} p={p} jugadores={jugadores} continuar onClick={() => navigate(`/partida/${p.id}`)} />)}
           </div>
         </section>
@@ -274,7 +258,7 @@ export default function Inicio() {
                   onClick={() => toggleSesion(s.clave)}
                 />
                 {!colapsada && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  <div style={gridCards}>
                     {s.partidas.map(p => (
                       <PartidaCard key={p.id} p={p} jugadores={jugadores} onClick={() => navigate(`/partida/${p.id}`)} />
                     ))}
@@ -285,6 +269,62 @@ export default function Inicio() {
           })}
         </section>
       )}
+    </>
+  )
+
+  const vacio = todasLasPartidas.length === 0 && (
+    <div style={{ textAlign: 'center', padding: '60px 20px' }}>
+      <div style={{ fontSize: '48px', marginBottom: 12 }}>🎱</div>
+      <p style={{ color: 'var(--text-dim)', marginBottom: 16 }}>Sin partidas todavía</p>
+      <button className="btn btn-primary" onClick={() => navigate('/nueva')}>
+        ▶ Crear primera partida
+      </button>
+    </div>
+  )
+
+  // ── Desktop: marcador + torneos en columna lateral · listado a la derecha ──
+  if (desktop) {
+    return (
+      <div style={{ display: 'grid', gridTemplateColumns: '320px 1fr', gap: 20, alignItems: 'start', paddingTop: 14 }}>
+        <aside style={{
+          position: 'sticky', top: 'calc(var(--nav-height) + 14px)',
+          display: 'flex', flexDirection: 'column', gap: 12,
+        }}>
+          {bloqueMarcador}
+          {bloqueTorneos}
+        </aside>
+        <main style={{ display: 'flex', flexDirection: 'column', gap: 16, minWidth: 0 }}>
+          {vacio}
+          {bloqueFiltros}
+          {bloqueListado}
+        </main>
+      </div>
+    )
+  }
+
+  // ── Móvil: stack vertical con pull-to-refresh ──
+  return (
+    <div
+      onTouchStart={onTouchStart}
+      onTouchMove={onTouchMove}
+      onTouchEnd={onTouchEnd}
+      style={{ display: 'flex', flexDirection: 'column', gap: 20 }}
+    >
+      {pullY > 8 && (
+        <div style={{
+          height: pullY, display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: 12, color: 'var(--text-dim)', transition: pulling ? 'none' : 'height .2s',
+          overflow: 'hidden',
+        }}>
+          {pulling ? '↑ Suelta para actualizar' : '↓ Arrastra para actualizar'}
+        </div>
+      )}
+
+      {vacio}
+      {bloqueTorneos}
+      {bloqueMarcador}
+      {bloqueFiltros}
+      {bloqueListado}
     </div>
   )
 }

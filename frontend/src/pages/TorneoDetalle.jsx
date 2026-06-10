@@ -179,7 +179,7 @@ export default function TorneoDetalle() {
   const podio = finalizado ? torneo.clasificacion.slice(0, 3) : null
 
   return (
-    <div style={{ maxWidth: 480, margin: '0 auto' }}>
+    <div style={{ maxWidth: 760, margin: '0 auto', width: '100%' }}>
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
         <button onClick={() => navigate('/torneos')} style={{

@@ -772,9 +772,11 @@ export default function Jugadores() {
         const inactivos = [...(stats ?? [])].filter(j => !j.activo).sort(sorter)
         return (
           <>
-            {activos.map(j => (
-              <JugadorCard key={j.id} j={j} onReload={reload} todosStats={stats ?? []} />
-            ))}
+            <div style={{ display: 'grid', gap: 'var(--gap)', gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))', alignItems: 'start' }}>
+              {activos.map(j => (
+                <JugadorCard key={j.id} j={j} onReload={reload} todosStats={stats ?? []} />
+              ))}
+            </div>
             {inactivos.length > 0 && (
               <div>
                 <button
@@ -794,7 +796,7 @@ export default function Jugadores() {
                   <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>{inactivos.length}</span>
                 </button>
                 {inactivosExpand && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--gap)' }}>
+                  <div style={{ display: 'grid', gap: 'var(--gap)', gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))', alignItems: 'start' }}>
                     {inactivos.map(j => (
                       <JugadorCard key={j.id} j={j} onReload={reload} todosStats={stats ?? []} />
                     ))}

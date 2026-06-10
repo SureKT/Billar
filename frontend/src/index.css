@@ -33,11 +33,12 @@ html, body {
   min-height: 100dvh;
   display: flex;
   flex-direction: column;
+  transition: max-width .25s ease;
 }
 
-/* Páginas con vista de escritorio (body.wide la activa la página, p.ej. Stats) */
+/* Desktop: toda la app a ancho completo — cada página dispone sus bloques en grid */
 @media (min-width: 1024px) {
-  body.wide #root {
+  #root {
     max-width: 1400px;
     padding: 0 24px;
   }

@@ -3,6 +3,7 @@ import { useNavigate, useLocation, Link } from 'react-router-dom'
 import { useApi } from '../hooks/useApi'
 import { api } from '../api/client'
 import Sugerencias from './Sugerencias'
+import { useMediaQuery } from '../hooks/useMediaQuery'
 import { SkeletonList } from '../components/Skeleton'
 
 // Plantillas de grupo habitual — persistidas en localStorage (uso local, sin backend)
@@ -215,6 +216,7 @@ function SelectorEquipo({ titulo, teamNum, nombre, onNombreChange, jugadores, se
 }
 
 export default function NuevaPartida() {
+  const desktop = useMediaQuery('(min-width: 1024px)')
   const { data: jugadores, loading: jLoading } = useApi(api.getJugadores)
   const { data: statsData, loading: sLoading }  = useApi(api.getAllStats)
   const loading = jLoading || sLoading
@@ -359,15 +361,20 @@ export default function NuevaPartida() {
     </div>
   )
 
+  // Desktop: formulario centrado — a 1400px de ancho un form de creación se pierde
+  const contenedor = desktop
+    ? { display: 'flex', flexDirection: 'column', gap: 'var(--gap)', maxWidth: 960, margin: '0 auto', width: '100%' }
+    : { display: 'flex', flexDirection: 'column', gap: 'var(--gap)' }
+
   if (tab === 'mix') return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--gap)' }}>
+    <div style={{ ...contenedor, maxWidth: desktop ? 1100 : undefined }}>
       <Tabs />
       <Sugerencias />
     </div>
   )
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--gap)' }}>
+    <div style={contenedor}>
       <Tabs />
 
       {/* Plantillas de grupo habitual */}
@@ -438,26 +445,29 @@ export default function NuevaPartida() {
         </div>
       ) : (
         <>
-          <SelectorEquipo
-            titulo="Equipo 1" teamNum={1}
-            nombre={nombre1} onNombreChange={setNombre1}
-            jugadores={jList}
-            seleccionados={equipo1}
-            onChange={setEquipo1Safe}
-            excluidos={equipo2}
-            statsMap={statsMap}
-            mostrarOrden={ajustes}
-          />
-          <SelectorEquipo
-            titulo="Equipo 2" teamNum={2}
-            nombre={nombre2} onNombreChange={setNombre2}
-            jugadores={jList}
-            seleccionados={equipo2}
-            onChange={setEquipo2Safe}
-            excluidos={equipo1}
-            statsMap={statsMap}
-            mostrarOrden={ajustes}
-          />
+          {/* Desktop: equipos lado a lado */}
+          <div style={{ display: 'grid', gridTemplateColumns: desktop ? '1fr 1fr' : '1fr', gap: 'var(--gap)', alignItems: 'start' }}>
+            <SelectorEquipo
+              titulo="Equipo 1" teamNum={1}
+              nombre={nombre1} onNombreChange={setNombre1}
+              jugadores={jList}
+              seleccionados={equipo1}
+              onChange={setEquipo1Safe}
+              excluidos={equipo2}
+              statsMap={statsMap}
+              mostrarOrden={ajustes}
+            />
+            <SelectorEquipo
+              titulo="Equipo 2" teamNum={2}
+              nombre={nombre2} onNombreChange={setNombre2}
+              jugadores={jList}
+              seleccionados={equipo2}
+              onChange={setEquipo2Safe}
+              excluidos={equipo1}
+              statsMap={statsMap}
+              mostrarOrden={ajustes}
+            />
+          </div>
 
           {/* Ajustes opcionales — plegados por defecto (orden, quién saca, plantilla) */}
           {listo && (
