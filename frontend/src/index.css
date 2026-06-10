@@ -46,12 +46,16 @@ html, body {
        real. Escalonado: a menos ancho físico, menos zoom, para que los grids
        de Partida/Stats no desborden.
        --zoom expone el factor para que la sidebar compense su altura (100dvh
-       escalado por zoom mediría más que la pantalla y dejaría TV fuera). */
-    --zoom: 1.15;
+       escalado por zoom mediría más que la pantalla y dejaría TV fuera).
+       Cada escalón arranca solo donde el ancho efectivo (físico ÷ zoom) sigue
+       cabiendo el layout más ancho (grid de Partida ~772 + sidebar 200 +
+       padding ≈ 1004 CSS). Arrancar antes desbordaba Partida en horizontal. */
+    --zoom: 1;
     zoom: var(--zoom);
   }
 }
-@media (min-width: 1440px) { #root { --zoom: 1.3; } }
+@media (min-width: 1200px) { #root { --zoom: 1.15; } }
+@media (min-width: 1500px) { #root { --zoom: 1.3; } }
 @media (min-width: 1920px) { #root { --zoom: 1.5; } }
 
 a { color: inherit; text-decoration: none; }
