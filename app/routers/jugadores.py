@@ -43,6 +43,8 @@ class JugadorStats(BaseModel):
     bolas_por_partida: float = 0.0     # bolas / partidas finalizadas con participación
     max_bolas_turno: int = 0           # máximo de bolas metidas en un único turno
     faltas_por_partida: float = 0.0    # faltas / partidas jugadas
+    racha_peor: int = 0                # peor racha perdedora histórica (nº de derrotas seguidas)
+    histograma_bolas_turno: list[int] = []  # [turnos con 0, 1, 2, 3, 4+ bolas (excl. blanca)]
 
 
 class H2HRecord(BaseModel):
@@ -148,6 +150,16 @@ def _calcular_stats(
         else:
             streak_temp = 0
 
+    # Peor racha perdedora histórica — simétrica a racha_mejor
+    racha_peor = 0
+    streak_perd = 0
+    for _, gano in reversed(resultados):
+        if not gano:
+            streak_perd += 1
+            racha_peor = max(racha_peor, streak_perd)
+        else:
+            streak_perd = 0
+
     # Average game duration (only finished games with fecha_fin)
     duraciones_min = []
     for pid in partida_ids:
@@ -219,6 +231,12 @@ def _calcular_stats(
         default=0,
     )
 
+    # Histograma de bolas por turno: buckets 0, 1, 2, 3, 4+ (excl. blanca)
+    histograma_bolas_turno = [0, 0, 0, 0, 0]
+    for t in turnos:
+        n = sum(1 for b in t.bolas_metidas if b != 0)
+        histograma_bolas_turno[min(n, 4)] += 1
+
     total_faltas_jugador = sum(1 for t in turnos if t.falta_id)
     faltas_por_partida = round(total_faltas_jugador / partidas_jugadas, 2) if partidas_jugadas else 0.0
 
@@ -254,6 +272,8 @@ def _calcular_stats(
         bolas_por_partida=bolas_por_partida,
         max_bolas_turno=max_bolas_turno,
         faltas_por_partida=faltas_por_partida,
+        racha_peor=racha_peor,
+        histograma_bolas_turno=histograma_bolas_turno,
     )
 
 

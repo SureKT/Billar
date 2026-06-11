@@ -20,7 +20,7 @@ Ninguna requiere cambio de modelo de datos (todo calculable desde tablas existen
 | Win rate mensual (evolución) | 🔵 | Estadisticas (gráfica línea) | actualmente solo conteo mensual |
 | Racha actual (+ ganadora / − perdedora) | ✅ | Jugadores, Estadisticas tabla | — |
 | Racha ganadora histórica (best ever) | ✅ | Jugadores, Estadisticas records | — |
-| Racha perdedora histórica | 🔵 | Jugadores | simétrico a racha_mejor |
+| Racha perdedora histórica | ✅ | Estadisticas records | simétrico a racha_mejor (record "Peor racha") |
 | Win rate cuando rompe vs cuando no rompe | 🔵 | Jugadores (drill-down) | cruzar turno.numero==1 con ganador_equipo |
 | Win rate como equipo 1 vs equipo 2 | 🔵 | Jugadores (drill-down) | PartidaJugador.equipo |
 
@@ -35,7 +35,7 @@ Ninguna requiere cambio de modelo de datos (todo calculable desde tablas existen
 | Bolas por partida (promedio) | ✅ | Jugadores, Estadisticas | — |
 | Bolas por turno tendencia (últimas N) | ⚠️ | Jugadores | parcial (hardcoded 5) |
 | Máximo bolas en un turno (récord) | ✅ | Jugadores, Estadisticas records | — |
-| Histograma bolas/turno (0/1/2/3/4+) | 🔵 | Jugadores (drill-down), Estadisticas | mini barchart — muy visual |
+| Histograma bolas/turno (0/1/2/3/4+) | ✅ | Jugadores (drill-down) | mini barchart vertical en el card expandido |
 | Bolas lisas metidas | 🔵 | Jugadores (drill-down) | filtrar bolas_metidas 1-7 |
 | Bolas rayadas metidas | 🔵 | Jugadores (drill-down) | filtrar bolas_metidas 9-15 |
 | Bolas metidas con bola en mano | ✅ | Jugadores | — |

@@ -460,6 +460,7 @@ export default function Estadisticas() {
   }
 
   const rachaHistorica = [...jugadoresConPartidas].filter(j => j.racha_mejor > 1).sort((a,b) => b.racha_mejor - a.racha_mejor)[0]
+  const rachaPeorHist = [...jugadoresConPartidas].filter(j => (j.racha_peor ?? 0) > 1).sort((a,b) => b.racha_peor - a.racha_peor)[0]
   const masMaxBolasT  = [...jugadoresConPartidas].filter(j => (j.max_bolas_turno ?? 0) > 0).sort((a,b) => b.max_bolas_turno - a.max_bolas_turno)[0]
   const masRapida = conDuracion.length > 0 ? conDuracion.reduce((m,p) => durMs(p) < durMs(m) ? p : m) : null
   const masLenta  = conDuracion.length > 0 ? conDuracion.reduce((m,p) => durMs(p) > durMs(m) ? p : m) : null
@@ -642,6 +643,12 @@ export default function Estadisticas() {
           <RecordCard emoji="📈" titulo="Racha histórica"
             nombre={rachaHistorica.nombre}
             valor={`${rachaHistorica.racha_mejor} victorias seguidas`}
+          />
+        )}
+        {rachaPeorHist && (
+          <RecordCard emoji="📉" titulo="Peor racha"
+            nombre={rachaPeorHist.nombre}
+            valor={`${rachaPeorHist.racha_peor} derrotas seguidas`}
           />
         )}
         {masMaxBolasT && (

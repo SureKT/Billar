@@ -394,6 +394,28 @@ function JugadorCard({ j, onReload, todosStats }) {
               sub={j.partidas_jugadas > 0 ? j.bolas_por_turno : null}
             />
           </div>
+          {j.histograma_bolas_turno && j.histograma_bolas_turno.some(x => x > 0) && (
+            <div style={{ marginTop: 10 }}>
+              <span style={{ fontSize: '10px', color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '.04em' }}>
+                Bolas por turno
+              </span>
+              <div style={{ display: 'flex', alignItems: 'flex-end', gap: 5, height: 48, marginTop: 5 }}>
+                {(() => {
+                  const max = Math.max(...j.histograma_bolas_turno, 1)
+                  return j.histograma_bolas_turno.map((count, n) => (
+                    <div key={n} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+                      <span style={{ fontSize: 9, fontWeight: 700, color: count > 0 ? 'var(--text)' : 'var(--text-dim)', fontVariantNumeric: 'tabular-nums' }}>{count}</span>
+                      <div style={{
+                        width: '100%', height: count > 0 ? Math.max(6, (count / max) * 34) : 2, borderRadius: 3,
+                        background: count > 0 ? 'var(--accent)' : 'var(--border)',
+                      }} />
+                      <span style={{ fontSize: 9, color: 'var(--text-dim)' }}>{n === 4 ? '4+' : n}</span>
+                    </div>
+                  ))
+                })()}
+              </div>
+            </div>
+          )}
           {j.duracion_promedio_min != null && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 6 }}>
               <span style={{ fontSize: '11px', color: 'var(--text-dim)' }}>Media partida:</span>
