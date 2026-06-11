@@ -1,4 +1,4 @@
-import { winrate, colorJugador } from './StatPrimitives'
+import { winrate, pct, colorJugador } from './StatPrimitives'
 
 const MEDALLAS = ['🥇', '🥈', '🥉']
 
@@ -15,7 +15,7 @@ export default function Podio({ jugadores, idxJugador }) {
     <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 2 }} className="hide-scrollbar">
       {ranked.map((j, i) => {
         const lider = i === 0
-        const wr = Math.round(winrate(j))
+        const wr = pct(j.partidas_ganadas, j.partidas_jugadas)
         const color = colorJugador(j, idxJugador?.get(j.id) ?? i)
         return (
           <div key={j.id} style={{
