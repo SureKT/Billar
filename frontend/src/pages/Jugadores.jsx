@@ -264,11 +264,14 @@ function JugadorCard({ j, onReload, todosStats }) {
         <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
           {modo === null && (
             <>
-              <div
+              <button
                 onClick={toggleActivo}
+                role="switch"
+                aria-checked={activoLocal}
+                aria-label={activoLocal ? 'Desactivar jugador' : 'Activar jugador'}
                 title={activoLocal ? 'Desactivar jugador' : 'Activar jugador'}
                 style={{
-                  width: 36, height: 20, borderRadius: 10, flexShrink: 0,
+                  width: 36, height: 20, borderRadius: 10, flexShrink: 0, padding: 0, border: 'none',
                   background: activoLocal ? 'var(--accent)' : 'var(--border)',
                   position: 'relative', transition: 'background .2s', cursor: 'pointer',
                 }}
@@ -279,7 +282,7 @@ function JugadorCard({ j, onReload, todosStats }) {
                   left: activoLocal ? 18 : 2,
                   transition: 'left .2s',
                 }} />
-              </div>
+              </button>
               <button className="btn btn-ghost" style={{ padding: '5px 10px', fontSize: '12px' }}
                 onClick={() => setModo('editar')}>Editar</button>
               <button className="btn btn-ghost" style={{ padding: '5px 10px', fontSize: '12px' }}
@@ -760,7 +763,7 @@ export default function Jugadores() {
           ＋ Nuevo jugador
         </p>
         <form onSubmit={crear} style={{ display: 'flex', gap: 8 }}>
-          <input type="text" placeholder="Nombre" value={nombre}
+          <input type="text" placeholder="Nombre del jugador…" value={nombre}
             onChange={e => setNombre(e.target.value)} style={{ flex: 1 }} autoComplete="off" />
           <button type="submit" className="btn btn-primary" disabled={guardando || !nombre.trim()}>
             Añadir

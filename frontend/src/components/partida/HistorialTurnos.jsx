@@ -352,6 +352,11 @@ export default function HistorialTurnos({
               <div className="card" style={{
                 padding: '10px 14px', fontSize: '13px',
                 borderLeft: `3px solid ${tColor}`,
+                // Historiales largos (40+ turnos): el navegador omite el render
+                // de las filas fuera de viewport. contain-intrinsic-size reserva
+                // el alto para que el scrollbar no salte.
+                contentVisibility: 'auto',
+                containIntrinsicSize: 'auto 48px',
               }}>
                 <div style={{
                   display: 'flex', justifyContent: 'space-between', alignItems: 'center',
