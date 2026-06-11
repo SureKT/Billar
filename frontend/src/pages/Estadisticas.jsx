@@ -6,100 +6,28 @@ import { useMediaQuery } from '../hooks/useMediaQuery'
 import { api } from '../api/client'
 import { SkeletonList } from '../components/Skeleton'
 import Chip from '../components/Chip'
-import { pct, winrate, StatTile, colorJugador } from '../components/stats/StatPrimitives'
+import { pct, winrate, colorJugador } from '../components/stats/StatPrimitives'
 import { agruparPorSesion } from '../utils/sesiones'
 import LineChart from '../components/stats/LineChart'
-import BarrasVerticales from '../components/stats/BarrasVerticales'
 import SesionesChart from '../components/stats/SesionesChart'
+import Podio from '../components/stats/Podio'
 
 const FALTAS_INTERNAS = ['Bola 8 ilegal', 'Tres faltas consecutivas', 'Blanca dentro (Scratch)']
 
 // ─── sub-componentes ──────────────────────────────────────────────────────────
 
-// Gráfica de barras horizontal
-// labelAbove=true → etiqueta encima de la barra (para textos largos)
-function GraficaHorizontal({ datos, color, labelWidth = 80, labelAbove = false }) {
-  // datos: [{ label, value, sub?, playerColor? }]
-  const max = Math.max(...datos.map(d => d.value), 1)
-
-  if (labelAbove) {
-    return (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-        {datos.map((d, i) => {
-          const p = Math.round((d.value / max) * 100)
-          const barColor = d.playerColor ?? (typeof color === 'function' ? color(d, i) : color)
-          return (
-            <div key={d.label}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                <span style={{ fontSize: '12px', color: 'var(--text-dim)' }}>{d.label}</span>
-                <span style={{ fontSize: '12px', fontWeight: 700, color: barColor, flexShrink: 0, marginLeft: 8 }}>
-                  {d.value}{d.sub ? ` · ${d.sub}` : ''}
-                </span>
-              </div>
-              <div style={{ height: 10, borderRadius: 5, background: 'var(--surface2)', overflow: 'hidden' }}>
-                <div style={{ height: '100%', width: `${p}%`, background: barColor, borderRadius: 5, transition: 'width .5s ease' }} />
-              </div>
-            </div>
-          )
-        })}
-      </div>
-    )
-  }
-
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
-      {datos.map((d, i) => {
-        const p = Math.round((d.value / max) * 100)
-        const barColor = d.playerColor ?? (typeof color === 'function' ? color(d, i) : color)
-        return (
-          <div key={d.label} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{
-              width: labelWidth, fontSize: '12px', color: 'var(--text-dim)',
-              textAlign: 'right', flexShrink: 0,
-              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-            }}>
-              {d.label}
-            </span>
-            <div style={{ flex: 1, height: 22, borderRadius: 5, background: 'var(--surface2)', overflow: 'hidden', position: 'relative' }}>
-              <div style={{
-                height: '100%', width: `${p}%`, background: barColor,
-                borderRadius: 5, transition: 'width .5s ease',
-                display: 'flex', alignItems: 'center',
-              }}>
-                {p >= 20 && (
-                  <span style={{ paddingLeft: 8, fontSize: '12px', fontWeight: 700, color: '#fff', whiteSpace: 'nowrap' }}>
-                    {d.value}{d.sub ? ` · ${d.sub}` : ''}
-                  </span>
-                )}
-              </div>
-              {p < 20 && d.value > 0 && (
-                <span style={{
-                  position: 'absolute', left: `${p + 2}%`, top: '50%', transform: 'translateY(-50%)',
-                  fontSize: '12px', fontWeight: 700, color: 'var(--text-dim)', whiteSpace: 'nowrap',
-                }}>
-                  {d.value}{d.sub ? ` · ${d.sub}` : ''}
-                </span>
-              )}
-            </div>
-          </div>
-        )
-      })}
-    </div>
-  )
-}
-
 // ─── Tabla comparativa ordenable ──────────────────────────────────────────────
 
 const COLS = [
   { key: 'pj',      head: 'PJ',     grupo: 'fijo',  get: j => j.partidas_jugadas,    fmt: v => v },
-  { key: 'winrate', head: 'Win%',   grupo: 'fijo' }, // render especial (barra)
-  { key: 'bolas',   head: 'Bolas',  grupo: 'fijo',  get: j => j.bolas_metidas,       fmt: v => v },
-  { key: 'racha',   head: 'Racha',  grupo: 'fijo' }, // render especial
-  { key: 'bpt',     head: 'B/T',    grupo: 'nuevo', get: j => j.bolas_por_turno,     fmt: v => v.toFixed(2) },
-  { key: 'bpp',     head: 'B/P',    grupo: 'nuevo', get: j => j.bolas_por_partida,   fmt: v => v.toFixed(1) },
-  { key: 'break',   head: 'Break%', grupo: 'nuevo', get: j => j.break_con_bola_pct,  fmt: v => `${Math.round(v)}%` },
-  { key: 'fpp',     head: 'F/P',    grupo: 'nuevo', get: j => j.faltas_por_partida,  fmt: v => v.toFixed(1) },
-  { key: 'mbt',     head: 'MaxB',  grupo: 'nuevo', get: j => j.max_bolas_turno,     fmt: v => v },
+  { key: 'winrate', head: 'Win%',   grupo: 'fijo',  mejor: 'max' }, // render especial (barra)
+  { key: 'bolas',   head: 'Bolas',  grupo: 'fijo',  get: j => j.bolas_metidas,       fmt: v => v,            mejor: 'max' },
+  { key: 'racha',   head: 'Racha',  grupo: 'fijo',  mejor: 'max' }, // render especial
+  { key: 'bpt',     head: 'B/T',    grupo: 'nuevo', get: j => j.bolas_por_turno,     fmt: v => v.toFixed(2), mejor: 'max' },
+  { key: 'bpp',     head: 'B/P',    grupo: 'nuevo', get: j => j.bolas_por_partida,   fmt: v => v.toFixed(1), mejor: 'max' },
+  { key: 'break',   head: 'Break%', grupo: 'nuevo', get: j => j.break_con_bola_pct,  fmt: v => `${Math.round(v)}%`, mejor: 'max' },
+  { key: 'fpp',     head: 'F/P',    grupo: 'nuevo', get: j => j.faltas_por_partida,  fmt: v => v.toFixed(1), mejor: 'min' },
+  { key: 'mbt',     head: 'MaxB',  grupo: 'nuevo', get: j => j.max_bolas_turno,     fmt: v => v,            mejor: 'max' },
 ]
 
 function sortVal(j, key) {
@@ -152,6 +80,15 @@ function TablaComparativa({ jugadores }) {
     if (cmp === 0) cmp = b.partidas_jugadas - a.partidas_jugadas
     return sortDir === 'desc' ? -cmp : cmp
   })
+
+  // Mejor valor por columna — la celda líder se destaca (sortVal cubre winrate y racha)
+  const lideres = {}
+  for (const col of COLS) {
+    if (!col.mejor || filas.length < 2) continue
+    const vals = filas.map(j => sortVal(j, col.key))
+    lideres[col.key] = col.mejor === 'max' ? Math.max(...vals) : Math.min(...vals)
+  }
+  const esLider = (j, key) => lideres[key] !== undefined && sortVal(j, key) === lideres[key]
 
   const thBase = {
     fontSize: '11px', fontWeight: 700, color: 'var(--text-dim)',
@@ -247,11 +184,16 @@ function TablaComparativa({ jugadores }) {
                         <span style={{ color: winColor, fontWeight: 700, minWidth: 30 }}>{p}%</span>
                       </div>
                     </td>
-                    <td style={{ ...tdBase, background: filaBg }}>{j.bolas_metidas}</td>
+                    <td style={{ ...tdBase, background: filaBg,
+                      ...(esLider(j, 'bolas') ? { color: '#86efac', fontWeight: 800 } : {}) }}>
+                      {j.bolas_metidas}
+                    </td>
                     <td style={{ ...tdBase, background: filaBg }}><RachaCell valor={j.racha_actual} /></td>
                     {COLS.filter(c => c.grupo === 'nuevo').map(c => (
                       <td key={c.key} style={{ ...tdBase, background: filaBgNuevo,
-                        color: 'var(--text-dim)' }}>
+                        ...(esLider(j, c.key)
+                          ? { color: '#86efac', fontWeight: 800 }
+                          : { color: 'var(--text-dim)' }) }}>
                         {c.fmt(c.get(j))}
                       </td>
                     ))}
@@ -330,15 +272,6 @@ const PERIODOS = [
   { value: 'sesion',  label: 'Última sesión' },
   { value: '7d',      label: '7 días' },
   { value: '30d',     label: '30 días' },
-]
-
-const SECCIONES = [
-  { id: 'sec-resumen',     label: 'Resumen' },
-  { id: 'sec-actividad',   label: 'Actividad' },
-  { id: 'sec-records',     label: 'Récords' },
-  { id: 'sec-rendimiento', label: 'Rendimiento' },
-  { id: 'sec-faltas',      label: 'Faltas' },
-  { id: 'sec-ranking',     label: 'Ranking' },
 ]
 
 // ISO local sin zona — coherente con Partida.fecha (datetime.now() naive)
@@ -469,64 +402,11 @@ export default function Estadisticas() {
   const idxJugador = new Map((stats ?? []).map((j, i) => [j.id, i]))
   const cj = j => colorJugador(j, idxJugador.get(j.id) ?? 0)
 
-  const grafBolas = [...jugadoresConPartidas]
-    .filter(j => j.bolas_metidas > 0)
-    .sort((a, b) => b.bolas_metidas - a.bolas_metidas)
-    .slice(0, 8)
-    .map(j => ({ label: j.nombre, value: j.bolas_metidas, playerColor: cj(j) }))
-
-  const grafEficiencia = [...jugadoresConPartidas]
-    .filter(j => j.bolas_por_turno > 0)
-    .sort((a, b) => b.bolas_por_turno - a.bolas_por_turno)
-    .slice(0, 8)
-    .map(j => ({ label: j.nombre, value: j.bolas_por_turno, playerColor: cj(j) }))
-
-  const grafDuracion = [...jugadoresConPartidas]
-    .filter(j => j.duracion_promedio_min != null)
-    .sort((a, b) => b.duracion_promedio_min - a.duracion_promedio_min)
-    .slice(0, 8)
-    .map(j => ({ label: j.nombre, value: Math.round(j.duracion_promedio_min), playerColor: cj(j) }))
-
-  const grafBreak = [...jugadoresConPartidas]
-    .filter(j => (j.break_con_bola_pct ?? 0) > 0)
-    .sort((a, b) => b.break_con_bola_pct - a.break_con_bola_pct)
-    .slice(0, 8)
-    .map(j => ({
-      label: j.nombre,
-      value: Math.round(j.break_con_bola_pct),
-      sub: `${j.break_bolas_media?.toFixed(1)} x saque`,
-      playerColor: cj(j),
-    }))
-
-  const grafBolasPartida = [...jugadoresConPartidas]
-    .filter(j => (j.bolas_por_partida ?? 0) > 0)
-    .sort((a, b) => b.bolas_por_partida - a.bolas_por_partida)
-    .slice(0, 8)
-    .map(j => ({ label: j.nombre, value: j.bolas_por_partida, playerColor: cj(j) }))
-
   // ── Datos temporales (histórico completo, solo filtrados por modalidad —
   //    son visualizaciones de línea de tiempo, recortarlas las vaciaría) ──
   const finalizadasHist = partidasActivas
     .filter(p => p.estado === 'finalizada')
     .filter(p => filtro === 'todas' || p.modalidad === filtro)
-
-  const actividadMensual = (() => {
-    const porMes = new Map()
-    for (const p of finalizadasHist) {
-      const d = new Date(p.fecha)
-      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
-      porMes.set(key, (porMes.get(key) ?? 0) + 1)
-    }
-    return [...porMes.entries()]
-      .sort(([a], [b]) => a.localeCompare(b))
-      .slice(-12)
-      .map(([key, value]) => {
-        const [yy, mm] = key.split('-')
-        // "may '26" — con year:'2-digit' nativo sale "may 26" y parece un día
-        const mes = new Date(+yy, +mm - 1, 1).toLocaleDateString('es-ES', { month: 'short' })
-        return { label: `${mes} '${String(yy).slice(2)}`, value }
-      })
-  })()
 
   const sesionesHist = agruparPorSesion(finalizadasHist)
 
@@ -563,47 +443,32 @@ export default function Estadisticas() {
 
   // ── Bloques de contenido (única fuente — móvil y desktop los disponen distinto) ──
 
-  const tilesPrincipales = (
-    <div style={{ display: 'flex', gap: 6 }}>
-      <StatTile label="Partidas"    value={todasFiltradas.length} />
-      <StatTile label="Finalizadas" value={finalizadasFiltradas.length} color="#86efac" />
-      <StatTile label="En curso"    value={enCursoFiltradas.length}     color="#fbbf24" />
-      <StatTile label="Jugadores"   value={(stats ?? []).length} />
-    </div>
-  )
-  const tilesSecundarios = (
-    <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
-      {filtro === 'todas' && (
-        <>
-          <StatTile label="Bola 8" value={bola8.length}
-            sub={todasPartidas.length > 0 ? `${Math.round((bola8.length / todasPartidas.length) * 100)}%` : undefined} />
-          <StatTile label="Bola 9" value={bola9.length}
-            sub={todasPartidas.length > 0 ? `${Math.round((bola9.length / todasPartidas.length) * 100)}%` : undefined} />
-        </>
-      )}
-      {duracionMedia != null && (
-        <StatTile label="Duración media" value={duracionMedia.str} color="#c4b5fd" compact />
-      )}
-      {!tiempoActivo && <StatTile label="Total faltas" value={totalFaltas} color="#f97316" />}
-      {faltasPorPartida != null && (
-        <StatTile label="Faltas / partida" value={faltasPorPartida} color="#fb923c" />
-      )}
-    </div>
+  const bloquePodio = (
+    <Podio jugadores={rankingFiltrado} idxJugador={idxJugador} />
   )
 
-  const bloqueResumen = (
-    <div className="card" style={{ padding: '12px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-        <SeccionTitulo>
-          Resumen {filtro === 'todas' ? 'global' : filtro === 'bola8' ? 'Bola 8' : 'Bola 9'}
-          {tiempoActivo ? ` · ${periodoLabel}` : ''}
-        </SeccionTitulo>
-        <span style={{ fontSize: '11px', color: 'var(--text-dim)', fontWeight: 600 }}>
-          {(stats ?? []).length} Jugador{(stats ?? []).length !== 1 ? 'es' : ''} activo{(stats ?? []).length !== 1 ? 's' : ''}
-        </span>
-      </div>
-      {tilesPrincipales}
-      {tilesSecundarios}
+  // KPIs globales degradados a una línea de contexto — el podio es el protagonista
+  const kpi = (label, value, color) => (
+    <span style={{ fontSize: 12, color: 'var(--text-dim)', whiteSpace: 'nowrap' }}>
+      <span style={{ fontWeight: 700, color: color ?? 'var(--text)', fontVariantNumeric: 'tabular-nums' }}>{value}</span> {label}
+    </span>
+  )
+  const lineaKpis = (
+    <div style={{
+      display: 'flex', gap: 14, flexWrap: 'wrap', alignItems: 'center',
+      padding: '8px 12px', borderRadius: 10, background: 'var(--surface)',
+      border: '1px solid var(--border)',
+    }}>
+      {kpi('partidas', todasFiltradas.length)}
+      {kpi('finalizadas', finalizadasFiltradas.length, '#86efac')}
+      {enCursoFiltradas.length > 0 && kpi('en curso', enCursoFiltradas.length, '#fbbf24')}
+      {filtro === 'todas' && kpi('bola 8', bola8.length)}
+      {filtro === 'todas' && kpi('bola 9', bola9.length)}
+      {duracionMedia != null && kpi('media', duracionMedia.str, '#c4b5fd')}
+      {faltasPorPartida != null && kpi('faltas/partida', faltasPorPartida, '#fb923c')}
+      <span style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--text-dim)' }}>
+        {(stats ?? []).length} jugadores{tiempoActivo ? ` · ${periodoLabel}` : ''}
+      </span>
     </div>
   )
 
@@ -613,7 +478,7 @@ export default function Estadisticas() {
       <SeccionTitulo>Récords{tiempoActivo ? ` · ${periodoLabel}` : ''}</SeccionTitulo>
       <div style={{
         display: 'grid', gap: 8,
-        gridTemplateColumns: desktop ? 'repeat(auto-fill, minmax(250px, 1fr))' : '1fr',
+        gridTemplateColumns: desktop ? 'repeat(auto-fill, minmax(210px, 1fr))' : '1fr',
       }}>
         {mejorWinRate && mejorWinRate.partidas_jugadas >= 2 && (
           <RecordCard emoji="🏆" titulo="Mejor win rate"
@@ -675,51 +540,28 @@ export default function Estadisticas() {
             onNavigate={id => navigate(`/partida/${id}`)}
           />
         )}
+        {faltasOrdenadas.length > 0 && (
+          <RecordCard emoji="⚠️" titulo="Falta más típica"
+            nombre={faltasOrdenadas[0].nombre}
+            valor={`${faltasOrdenadas[0][faltaField] ?? 0} veces`}
+          />
+        )}
       </div>
     </div>
   ) : null
 
-  const graficasJugador = [
-    grafBolas.length > 0        && { titulo: 'Bolas metidas por jugador',          nodo: <GraficaHorizontal datos={grafBolas} /> },
-    grafEficiencia.length > 1   && { titulo: 'Eficiencia · bolas por turno',       nodo: <GraficaHorizontal datos={grafEficiencia} /> },
-    grafDuracion.length > 1     && { titulo: 'Duración media por jugador (min)',   nodo: <GraficaHorizontal datos={grafDuracion} /> },
-    grafBreak.length > 1        && { titulo: 'Break con bola (%)',                 nodo: <GraficaHorizontal datos={grafBreak} /> },
-    grafBolasPartida.length > 1 && { titulo: 'Bolas metidas por partida',          nodo: <GraficaHorizontal datos={grafBolasPartida} /> },
-  ].filter(Boolean)
-
   const graficasTemporales = [
-    actividadMensual.length > 1 && { titulo: 'Partidas por mes',     nodo: <BarrasVerticales datos={actividadMensual} /> },
     sesionesHist.length > 1     && { titulo: 'Victorias por sesión', nodo: <SesionesChart sesiones={sesionesHist} jugadores={stats ?? []} /> },
     evolucionSeries.length > 0  && {
-      titulo: 'Evolución win rate', ancho: true,
+      titulo: 'Evolución win rate',
       nodo: <LineChart series={evolucionSeries} viewW={desktop ? 1000 : 380} />,
     },
   ].filter(Boolean)
 
-  const bloqueFaltas = faltasOrdenadas.length > 0 ? (
-    <div className="card" style={{ padding: '12px' }}>
-      <SeccionTitulo>
-        Faltas más frecuentes
-        {tiempoActivo && (
-          <span style={{
-            marginLeft: 8, padding: '1px 7px', borderRadius: 8, fontSize: 10,
-            background: 'var(--surface2)', border: '1px solid var(--border)',
-            color: 'var(--text-dim)', textTransform: 'none', letterSpacing: 0,
-          }}>histórico completo</span>
-        )}
-      </SeccionTitulo>
-      <GraficaHorizontal
-        datos={faltasOrdenadas.map(f => ({ label: f.nombre, value: f[faltaField] ?? 0 }))}
-        color={() => '#f97316'}
-        labelAbove
-      />
-    </div>
-  ) : null
-
   const bloqueRanking = jugadoresConPartidas.length > 0 ? (
     <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
       <div style={{ padding: '12px 14px 10px', borderBottom: '1px solid var(--border)' }}>
-        <p style={{ fontSize: '13px', fontWeight: 700 }}>Ranking{tiempoActivo ? ` · ${periodoLabel}` : ''}</p>
+        <p style={{ fontSize: '13px', fontWeight: 700 }}>Leaderboard{tiempoActivo ? ` · ${periodoLabel}` : ''}</p>
       </div>
       {rankingFiltrado.length === 0 ? (
         <p style={{ padding: '16px 14px', fontSize: '13px', color: 'var(--text-dim)' }}>
@@ -742,46 +584,26 @@ export default function Estadisticas() {
     </div>
   )
 
-  // ─── Desktop: cabecera sticky (título + secciones + filtros) sobre el dashboard ───
+  // ─── Desktop: cabecera sticky (título + filtros) sobre el dashboard ───
   if (desktop) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--gap)', maxWidth: 1200, margin: '0 auto', width: '100%' }}>
         <div style={{
           position: 'sticky', top: 0, zIndex: 50,
           background: 'var(--bg)', padding: '8px 0 10px',
-          display: 'flex', flexDirection: 'column', gap: 8,
+          display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap',
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-              <h2 style={{ fontSize: '20px', margin: 0 }}>Estadísticas</h2>
-              <button
-                onClick={() => navigate('/tv')}
-                style={{
-                  padding: '3px 8px', borderRadius: 6, cursor: 'pointer',
-                  background: 'rgba(255,255,255,.06)', border: '1px solid var(--border)',
-                  color: 'var(--text-dim)', fontSize: 11, fontWeight: 600, flexShrink: 0,
-                }}
-              >📺 TV</button>
-            </div>
-
-            <nav style={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-              {SECCIONES.map(s => (
-                <button key={s.id}
-                  onClick={() => document.getElementById(s.id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
-                  style={{
-                    padding: '5px 10px', borderRadius: 8,
-                    background: 'none', border: 'none', cursor: 'pointer',
-                    fontSize: 13, fontWeight: 600, color: 'var(--text-dim)',
-                  }}
-                  onMouseEnter={e => { e.currentTarget.style.background = 'var(--surface2)'; e.currentTarget.style.color = 'var(--text)' }}
-                  onMouseLeave={e => { e.currentTarget.style.background = 'none'; e.currentTarget.style.color = 'var(--text-dim)' }}
-                >
-                  {s.label}
-                </button>
-              ))}
-            </nav>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+            <h2 style={{ fontSize: '20px', margin: 0 }}>Estadísticas</h2>
+            <button
+              onClick={() => navigate('/tv')}
+              style={{
+                padding: '3px 8px', borderRadius: 6, cursor: 'pointer',
+                background: 'rgba(255,255,255,.06)', border: '1px solid var(--border)',
+                color: 'var(--text-dim)', fontSize: 11, fontWeight: 600, flexShrink: 0,
+              }}
+            >📺 TV</button>
           </div>
-
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
             {MODALIDADES.map(m => (
               <Chip key={m.value} label={m.label} activo={filtro === m.value} onClick={() => setFiltro(m.value)} />
@@ -796,53 +618,19 @@ export default function Estadisticas() {
         <main style={{ display: 'flex', flexDirection: 'column', gap: 'var(--gap)', minWidth: 0 }}>
           {sinDatos ? vacio : (
             <>
-              <section id="sec-resumen" style={{ scrollMarginTop: 110 }}>
-                {bloqueResumen}
-              </section>
-
+              {bloquePodio}
+              {lineaKpis}
+              {bloqueRanking}
+              {bloqueRecords}
               {graficasTemporales.length > 0 && (
-                <section id="sec-actividad" style={{ scrollMarginTop: 110 }}>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(380px, 1fr))', gap: 'var(--gap)' }}>
-                    {graficasTemporales.map(g => (
-                      <div key={g.titulo} className="card"
-                        style={{ padding: '12px', minWidth: 0, ...(g.ancho ? { gridColumn: '1 / -1' } : {}) }}>
-                        <SeccionTitulo>{g.titulo}</SeccionTitulo>
-                        {g.nodo}
-                      </div>
-                    ))}
-                  </div>
-                </section>
-              )}
-
-              {bloqueRecords && (
-                <section id="sec-records" style={{ scrollMarginTop: 110 }}>
-                  {bloqueRecords}
-                </section>
-              )}
-
-              {graficasJugador.length > 0 && (
-                <section id="sec-rendimiento" style={{ scrollMarginTop: 110 }}>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(380px, 1fr))', gap: 'var(--gap)' }}>
-                    {graficasJugador.map(g => (
-                      <div key={g.titulo} className="card" style={{ padding: '12px', minWidth: 0 }}>
-                        <SeccionTitulo>{g.titulo}</SeccionTitulo>
-                        {g.nodo}
-                      </div>
-                    ))}
-                  </div>
-                </section>
-              )}
-
-              {bloqueFaltas && (
-                <section id="sec-faltas" style={{ scrollMarginTop: 110 }}>
-                  {bloqueFaltas}
-                </section>
-              )}
-
-              {bloqueRanking && (
-                <section id="sec-ranking" style={{ scrollMarginTop: 110 }}>
-                  {bloqueRanking}
-                </section>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(380px, 1fr))', gap: 'var(--gap)' }}>
+                  {graficasTemporales.map(g => (
+                    <div key={g.titulo} className="card" style={{ padding: '12px', minWidth: 0 }}>
+                      <SeccionTitulo>{g.titulo}</SeccionTitulo>
+                      {g.nodo}
+                    </div>
+                  ))}
+                </div>
               )}
             </>
           )}
@@ -885,25 +673,16 @@ export default function Estadisticas() {
 
       {sinDatos ? vacio : (
         <>
-          {bloqueResumen}
+          {bloquePodio}
+          {lineaKpis}
+          {bloqueRanking}
           {bloqueRecords}
-
-          {graficasJugador.map(g => (
-            <div key={g.titulo} className="card" style={{ padding: '12px' }}>
-              <SeccionTitulo>{g.titulo}</SeccionTitulo>
-              {g.nodo}
-            </div>
-          ))}
-
           {graficasTemporales.map(g => (
             <div key={g.titulo} className="card" style={{ padding: '12px' }}>
               <SeccionTitulo>{g.titulo}</SeccionTitulo>
               {g.nodo}
             </div>
           ))}
-
-          {bloqueFaltas}
-          {bloqueRanking}
         </>
       )}
     </div>
