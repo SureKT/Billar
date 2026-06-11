@@ -5,6 +5,8 @@ __pycache__/
 .venv/
 venv/
 *.egg-info/
+.coverage
+.pytest_cache/
 
 # Frontend — dependencias y build
 frontend/node_modules/
