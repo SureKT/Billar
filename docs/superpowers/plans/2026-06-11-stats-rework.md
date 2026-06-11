@@ -30,7 +30,7 @@
 **Files:**
 - Create: `frontend/src/components/stats/Podio.jsx`
 
-- [ ] **Step 1: Crear el componente**
+- [x] **Step 1: Crear el componente**
 
 ```jsx
 import { winrate, colorJugador } from './StatPrimitives'
@@ -96,12 +96,12 @@ export default function Podio({ jugadores, idxJugador }) {
 }
 ```
 
-- [ ] **Step 2: Build para validar sintaxis**
+- [x] **Step 2: Build para validar sintaxis**
 
 Run: `cd frontend; npm run build`
 Expected: build OK (componente aún sin usar — solo valida que compila).
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add frontend/src/components/stats/Podio.jsx
@@ -115,19 +115,19 @@ git commit -m "feat(stats): componente Podio con win rate como hero number"
 **Files:**
 - Modify: `frontend/src/pages/Estadisticas.jsx`
 
-- [ ] **Step 1: Import de Podio y limpieza de imports**
+- [x] **Step 1: Import de Podio y limpieza de imports**
 
 En la cabecera (líneas 1-13): añadir `import Podio from '../components/stats/Podio'` y eliminar `import BarrasVerticales from '../components/stats/BarrasVerticales'`.
 
-- [ ] **Step 2: Eliminar `GraficaHorizontal` (líneas 19-89) y `SECCIONES` (líneas 335-342)**
+- [x] **Step 2: Eliminar `GraficaHorizontal` (líneas 19-89) y `SECCIONES` (líneas 335-342)**
 
 Borrar la función `GraficaHorizontal` completa y la const `SECCIONES`.
 
-- [ ] **Step 3: Eliminar consts de gráficas muertas**
+- [x] **Step 3: Eliminar consts de gráficas muertas**
 
 Borrar `grafBolas`, `grafEficiencia`, `grafDuracion`, `grafBreak`, `grafBolasPartida` (472-505) y `actividadMensual` (513-529). Conservar `idxJugador`, `cj`, `finalizadasHist`, `sesionesHist`, `evolucionSeries`, `faltasOrdenadas`, `faltaField`.
 
-- [ ] **Step 4: Sustituir `tilesPrincipales`/`tilesSecundarios`/`bloqueResumen` por podio + línea KPI**
+- [x] **Step 4: Sustituir `tilesPrincipales`/`tilesSecundarios`/`bloqueResumen` por podio + línea KPI**
 
 Reemplazar las líneas 566-608 por:
 
@@ -162,7 +162,7 @@ Reemplazar las líneas 566-608 por:
   )
 ```
 
-- [ ] **Step 5: Compactar Récords + card "Falta más típica"**
+- [x] **Step 5: Compactar Récords + card "Falta más típica"**
 
 En `bloqueRecords` (ahora ~610): cambiar `minmax(250px, 1fr)` por `minmax(210px, 1fr)`, y añadir tras la card `masLenta`:
 
@@ -175,7 +175,7 @@ En `bloqueRecords` (ahora ~610): cambiar `minmax(250px, 1fr)` por `minmax(210px,
         )}
 ```
 
-- [ ] **Step 6: Podar `graficasJugador`, `graficasTemporales` y `bloqueFaltas`**
+- [x] **Step 6: Podar `graficasJugador`, `graficasTemporales` y `bloqueFaltas`**
 
 Borrar la const `graficasJugador` entera y `bloqueFaltas` entero. En `graficasTemporales` quitar la línea de `actividadMensual` ('Partidas por mes'), dejando solo:
 
@@ -191,11 +191,11 @@ Borrar la const `graficasJugador` entera y `bloqueFaltas` entero. En `graficasTe
 
 (Nota: se elimina `ancho: true` — ahora van lado a lado.)
 
-- [ ] **Step 7: Retitular `bloqueRanking` a Leaderboard**
+- [x] **Step 7: Retitular `bloqueRanking` a Leaderboard**
 
 En `bloqueRanking`, cambiar el `<p>` del título: `Ranking` → `Leaderboard`.
 
-- [ ] **Step 8: Render desktop nuevo**
+- [x] **Step 8: Render desktop nuevo**
 
 Reemplazar el bloque `if (desktop) { ... }` completo por (sin nav de secciones, orden podio → KPIs → leaderboard → récords → tendencias):
 
@@ -256,7 +256,7 @@ Reemplazar el bloque `if (desktop) { ... }` completo por (sin nav de secciones, 
   }
 ```
 
-- [ ] **Step 9: Render móvil nuevo**
+- [x] **Step 9: Render móvil nuevo**
 
 En el return móvil, reemplazar el bloque `{sinDatos ? vacio : (...)}` por el mismo orden:
 
@@ -279,12 +279,12 @@ En el return móvil, reemplazar el bloque `{sinDatos ? vacio : (...)}` por el mi
 
 (El header sticky móvil con título/TV/modalidad y la fila de periodos no cambian.)
 
-- [ ] **Step 10: Build**
+- [x] **Step 10: Build**
 
 Run: `cd frontend; npm run build`
 Expected: build OK. Si falla por variables sin usar o imports rotos, resolver (StatTile puede quedar sin uso → quitar del import de StatPrimitives si es el caso).
 
-- [ ] **Step 11: Commit**
+- [x] **Step 11: Commit**
 
 ```bash
 git add frontend/src/pages/Estadisticas.jsx
@@ -298,7 +298,7 @@ git commit -m "feat(stats): jerarquia de 3 niveles — podio, leaderboard centra
 **Files:**
 - Modify: `frontend/src/pages/Estadisticas.jsx` (COLS ~93-103 y render de celdas en TablaComparativa)
 
-- [ ] **Step 1: Marcar dirección "mejor" en COLS**
+- [x] **Step 1: Marcar dirección "mejor" en COLS**
 
 ```jsx
 const COLS = [
@@ -316,7 +316,7 @@ const COLS = [
 
 (`pj` sin `mejor`: jugar más no es "mejor".)
 
-- [ ] **Step 2: Calcular líder por columna dentro de TablaComparativa**
+- [x] **Step 2: Calcular líder por columna dentro de TablaComparativa**
 
 Tras el cálculo de `filas`, añadir:
 
@@ -331,7 +331,7 @@ Tras el cálculo de `filas`, añadir:
   const esLider = (j, key) => lideres[key] !== undefined && sortVal(j, key) === lideres[key]
 ```
 
-- [ ] **Step 3: Destacar la celda líder en el render**
+- [x] **Step 3: Destacar la celda líder en el render**
 
 En el render de celdas con `col.get` (las columnas genéricas), aplicar al `<td>` cuando `esLider(j, col.key)`:
 
@@ -341,7 +341,7 @@ color: '#86efac', fontWeight: 800
 
 (Las columnas de render especial `winrate` y `racha` ya destacan por sí mismas con barra/colores — no tocar.)
 
-- [ ] **Step 4: Build + commit**
+- [x] **Step 4: Build + commit**
 
 Run: `cd frontend; npm run build` → OK.
 
@@ -354,12 +354,12 @@ git commit -m "feat(stats): mejor celda por columna destacada en la leaderboard"
 
 ### Task 4: Verificación integral y deploy
 
-- [ ] **Step 1: Suite backend** (no debe verse afectada)
+- [x] **Step 1: Suite backend** (no debe verse afectada)
 
 Run: `python -m pytest -q`
 Expected: 129 passed.
 
-- [ ] **Step 2: Deploy**
+- [x] **Step 2: Deploy**
 
 ```bash
 git push origin main
@@ -367,13 +367,13 @@ ssh hub "cd /srv/billar/src && git pull --ff-only && cd ~/homelab/docker-compose
 curl -s -o /dev/null -w '%{http_code}' http://100.73.48.106:8020/   # → 200
 ```
 
-- [ ] **Step 3: Verificación visual en server**
+- [x] **Step 3: Verificación visual en server**
 
 - Desktop 1920 y 1280: podio arriba con líder acentuado, línea KPI, leaderboard con líderes en verde, récords compactos (incluida "Falta más típica"), 2 tendencias lado a lado. Sin nav de secciones. Sin las 5 barras ni Faltas ni Partidas por mes.
 - Cambiar filtros modalidad/periodo: podio y leaderboard se actualizan; URL refleja estado.
 - Móvil 390: mismos bloques apilados, podio scrolleable horizontal.
 
-- [ ] **Step 4: Actualizar stats-backlog si procede y commit final de retoques**
+- [x] **Step 4: Actualizar stats-backlog si procede y commit final de retoques**
 
 ```bash
 git add -A
