@@ -21,6 +21,13 @@ key.pem
 # Superpowers brainstorm sessions
 .superpowers/
 
+# DB local — snapshot congelado; la canónica vive en el server (volumen Docker)
+billar.db
+*.db-journal
+
+# Residuos de herramientas (MCP Playwright, screenshots de verificación)
+.playwright-mcp/
+
 # OS
 .DS_Store
 Thumbs.db
