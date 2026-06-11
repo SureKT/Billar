@@ -49,11 +49,17 @@ function TablaComparativa({ jugadores }) {
   const [sortDir, setSortDir] = useSessionState('stats_tabla_dir', 'desc')
   const medallas = ['🥇', '🥈', '🥉']
   const scrollRef = useRef(null)
+  const [hayOverflow, setHayOverflow] = useState(false)
 
-  // Desktop: convertir scroll vertical de la rueda en scroll horizontal de la tabla
+  // Detecta si la tabla desborda (para mostrar el hint y la barra solo entonces) y,
+  // de paso, convierte el scroll de rueda vertical en horizontal sobre la tabla.
   useEffect(() => {
     const el = scrollRef.current
     if (!el) return
+    const medir = () => setHayOverflow(el.scrollWidth > el.clientWidth + 1)
+    medir()
+    const ro = new ResizeObserver(medir)
+    ro.observe(el)
     function onWheel(e) {
       if (el.scrollWidth <= el.clientWidth) return          // no hay overflow
       if (Math.abs(e.deltaY) <= Math.abs(e.deltaX)) return  // ya es scroll horizontal
@@ -61,7 +67,7 @@ function TablaComparativa({ jugadores }) {
       e.preventDefault()
     }
     el.addEventListener('wheel', onWheel, { passive: false })
-    return () => el.removeEventListener('wheel', onWheel)
+    return () => { ro.disconnect(); el.removeEventListener('wheel', onWheel) }
   }, [])
 
   function clickCabecera(key) {
@@ -128,10 +134,12 @@ function TablaComparativa({ jugadores }) {
 
   return (
     <div>
-      <p style={{ fontSize: '11px', color: 'var(--text-dim)', textAlign: 'right',
-        padding: '0 4px 6px' }}>Desliza para más →</p>
+      {hayOverflow && (
+        <p style={{ fontSize: '11px', color: 'var(--text-dim)', textAlign: 'right',
+          padding: '0 4px 6px' }}>Desliza para más →</p>
+      )}
       <div style={{ position: 'relative' }}>
-        <div ref={scrollRef} style={{ overflowX: 'auto', scrollbarWidth: 'none' }} className="hide-scrollbar">
+        <div ref={scrollRef} style={{ overflowX: 'auto' }}>
           <table style={{ borderCollapse: 'collapse', width: '100%', minWidth: 560 }}>
             <thead>
               <tr>
