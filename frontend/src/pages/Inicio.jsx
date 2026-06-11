@@ -164,7 +164,17 @@ export default function Inicio() {
   const sesiones    = agruparPorSesion(finalizadas)
 
   // Marcador de la noche: sesión más reciente sobre TODAS las finalizadas (estable ante filtros).
-  const sesionReciente = agruparPorSesion(todasLasPartidas.filter(p => p.estado === 'finalizada'))[0]
+  // Solo se muestra si la sesión es de hoy o anoche — un marcador "de la noche" de
+  // hace días desfasa (jueves mostrando el del sábado).
+  const sesionRecienteRaw = agruparPorSesion(todasLasPartidas.filter(p => p.estado === 'finalizada'))[0]
+  const sesionEsReciente = sesionRecienteRaw && (() => {
+    const d = new Date(sesionRecienteRaw.fechaRef)
+    const hoy = new Date()
+    const ayer = new Date(); ayer.setDate(ayer.getDate() - 1)
+    const mismaFecha = (a, b) => a.toLocaleDateString('es-ES') === b.toLocaleDateString('es-ES')
+    return mismaFecha(d, hoy) || mismaFecha(d, ayer)
+  })()
+  const sesionReciente = sesionEsReciente ? sesionRecienteRaw : null
 
   const hayFiltroActivo = filtroEstado !== 'todas'
 
