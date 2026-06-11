@@ -559,6 +559,7 @@ export default function Partida() {
             partida={partida}
             onReload={reload}
             modoEdicion={editandoTurnos}
+            onSalirEdicion={() => setEditandoTurnos(false)}
             abiertoInicial={desktop}
           />
         </div>

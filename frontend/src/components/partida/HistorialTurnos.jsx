@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { BolaPool } from '../Bola'
 import { api } from '../../api/client'
 
@@ -262,13 +262,16 @@ function EditorTurno({ turno, faltas, partida, jugadores, equipo1Jugadores, equi
 export default function HistorialTurnos({
   turnos, jugadores, faltas,
   equipo1Jugadores, equipo2Jugadores,
-  partida, onReload, modoEdicion = false,
+  partida, onReload, modoEdicion = false, onSalirEdicion,
   abiertoInicial = false,
 }) {
   const [mostrar, setMostrar] = useState(abiertoInicial)
   const [editandoId, setEditandoId] = useState(null)
   const [insertandoDespuesDe, setInsertandoDespuesDe] = useState(null)
   const [confirmarEliminarId, setConfirmarEliminarId] = useState(null)
+
+  // Al entrar en modo edición, abrir el historial: editar a ciegas (colapsado) confunde
+  useEffect(() => { if (modoEdicion) setMostrar(true) }, [modoEdicion])
 
   // Cerrar editores abiertos si se desactiva el modo edición
   if (!modoEdicion && (editandoId !== null || insertandoDespuesDe !== null || confirmarEliminarId !== null)) {
@@ -307,6 +310,21 @@ export default function HistorialTurnos({
 
       {mostrar && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          {modoEdicion && (
+            <div style={{
+              position: 'sticky', top: 'var(--nav-height)', zIndex: 10,
+              display: 'flex', alignItems: 'center', gap: 8,
+              padding: '8px 12px', borderRadius: 8,
+              background: 'var(--accent-bg)', border: '1px solid var(--accent)',
+            }}>
+              <span style={{ flex: 1, fontSize: 12, fontWeight: 700, color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: '.04em' }}>
+                ✎ Editando turnos
+              </span>
+              <button onClick={onSalirEdicion} className="btn btn-primary" style={{ padding: '5px 14px', fontSize: 13 }}>
+                ✓ Terminar
+              </button>
+            </div>
+          )}
           {(() => {
             // Pre-calcular racha de faltas por equipo en cada turno
             const ordenados = [...turnos].sort((a, b) => a.numero - b.numero)
