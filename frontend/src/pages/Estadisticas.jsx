@@ -211,9 +211,11 @@ function TablaComparativa({ jugadores }) {
             </tbody>
           </table>
         </div>
-        <div style={{ position: 'absolute', top: 0, right: 0, bottom: 0, width: 24,
-          pointerEvents: 'none',
-          background: 'linear-gradient(to left, rgba(24,24,31,.9), transparent)' }} />
+        {hayOverflow && (
+          <div style={{ position: 'absolute', top: 0, right: 0, bottom: 0, width: 24,
+            pointerEvents: 'none',
+            background: 'linear-gradient(to left, rgba(24,24,31,.9), transparent)' }} />
+        )}
       </div>
       <p style={{ fontSize: '10px', color: 'var(--text-dim)', padding: '8px 12px',
         lineHeight: 1.5 }}>
