@@ -399,7 +399,9 @@ export default function Estadisticas() {
   const faltasPorPartida = !tiempoActivo && finalizadasFiltradas.length > 0
     ? (totalFaltas / finalizadasFiltradas.length).toFixed(1) : null
 
-  const faltasOrdenadas = (faltas ?? [])
+  // El endpoint de frecuencia es histórico (sin fechas) → bajo periodo activo no
+  // tiene sentido mostrar "falta más típica", mostraría datos de todo el histórico.
+  const faltasOrdenadas = tiempoActivo ? [] : (faltas ?? [])
     .filter(f => !FALTAS_INTERNAS.includes(f.nombre) && (f[faltaField] ?? 0) > 0)
     .sort((a, b) => (b[faltaField] ?? 0) - (a[faltaField] ?? 0))
     .slice(0, 6)
