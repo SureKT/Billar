@@ -290,6 +290,11 @@ function toNaiveIso(d) {
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`
 }
 
+function fmtFechaCorta(isoStr) {
+  const s = /Z|[+-]\d{2}:\d{2}$/.test(isoStr) ? isoStr : isoStr + 'Z'
+  return new Date(s).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' })
+}
+
 // ─── página principal ─────────────────────────────────────────────────────────
 
 export default function Estadisticas() {
@@ -298,6 +303,8 @@ export default function Estadisticas() {
   const [searchParams, setSearchParams] = useSearchParams()
   const [filtro, setFiltroState] = useState(searchParams.get('filtro') ?? 'todas')
   const [tiempo, setTiempoState] = useState(searchParams.get('tiempo') ?? 'siempre')
+  const [dropdownOpen, setDropdownOpen] = useState(false)
+  const dropdownRef = useRef(null)
 
   function actualizarParams(f, t) {
     const params = {}
@@ -310,22 +317,23 @@ export default function Estadisticas() {
 
   const modalidadParam = filtro === 'todas' ? null : filtro
   const { data: partidas, loading: loadingPart } = useApi(api.getPartidas)
+  const { data: todosJugadores, reload: reloadJugadores } = useApi(api.getJugadores)
+
+  const sesionReciente = tiempo === 'sesion'
+    ? (agruparPorSesion((partidas ?? []).filter(p => p.estado === 'finalizada'))[0] ?? null)
+    : null
 
   // Rango temporal → desde (ISO naive local, coherente con Partida.fecha)
   const rangoDesde = (() => {
     if (tiempo === '7d')  return new Date(Date.now() - 7  * 86_400_000)
     if (tiempo === '30d') return new Date(Date.now() - 30 * 86_400_000)
-    if (tiempo === 'sesion') {
-      const fin = (partidas ?? []).filter(p => p.estado === 'finalizada')
-      const ses = agruparPorSesion(fin)[0]
-      return ses ? new Date(ses.fechaInicio) : null
-    }
+    if (tiempo === 'sesion') return sesionReciente ? new Date(sesionReciente.fechaInicio) : null
     return null
   })()
   const desdeIso = rangoDesde ? toNaiveIso(rangoDesde) : null
   const tiempoActivo = tiempo !== 'siempre'
 
-  const { data: stats } = useApi(
+  const { data: stats, reload: reloadStats } = useApi(
     () => api.getAllStats(false, modalidadParam, desdeIso),
     [filtro, tiempo, desdeIso]
   )
@@ -337,6 +345,17 @@ export default function Estadisticas() {
     const ids = stats.map(j => j.id)
     api.getFaltas(ids).then(setFaltas).catch(() => {})
   }, [activeIdsKey])
+
+  useEffect(() => {
+    if (!dropdownOpen) return
+    function onClickOutside(e) {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+        setDropdownOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', onClickOutside)
+    return () => document.removeEventListener('mousedown', onClickOutside)
+  }, [dropdownOpen])
 
   if (loadingPart && !partidas) return <SkeletonList n={5} />
 
@@ -476,9 +495,68 @@ export default function Estadisticas() {
       {filtro === 'todas' && kpi('bola 9', bola9.length)}
       {duracionMedia != null && kpi('media', duracionMedia.str, '#c4b5fd')}
       {faltasPorPartida != null && kpi('faltas/partida', faltasPorPartida, '#fb923c')}
-      <span style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--text-dim)' }}>
-        {(stats ?? []).length} jugadores{tiempoActivo ? ` · ${periodoLabel}` : ''}
-      </span>
+      <div ref={dropdownRef} style={{ position: 'relative', marginLeft: 'auto' }}>
+        <button
+          onClick={() => setDropdownOpen(o => !o)}
+          style={{
+            fontSize: 11, color: 'var(--text-dim)', background: 'none', border: 'none',
+            cursor: 'pointer', padding: '2px 4px', borderRadius: 4, font: 'inherit',
+          }}
+        >
+          {(stats ?? []).length} jugadores{tiempoActivo ? ` · ${periodoLabel}` : ''} ▾
+        </button>
+        {dropdownOpen && (
+          <div style={{
+            position: 'absolute', right: 0, top: '100%', marginTop: 4, zIndex: 100,
+            background: 'var(--surface2)', border: '1px solid var(--border)',
+            borderRadius: 10, padding: '6px 0', minWidth: 180,
+            boxShadow: '0 8px 24px rgba(0,0,0,.4)',
+          }}>
+            <p style={{
+              fontSize: 10, textTransform: 'uppercase', letterSpacing: '.06em',
+              color: 'var(--text-dim)', padding: '4px 12px 6px', fontWeight: 700, margin: 0,
+            }}>Jugadores activos</p>
+            {(todosJugadores ?? [])
+              .sort((a, b) => Number(b.activo) - Number(a.activo) || a.nombre.localeCompare(b.nombre))
+              .map(j => (
+                <button
+                  key={j.id}
+                  onClick={async () => {
+                    await api.toggleActivoJugador(j.id)
+                    reloadJugadores()
+                    reloadStats()
+                  }}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 8,
+                    width: '100%', padding: '7px 12px',
+                    background: 'none', border: 'none', cursor: 'pointer',
+                    font: 'inherit', color: 'inherit', textAlign: 'left',
+                  }}
+                >
+                  <span style={{
+                    width: 8, height: 8, borderRadius: '50%', flexShrink: 0,
+                    background: j.color ?? 'transparent',
+                    border: j.color ? 'none' : '1px solid var(--border)',
+                  }} />
+                  <span style={{ flex: 1, fontSize: 13 }}>{j.nombre}</span>
+                  <span style={{
+                    width: 28, height: 16, borderRadius: 8, flexShrink: 0,
+                    background: j.activo ? 'var(--accent)' : 'var(--border)',
+                    display: 'flex', alignItems: 'center', padding: '0 2px',
+                    transition: 'background .15s',
+                  }}>
+                    <span style={{
+                      width: 12, height: 12, borderRadius: '50%', background: '#fff',
+                      transform: j.activo ? 'translateX(12px)' : 'translateX(0)',
+                      transition: 'transform .15s', display: 'block',
+                    }} />
+                  </span>
+                </button>
+              ))
+            }
+          </div>
+        )}
+      </div>
     </div>
   )
 
@@ -585,7 +663,23 @@ export default function Estadisticas() {
     </div>
   ) : null
 
-  const vacio = (
+  const vacio = tiempo === 'sesion' ? (
+    <div style={{ textAlign: 'center', padding: '60px 20px' }}>
+      <div style={{ fontSize: '48px', marginBottom: 12 }}>📊</div>
+      <p style={{ color: 'var(--text-dim)', marginBottom: 16 }}>
+        Los jugadores activos no participaron en la última sesión
+        {sesionReciente ? ` (${fmtFechaCorta(sesionReciente.fechaRef)})` : ''}
+      </p>
+      <button
+        onClick={() => setTiempo('siempre')}
+        style={{
+          padding: '8px 18px', borderRadius: 8, cursor: 'pointer',
+          background: 'var(--accent)', border: 'none',
+          color: '#000', fontWeight: 700, fontSize: 13, font: 'inherit',
+        }}
+      >Ver todas las estadísticas</button>
+    </div>
+  ) : (
     <div style={{ textAlign: 'center', padding: '60px 20px' }}>
       <div style={{ fontSize: '48px', marginBottom: 12 }}>📊</div>
       <p style={{ color: 'var(--text-dim)' }}>
