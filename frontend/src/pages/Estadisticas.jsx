@@ -343,8 +343,8 @@ export default function Estadisticas() {
   useEffect(() => {
     if (!stats) return
     const ids = stats.map(j => j.id)
-    api.getFaltas(ids).then(setFaltas).catch(() => {})
-  }, [activeIdsKey])
+    api.getFaltas(ids, desdeIso).then(setFaltas).catch(() => {})
+  }, [activeIdsKey, desdeIso])
 
   useEffect(() => {
     if (!dropdownOpen) return
@@ -395,13 +395,11 @@ export default function Estadisticas() {
     return { str: `${min}' ${String(seg).padStart(2, '0')}"` }
   })()
 
-  // Faltas globales (el endpoint de frecuencia no conoce fechas → histórico completo)
-  const faltasPorPartida = !tiempoActivo && finalizadasFiltradas.length > 0
+  // Faltas: el endpoint ya respeta el periodo (param desde) → coherente con el filtro
+  const faltasPorPartida = finalizadasFiltradas.length > 0
     ? (totalFaltas / finalizadasFiltradas.length).toFixed(1) : null
 
-  // El endpoint de frecuencia es histórico (sin fechas) → bajo periodo activo no
-  // tiene sentido mostrar "falta más típica", mostraría datos de todo el histórico.
-  const faltasOrdenadas = tiempoActivo ? [] : (faltas ?? [])
+  const faltasOrdenadas = (faltas ?? [])
     .filter(f => !FALTAS_INTERNAS.includes(f.nombre) && (f[faltaField] ?? 0) > 0)
     .sort((a, b) => (b[faltaField] ?? 0) - (a[faltaField] ?? 0))
     .slice(0, 6)

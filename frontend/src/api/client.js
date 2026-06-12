@@ -58,9 +58,12 @@ export const api = {
 
   // Catálogos
   getBolas: () => request('GET', '/bolas'),
-  getFaltas: (jugadorIds = null) => {
-    const qs = jugadorIds?.length ? `?jugadores=${jugadorIds.join(',')}` : ''
-    return request('GET', `/faltas${qs}`)
+  getFaltas: (jugadorIds = null, desde = null) => {
+    const params = new URLSearchParams()
+    if (jugadorIds?.length) params.set('jugadores', jugadorIds.join(','))
+    if (desde) params.set('desde', desde)
+    const qs = params.toString()
+    return request('GET', `/faltas${qs ? `?${qs}` : ''}`)
   },
 
   // Nombres de equipo
