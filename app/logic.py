@@ -1,7 +1,7 @@
 """
 Lógica de negocio: evaluación de turno, asignación de grupos, fin de partida.
 """
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlmodel import Session, select
 from app.models import Partida, Turno, Falta, PartidaJugador
 
@@ -10,7 +10,7 @@ def _finalizar(partida: Partida, ganador: int) -> None:
     """Marca la partida como finalizada y registra la hora de fin (hora local)."""
     partida.estado = "finalizada"
     partida.ganador_equipo = ganador
-    partida.fecha_fin = datetime.now()
+    partida.fecha_fin = datetime.now(timezone.utc)
 
 
 def _jugadores_equipo(session: Session, partida_id: int, equipo: int) -> list[int]:

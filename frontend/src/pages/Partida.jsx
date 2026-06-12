@@ -45,7 +45,8 @@ export default function Partida() {
   useEffect(() => {
     if (!partida || partida.estado !== 'en_curso') { setDuracionActiva(''); return }
     function tick() {
-      const ms = Date.now() - new Date(partida.fecha).getTime()
+      const fechaStr = /Z|[+-]\d{2}:\d{2}$/.test(partida.fecha) ? partida.fecha : partida.fecha + 'Z'
+      const ms = Date.now() - new Date(fechaStr).getTime()
       const min = Math.floor(ms / 60_000)
       const seg = Math.floor((ms % 60_000) / 1_000)
       setDuracionActiva(`${min}' ${String(seg).padStart(2, '0')}"`)

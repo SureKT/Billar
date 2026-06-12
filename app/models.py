@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 from sqlmodel import Field, SQLModel, Relationship
 from sqlalchemy import UniqueConstraint
@@ -30,7 +30,7 @@ class PartidaJugador(SQLModel, table=True):
 class Partida(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     modalidad: str = Field(default="bola8")  # "bola8" | "bola9"
-    fecha: datetime = Field(default_factory=datetime.now)
+    fecha: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     fecha_fin: Optional[datetime] = Field(default=None)   # se rellena al finalizar
     estado: str = Field(default="en_curso")  # "en_curso" | "finalizada"
     ganador_equipo: Optional[int] = Field(default=None)  # 1 o 2
@@ -114,7 +114,7 @@ class Torneo(SQLModel, table=True):
     nombre: str
     modalidad: str = Field(default="bola8")  # "bola8" | "bola9"
     estado: str = Field(default="en_curso")  # "en_curso" | "finalizado"
-    fecha: datetime = Field(default_factory=datetime.now)
+    fecha: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     fecha_fin: Optional[datetime] = Field(default=None)
 
 

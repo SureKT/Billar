@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from itertools import combinations
 from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session, select
@@ -66,6 +66,8 @@ def _build_clasificacion(session: Session, jugadores: list, enfrentamientos: lis
         if not partida or partida.estado != "finalizada" or not partida.ganador_equipo:
             continue
 
+        if enf.jugador1_id not in stats or enf.jugador2_id not in stats:
+            continue
         stats[enf.jugador1_id]["pj"] += 1
         stats[enf.jugador2_id]["pj"] += 1
 
@@ -263,7 +265,7 @@ def finalizar_torneo(torneo_id: int, session: Session = Depends(get_session)):
     if not torneo:
         raise HTTPException(status_code=404, detail="Torneo no encontrado")
     torneo.estado = "finalizado"
-    torneo.fecha_fin = datetime.now()
+    torneo.fecha_fin = datetime.now(timezone.utc)
     session.add(torneo)
     session.commit()
     session.refresh(torneo)
