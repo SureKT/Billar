@@ -239,7 +239,11 @@ def listar_partidas(session: Session = Depends(get_session)):
     ids_ordenados = session.exec(select(Partida.id).order_by(Partida.id)).all()
     numero_map = {pid: i + 1 for i, pid in enumerate(ids_ordenados)}
     torneo_map = _build_torneo_map(session)
-    return [_build_resumen(session, p, numero_map[p.id], torneo_map.get(p.id)) for p in partidas]
+    return [
+        _build_resumen(session, p, numero_map[p.id], torneo_map.get(p.id))
+        for p in partidas
+        if p.id in numero_map
+    ]
 
 
 @router.post("", response_model=PartidaResumen, status_code=201)
