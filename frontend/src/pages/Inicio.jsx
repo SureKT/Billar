@@ -7,6 +7,7 @@ import { SkeletonList } from '../components/Skeleton'
 import AvatarJugador from '../components/AvatarJugador'
 import { agruparPorSesion, marcadorSesion, duracionSesion } from '../utils/sesiones'
 import { useMediaQuery } from '../hooks/useMediaQuery'
+import { parseFecha } from '../utils/fecha'
 import Chip from '../components/Chip'
 
 function nombreJugador(id, jugadores) {
@@ -15,14 +16,14 @@ function nombreJugador(id, jugadores) {
 
 function duracionMin(fecha, fechaFin) {
   if (!fechaFin) return null
-  const ms = new Date(fechaFin) - new Date(fecha)
+  const ms = parseFecha(fechaFin) - parseFecha(fecha)
   const min = Math.floor(ms / 60_000)
   const seg = Math.floor((ms % 60_000) / 1_000)
   return `${min}' ${String(seg).padStart(2, '0')}"`
 }
 
 function etiquetaDia(isoStr) {
-  const d   = new Date(isoStr)
+  const d   = parseFecha(isoStr)
   const hoy  = new Date()
   const ayer = new Date(); ayer.setDate(ayer.getDate() - 1)
   const mismaFecha = (a, b) => a.toLocaleDateString('es-ES') === b.toLocaleDateString('es-ES')
@@ -168,7 +169,7 @@ export default function Inicio() {
   // hace días desfasa (jueves mostrando el del sábado).
   const sesionRecienteRaw = agruparPorSesion(todasLasPartidas.filter(p => p.estado === 'finalizada'))[0]
   const sesionEsReciente = sesionRecienteRaw && (() => {
-    const d = new Date(sesionRecienteRaw.fechaRef)
+    const d = parseFecha(sesionRecienteRaw.fechaRef)
     const hoy = new Date()
     const ayer = new Date(); ayer.setDate(ayer.getDate() - 1)
     const mismaFecha = (a, b) => a.toLocaleDateString('es-ES') === b.toLocaleDateString('es-ES')
@@ -258,7 +259,7 @@ export default function Inicio() {
               <div key={s.clave}>
                 <SesionHeader
                   etiqueta={etiquetaDia(s.fechaRef)}
-                  hora={new Date(s.fechaInicio).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
+                  hora={parseFecha(s.fechaInicio).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
                   count={s.partidas.length}
                   duracion={duracionSesion(s.partidas)}
                   colapsada={colapsada}
@@ -378,7 +379,7 @@ function PartidaCard({ p, jugadores, onClick, continuar = false, horizontal = fa
           {finalizada && p.fecha_fin && (
             <span style={{ fontSize: '11px', color: 'var(--text-dim)', whiteSpace: 'nowrap', flexShrink: 0 }}>
               {duracionMin(p.fecha, p.fecha_fin) && `⏱ ${duracionMin(p.fecha, p.fecha_fin)} · `}
-              {new Date(p.fecha_fin).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
+              {parseFecha(p.fecha_fin).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
             </span>
           )}
           {!finalizada && p.siguiente_jugador_id && jugadores && (
@@ -458,7 +459,7 @@ function PartidaCard({ p, jugadores, onClick, continuar = false, horizontal = fa
       {finalizada && p.fecha_fin && (
         <p style={{ fontSize: '11px', color: 'var(--text-dim)', marginTop: 4 }}>
           {duracionMin(p.fecha, p.fecha_fin) && `⏱ ${duracionMin(p.fecha, p.fecha_fin)} · `}
-          Fin: {new Date(p.fecha_fin).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
+          Fin: {parseFecha(p.fecha_fin).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
         </p>
       )}
     </button>

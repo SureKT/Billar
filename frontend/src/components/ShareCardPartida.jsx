@@ -1,3 +1,5 @@
+import { parseFecha } from '../utils/fecha'
+
 // Explicit colors — no CSS variables (html2canvas compatibility)
 const BG = '#0f172a'
 const SURFACE = '#1e293b'
@@ -16,14 +18,14 @@ function nombre(jid, jugadores) {
 }
 
 function duracion(fecha, fechaFin) {
-  const ms = new Date(fechaFin) - new Date(fecha)
+  const ms = parseFecha(fechaFin) - parseFecha(fecha)
   const min = Math.floor(ms / 60_000)
   const seg = Math.floor((ms % 60_000) / 1_000)
   return `${min}' ${String(seg).padStart(2, '0')}"`
 }
 
 function formatDate(fecha) {
-  return new Date(fecha).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })
+  return parseFecha(fecha).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })
 }
 
 export default function ShareCardPartida({ partida, turnos, jugadores }) {

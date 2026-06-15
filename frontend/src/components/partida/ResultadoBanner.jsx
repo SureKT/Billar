@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import SharePreview from '../SharePreview'
 import ShareCardPartida from '../ShareCardPartida'
+import { parseFecha } from '../../utils/fecha'
 
 function ShareIcon() {
   return (
@@ -31,7 +32,7 @@ function nombre(id, jugadores) {
 }
 
 function duracion(fecha, fechaFin) {
-  const ms = new Date(fechaFin) - new Date(fecha)
+  const ms = parseFecha(fechaFin) - parseFecha(fecha)
   const min = Math.floor(ms / 60_000)
   const seg = Math.floor((ms % 60_000) / 1_000)
   return `${min}' ${String(seg).padStart(2, '0')}"`

@@ -1,6 +1,8 @@
 // Primitivas de estadísticas compartidas entre Jugadores y Estadísticas.
 // Fuente única → el mismo dato se muestra igual en todos los contextos.
 
+import { parseFecha } from '../../utils/fecha'
+
 // Paleta de respaldo cuando el jugador no tiene color asignado
 export const COLORES_FALLBACK = ['#3b82f6', '#06b6d4', '#8b5cf6', '#10b981', '#f59e0b', '#ef4444', '#ec4899', '#84cc16']
 
@@ -17,7 +19,7 @@ export function winrate(j) {
 }
 
 export function fechaCorta(isoStr) {
-  return new Date(isoStr).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })
+  return parseFecha(isoStr).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })
 }
 
 // Tile centrado: número grande + sub opcional + etiqueta.

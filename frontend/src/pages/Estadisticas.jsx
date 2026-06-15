@@ -8,6 +8,7 @@ import { SkeletonList } from '../components/Skeleton'
 import Chip from '../components/Chip'
 import { pct, winrate, colorJugador } from '../components/stats/StatPrimitives'
 import { agruparPorSesion } from '../utils/sesiones'
+import { parseFecha } from '../utils/fecha'
 import LineChart from '../components/stats/LineChart'
 import SesionesChart from '../components/stats/SesionesChart'
 import Podio from '../components/stats/Podio'
@@ -291,8 +292,7 @@ function toNaiveIso(d) {
 }
 
 function fmtFechaCorta(isoStr) {
-  const s = /Z|[+-]\d{2}:\d{2}$/.test(isoStr) ? isoStr : isoStr + 'Z'
-  return new Date(s).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' })
+  return parseFecha(isoStr).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
 // ─── página principal ─────────────────────────────────────────────────────────
@@ -454,7 +454,7 @@ export default function Estadisticas() {
           const r = porJugador.get(id)
           r.jugadas += 1
           r.diff += p.ganador_equipo === eq ? 1 : -1
-          r.puntos.push({ t: new Date(p.fecha).getTime(), y: r.diff })
+          r.puntos.push({ t: parseFecha(p.fecha).getTime(), y: r.diff })
         }
       }
     }

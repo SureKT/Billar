@@ -5,6 +5,7 @@ import AvatarJugador from '../components/AvatarJugador'
 import { SkeletonList } from '../components/Skeleton'
 import SharePreview from '../components/SharePreview'
 import ShareCardTorneo from '../components/ShareCardTorneo'
+import { parseFecha } from '../utils/fecha'
 
 const ENF_ORDEN = { null: 0, undefined: 0, en_curso: 1, finalizada: 2 }
 
@@ -297,7 +298,7 @@ export default function TorneoDetalle() {
           .sort((a, b) => (b.victorias / b.pj) - (a.victorias / a.pj))[0]
         const perfecto = torneo.clasificacion.find(j => j.derrotas === 0 && j.victorias > 0)
         const durMs = torneo.fecha_fin && torneo.fecha
-          ? new Date(torneo.fecha_fin) - new Date(torneo.fecha) : null
+          ? parseFecha(torneo.fecha_fin) - parseFecha(torneo.fecha) : null
         const durStr = durMs ? (() => {
           const h = Math.floor(durMs / 3_600_000)
           const m = Math.floor((durMs % 3_600_000) / 60_000)

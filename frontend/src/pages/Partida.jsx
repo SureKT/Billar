@@ -8,6 +8,7 @@ import ResultadoBanner from '../components/partida/ResultadoBanner'
 import FormularioTurno from '../components/partida/FormularioTurno'
 import HistorialTurnos from '../components/partida/HistorialTurnos'
 import { toastLogrosNuevos } from '../utils/toast'
+import { parseFecha, localInputAUtc } from '../utils/fecha'
 
 export default function Partida() {
   const { id } = useParams()
@@ -45,8 +46,7 @@ export default function Partida() {
   useEffect(() => {
     if (!partida || partida.estado !== 'en_curso') { setDuracionActiva(''); return }
     function tick() {
-      const fechaStr = /Z|[+-]\d{2}:\d{2}$/.test(partida.fecha) ? partida.fecha : partida.fecha + 'Z'
-      const ms = Date.now() - new Date(fechaStr).getTime()
+      const ms = Date.now() - parseFecha(partida.fecha).getTime()
       const min = Math.floor(ms / 60_000)
       const seg = Math.floor((ms % 60_000) / 1_000)
       setDuracionActiva(`${min}' ${String(seg).padStart(2, '0')}"`)
@@ -268,7 +268,7 @@ export default function Partida() {
 
   function toDatetimeLocal(isoStr) {
     if (!isoStr) return ''
-    const d = new Date(isoStr)
+    const d = parseFecha(isoStr)   // UTC → instante; abajo se leen componentes locales
     const p = n => String(n).padStart(2, '0')
     return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`
   }
@@ -283,8 +283,10 @@ export default function Partida() {
     setGuardandoTiempos(true)
     try {
       const datos = {}
-      if (fechaEdit)    datos.fecha     = fechaEdit       // ya es hora local, no convertir a UTC
-      if (fechaFinEdit) datos.fecha_fin = fechaFinEdit
+      // El input da hora local → convertir a UTC para que el backend la guarde
+      // en la misma convención que el resto (coherente con parseFecha al leer).
+      if (fechaEdit)    datos.fecha     = localInputAUtc(fechaEdit)
+      if (fechaFinEdit) datos.fecha_fin = localInputAUtc(fechaFinEdit)
       await api.actualizarTiempos(id, datos)
       setEditandoTiempos(false)
       await reload()

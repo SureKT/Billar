@@ -1,3 +1,5 @@
+import { parseFecha } from '../utils/fecha'
+
 // Explicit colors — no CSS variables (html2canvas compatibility)
 const BG = '#0f172a'
 const SURFACE = '#1e293b'
@@ -8,7 +10,7 @@ const GOLD = '#fcd34d'
 
 function formatDate(fecha) {
   if (!fecha) return ''
-  return new Date(fecha).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })
+  return parseFecha(fecha).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })
 }
 
 const MEDALS = ['🥇', '🥈', '🥉']

@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { api } from '../api/client'
 import { QRCodeSVG } from 'qrcode.react'
 import { BolaPool } from '../components/Bola'
+import { parseFecha } from '../utils/fecha'
 
 // ── Data ──────────────────────────────────────────────────────────────────────
 
@@ -49,7 +50,7 @@ function useTimer(fecha) {
   const [elapsed, setElapsed] = useState(0)
   useEffect(() => {
     if (!fecha) return
-    const tick = () => setElapsed(Math.floor((Date.now() - new Date(fecha)) / 1000))
+    const tick = () => setElapsed(Math.floor((Date.now() - parseFecha(fecha)) / 1000))
     tick()
     const t = setInterval(tick, 1000)
     return () => clearInterval(t)
@@ -405,7 +406,7 @@ function VictoryScreen({ partida, turnos, jugadores, countdown }) {
   const gs = calcStats(ganIds)
   const ps = calcStats(perIds)
 
-  const durMs = partida.fecha_fin ? new Date(partida.fecha_fin) - new Date(partida.fecha) : 0
+  const durMs = partida.fecha_fin ? parseFecha(partida.fecha_fin) - parseFecha(partida.fecha) : 0
   const durMin = Math.floor(durMs / 60000)
   const durSeg = Math.floor((durMs % 60000) / 1000)
 
