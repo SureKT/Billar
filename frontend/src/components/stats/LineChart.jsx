@@ -1,10 +1,26 @@
 // Gráfica de líneas SVG multi-serie. Sin dependencias.
 // series: [{ nombre, color, puntos: [{ t: timestamp_ms, y: number }] }]
-// Pensada para evolución de win rate (y en 0-100) pero el dominio Y es configurable.
+// Dominio Y dinámico: se ajusta a los datos (soporta valores negativos) con
+// línea base en 0 destacada. Apto para métricas con signo (diferencial acumulado).
 
 const PAD = { top: 10, right: 14, bottom: 22, left: 38 }
 
-export default function LineChart({ series, height = 200, maxY = 100, formatY = v => `${v}%`, viewW = 600 }) {
+// Genera ~4-5 ticks enteros "redondos" que cubran [lo, hi], incluyendo el 0.
+// La métrica es de valores enteros → el paso nunca baja de 1.
+function ticksEnteros(lo, hi) {
+  const span = Math.max(hi - lo, 1)
+  const rawStep = span / 4
+  const mag = Math.pow(10, Math.floor(Math.log10(rawStep)))
+  const norm = rawStep / mag
+  const step = Math.max(1, Math.round((norm >= 5 ? 5 : norm >= 2 ? 2 : 1) * mag))
+  const start = Math.ceil(lo / step) * step
+  const out = []
+  for (let v = start; v <= hi + 1e-9; v += step) out.push(Math.round(v) || 0)  // || 0 normaliza -0
+  if (!out.includes(0) && lo <= 0 && hi >= 0) out.push(0)
+  return [...new Set(out)].sort((a, b) => a - b)
+}
+
+export default function LineChart({ series, height = 200, formatY = v => `${v}`, viewW = 600 }) {
   const W = viewW
   const H = height
   const innerW = W - PAD.left - PAD.right
@@ -16,10 +32,19 @@ export default function LineChart({ series, height = 200, maxY = 100, formatY = 
   const tMax = Math.max(...todos.map(p => p.t))
   const tSpan = Math.max(tMax - tMin, 1)
 
-  const x = t => PAD.left + ((t - tMin) / tSpan) * innerW
-  const y = v => PAD.top + (1 - v / maxY) * innerH
+  // Dominio Y: cubre datos + el 0, con un 10% de margen arriba y abajo
+  const yVals = todos.map(p => p.y)
+  let loY = Math.min(0, ...yVals)
+  let hiY = Math.max(0, ...yVals)
+  const margen = Math.max((hiY - loY) * 0.1, 1)
+  loY -= margen
+  hiY += margen
+  const ySpan = Math.max(hiY - loY, 1)
 
-  const gridVals = [0, 25, 50, 75, 100].filter(v => v <= maxY)
+  const x = t => PAD.left + ((t - tMin) / tSpan) * innerW
+  const y = v => PAD.top + (1 - (v - loY) / ySpan) * innerH
+
+  const gridVals = ticksEnteros(loY, hiY)
 
   function fechaCorta(ms) {
     return new Date(ms).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })
@@ -28,11 +53,11 @@ export default function LineChart({ series, height = 200, maxY = 100, formatY = 
   return (
     <div>
       <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height: 'auto', display: 'block' }}>
-        {/* Grid horizontal */}
+        {/* Grid horizontal — la línea del 0 (equilibrio) va destacada */}
         {gridVals.map(v => (
           <g key={v}>
             <line x1={PAD.left} x2={W - PAD.right} y1={y(v)} y2={y(v)}
-              stroke="var(--border)" strokeWidth="1" strokeDasharray={v === 50 ? 'none' : '3 4'} opacity={v === 50 ? 0.9 : 0.5} />
+              stroke="var(--border)" strokeWidth="1" strokeDasharray={v === 0 ? 'none' : '3 4'} opacity={v === 0 ? 0.9 : 0.5} />
             <text x={PAD.left - 6} y={y(v) + 3.5} textAnchor="end"
               fontSize="10" fill="var(--text-dim)">{formatY(v)}</text>
           </g>

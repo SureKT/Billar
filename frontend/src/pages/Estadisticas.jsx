@@ -439,6 +439,9 @@ export default function Estadisticas() {
 
   const sesionesHist = agruparPorSesion(finalizadasHist)
 
+  // Diferencial acumulado (victorias − derrotas): +1 al ganar, −1 al perder.
+  // A diferencia del win rate acumulado (que converge y aplana), esto diverge
+  // entre jugadores → la pendiente revela quién está en racha.
   const evolucionSeries = (() => {
     if (!stats) return []
     const porJugador = new Map()
@@ -447,11 +450,11 @@ export default function Estadisticas() {
       if (!p.ganador_equipo) continue
       for (const eq of [1, 2]) {
         for (const id of (eq === 1 ? p.equipo1_jugadores : p.equipo2_jugadores) ?? []) {
-          if (!porJugador.has(id)) porJugador.set(id, { jugadas: 0, ganadas: 0, puntos: [] })
+          if (!porJugador.has(id)) porJugador.set(id, { jugadas: 0, diff: 0, puntos: [] })
           const r = porJugador.get(id)
           r.jugadas += 1
-          if (p.ganador_equipo === eq) r.ganadas += 1
-          r.puntos.push({ t: new Date(p.fecha).getTime(), y: (r.ganadas / r.jugadas) * 100 })
+          r.diff += p.ganador_equipo === eq ? 1 : -1
+          r.puntos.push({ t: new Date(p.fecha).getTime(), y: r.diff })
         }
       }
     }
@@ -461,9 +464,7 @@ export default function Estadisticas() {
       .slice(0, 6)
       .map(([id, r]) => {
         const j = stats.find(s => s.id === id)
-        // Las 2 primeras partidas oscilan 0↔100% — ruido sin valor; empezar en la 3ª
-        const puntos = r.puntos.length > 3 ? r.puntos.slice(2) : r.puntos.slice(-1)
-        return { nombre: j.nombre, color: cj(j), puntos }
+        return { nombre: j.nombre, color: cj(j), puntos: r.puntos }
       })
   })()
 
@@ -641,8 +642,9 @@ export default function Estadisticas() {
   const graficasTemporales = [
     sesionesHist.length > 1     && { titulo: 'Victorias por sesión', nodo: <SesionesChart sesiones={sesionesHist} jugadores={stats ?? []} /> },
     evolucionSeries.length > 0  && {
-      titulo: 'Evolución win rate',
-      nodo: <LineChart series={evolucionSeries} viewW={desktop ? 1000 : 380} />,
+      titulo: 'Forma · victorias − derrotas acumuladas',
+      nodo: <LineChart series={evolucionSeries} viewW={desktop ? 1000 : 380}
+              formatY={v => (v > 0 ? `+${v}` : `${v}`)} />,
     },
   ].filter(Boolean)
 
