@@ -2,6 +2,9 @@
 // series: [{ nombre, color, puntos: [{ t: timestamp_ms, y: number }] }]
 // Dominio Y dinámico: se ajusta a los datos (soporta valores negativos) con
 // línea base en 0 destacada. Apto para métricas con signo (diferencial acumulado).
+// Resaltado: hover (desktop) o tap (móvil) sobre línea/leyenda aísla un jugador.
+
+import { useState } from 'react'
 
 const PAD = { top: 10, right: 14, bottom: 22, left: 38 }
 
@@ -21,6 +24,8 @@ function ticksEnteros(lo, hi) {
 }
 
 export default function LineChart({ series, height = 200, formatY = v => `${v}`, viewW = 600 }) {
+  // Jugador resaltado (null = todos iguales). Toggle con tap; hover en desktop.
+  const [activo, setActivo] = useState(null)
   const W = viewW
   const H = height
   const innerW = W - PAD.left - PAD.right
@@ -63,18 +68,39 @@ export default function LineChart({ series, height = 200, formatY = v => `${v}`,
           </g>
         ))}
 
-        {/* Series */}
-        {series.map(s => {
+        {/* Series — orden: el activo se pinta al final para quedar encima */}
+        {[...series]
+          .sort((a, b) => (a.nombre === activo ? 1 : 0) - (b.nombre === activo ? 1 : 0))
+          .map(s => {
           if (s.puntos.length === 0) return null
           const pts = s.puntos.map(p => `${x(p.t).toFixed(1)},${y(p.y).toFixed(1)}`).join(' ')
           const last = s.puntos[s.puntos.length - 1]
+          const esActivo = s.nombre === activo
+          const atenuado = activo != null && !esActivo
           return (
-            <g key={s.nombre}>
+            <g key={s.nombre}
+              onMouseEnter={() => setActivo(s.nombre)}
+              onMouseLeave={() => setActivo(null)}
+              onClick={() => setActivo(a => (a === s.nombre ? null : s.nombre))}
+              style={{ cursor: 'pointer' }}>
+              {/* Pista invisible ancha → área de hover/tap cómoda sobre la línea fina */}
               {s.puntos.length > 1 && (
-                <polyline points={pts} fill="none" stroke={s.color} strokeWidth="2"
-                  strokeLinejoin="round" strokeLinecap="round" opacity="0.9" />
+                <polyline points={pts} fill="none" stroke="transparent" strokeWidth="14" />
               )}
-              <circle cx={x(last.t)} cy={y(last.y)} r="3.5" fill={s.color} />
+              {s.puntos.length > 1 && (
+                <polyline points={pts} fill="none" stroke={s.color}
+                  strokeWidth={esActivo ? 3 : 2}
+                  strokeLinejoin="round" strokeLinecap="round"
+                  opacity={atenuado ? 0.15 : 0.9} />
+              )}
+              <circle cx={x(last.t)} cy={y(last.y)} r={esActivo ? 4.5 : 3.5}
+                fill={s.color} opacity={atenuado ? 0.2 : 1} />
+              {esActivo && (
+                <text x={x(last.t) - 7} y={y(last.y) - 7} textAnchor="end"
+                  fontSize="11" fontWeight="700" fill={s.color}>
+                  {s.nombre} {formatY(Math.round(last.y))}
+                </text>
+              )}
             </g>
           )
         })}
@@ -84,16 +110,26 @@ export default function LineChart({ series, height = 200, formatY = v => `${v}`,
         <text x={W - PAD.right} y={H - 6} textAnchor="end" fontSize="10" fill="var(--text-dim)">{fechaCorta(tMax)}</text>
       </svg>
 
-      {/* Leyenda */}
+      {/* Leyenda — hover/tap resalta su línea */}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 12px', marginTop: 8 }}>
         {series.map(s => {
           const last = s.puntos[s.puntos.length - 1]
+          const atenuado = activo != null && s.nombre !== activo
           return (
-            <span key={s.nombre} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11, color: 'var(--text-dim)' }}>
+            <button key={s.nombre}
+              onMouseEnter={() => setActivo(s.nombre)}
+              onMouseLeave={() => setActivo(null)}
+              onClick={() => setActivo(a => (a === s.nombre ? null : s.nombre))}
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11,
+                color: 'var(--text-dim)', background: 'none', border: 'none',
+                padding: 0, cursor: 'pointer', font: 'inherit',
+                opacity: atenuado ? 0.4 : 1, transition: 'opacity .12s',
+              }}>
               <span style={{ width: 8, height: 8, borderRadius: '50%', background: s.color, flexShrink: 0 }} />
               {s.nombre}
               {last != null && <strong style={{ color: 'var(--text)' }}>{formatY(Math.round(last.y))}</strong>}
-            </span>
+            </button>
           )
         })}
       </div>
