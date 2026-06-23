@@ -1,4 +1,4 @@
-from collections import Counter
+from collections import Counter, defaultdict
 from datetime import datetime
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException
@@ -45,6 +45,7 @@ class JugadorStats(BaseModel):
     faltas_por_partida: float = 0.0    # faltas / partidas jugadas
     racha_peor: int = 0                # peor racha perdedora histórica (nº de derrotas seguidas)
     histograma_bolas_turno: list[int] = []  # [turnos con 0, 1, 2, 3, 4+ bolas (excl. blanca)]
+    max_bolas_seguidas: int = 0        # máx bolas propias seguidas sin cambio de turno (una visita)
 
 
 class H2HRecord(BaseModel):
@@ -244,6 +245,41 @@ def _calcular_stats(
     partidas_fin_count = len(partidas_fin)
     bolas_por_partida = round(bolas_metidas / partidas_fin_count, 2) if partidas_fin_count else 0.0
 
+    # Máxima racha de bolas propias seguidas sin cambio de turno.
+    # Una "visita" = turnos consecutivos del jugador mientras conserva la mesa
+    # (repite=True encadena al mismo jugador). La racha acumula bolas del propio grupo
+    # (excl. blanca y la bola de victoria) hasta que el turno pasa (repite=False) o gana.
+    equipo_por_partida = {p.partida_id: p.equipo for p in participaciones}
+
+    def _bolas_propias(bolas: list[int], modalidad: str, grupo: Optional[str]) -> int:
+        if modalidad == "bola9":
+            return sum(1 for b in bolas if 1 <= b <= 8)  # la 9 = victoria, no cuenta
+        if grupo == "lisas":
+            return sum(1 for b in bolas if 1 <= b <= 7)
+        if grupo == "rayadas":
+            return sum(1 for b in bolas if 9 <= b <= 15)
+        # bola8 sin grupo asignado aún: cualquier numerada salvo la 8 y la blanca
+        return sum(1 for b in bolas if 1 <= b <= 7 or 9 <= b <= 15)
+
+    turnos_por_partida: dict[int, list[Turno]] = defaultdict(list)
+    for t in turnos:
+        turnos_por_partida[t.partida_id].append(t)
+
+    max_bolas_seguidas = 0
+    for pid, ts in turnos_por_partida.items():
+        p = partida_map.get(pid)
+        if not p:
+            continue
+        equipo = equipo_por_partida.get(pid, 1)
+        grupo = p.equipo1_grupo if equipo == 1 else p.equipo2_grupo
+        racha = 0
+        for t in sorted(ts, key=lambda t: t.numero):
+            racha += _bolas_propias(t.bolas_metidas, p.modalidad, grupo)
+            if not t.repite:  # cambio de turno → cierra la visita
+                max_bolas_seguidas = max(max_bolas_seguidas, racha)
+                racha = 0
+        max_bolas_seguidas = max(max_bolas_seguidas, racha)  # visita sin cerrar (partida en curso)
+
     return JugadorStats(
         id=jugador.id,
         nombre=jugador.nombre,
@@ -274,6 +310,7 @@ def _calcular_stats(
         faltas_por_partida=faltas_por_partida,
         racha_peor=racha_peor,
         histograma_bolas_turno=histograma_bolas_turno,
+        max_bolas_seguidas=max_bolas_seguidas,
     )
 
 

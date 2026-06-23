@@ -419,6 +419,14 @@ function JugadorCard({ j, onReload, todosStats }) {
               </div>
             </div>
           )}
+          {(j.max_bolas_seguidas ?? 0) > 0 && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 6 }}>
+              <span style={{ fontSize: '11px', color: 'var(--text-dim)' }}>Mejor tacada:</span>
+              <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--accent)' }}>
+                🎱 {j.max_bolas_seguidas} bola{j.max_bolas_seguidas > 1 ? 's' : ''} seguidas
+              </span>
+            </div>
+          )}
           {j.duracion_promedio_min != null && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 6 }}>
               <span style={{ fontSize: '11px', color: 'var(--text-dim)' }}>Media partida:</span>

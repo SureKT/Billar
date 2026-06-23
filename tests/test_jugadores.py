@@ -46,6 +46,40 @@ def test_stats_faltas_por_partida(session):
     assert stats.faltas_por_partida == 1.0
 
 
+def test_stats_max_bolas_seguidas_bola8(session):
+    """Visita de J1: break+lisa, asigna lisas, 2 lisas, falla → racha = 1+1+2 = 4."""
+    partida, j1, j2 = crear_partida(session, "bola8")
+    crear_turno_contextual(session, partida, j1, [1], 1)     # break con lisa → repite
+    crear_turno_contextual(session, partida, j1, [3], 2)     # asigna lisas → repite
+    crear_turno_contextual(session, partida, j1, [2, 4], 3)  # 2 lisas propias → repite
+    crear_turno_contextual(session, partida, j1, [], 4)      # falla → cierra la visita
+    stats = _calcular_stats(session, j1)
+    assert stats.max_bolas_seguidas == 4
+
+
+def test_stats_max_bolas_seguidas_bola9(session):
+    """Bola 9 sin grupos: cuentan bolas 1-8 seguidas hasta fallar → 1+2 = 3."""
+    partida, j1, j2 = crear_partida(session, "bola9")
+    crear_turno_contextual(session, partida, j1, [1], 1)     # repite (1-8)
+    crear_turno_contextual(session, partida, j1, [2, 3], 2)  # repite
+    crear_turno_contextual(session, partida, j1, [], 3)      # falla → cierra
+    stats = _calcular_stats(session, j1)
+    assert stats.max_bolas_seguidas == 3
+
+
+def test_stats_max_bolas_seguidas_resetea_entre_visitas(session):
+    """Dos visitas separadas por una fallida: el máximo es la mayor, no la suma."""
+    partida, j1, j2 = crear_partida(session, "bola8")
+    crear_turno_contextual(session, partida, j1, [1], 1)     # break lisa → repite
+    crear_turno_contextual(session, partida, j1, [3], 2)     # asigna lisas → repite
+    crear_turno_contextual(session, partida, j1, [], 3)      # falla → cierra visita (racha 2)
+    crear_turno_contextual(session, partida, j2, [], 4)      # turno rival, falla
+    crear_turno_contextual(session, partida, j1, [5], 5)     # nueva visita: 1 lisa
+    crear_turno_contextual(session, partida, j1, [], 6)      # falla → cierra visita (racha 1)
+    stats = _calcular_stats(session, j1)
+    assert stats.max_bolas_seguidas == 2
+
+
 def test_stats_filtro_desde_excluye_antiguas(session):
     """desde= posterior a la partida vieja → solo cuenta la nueva."""
     from datetime import datetime

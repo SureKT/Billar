@@ -29,6 +29,7 @@ const COLS = [
   { key: 'break',   head: 'Break%', grupo: 'nuevo', get: j => j.break_con_bola_pct,  fmt: v => `${Math.round(v)}%`, mejor: 'max' },
   { key: 'fpp',     head: 'F/P',    grupo: 'nuevo', get: j => j.faltas_por_partida,  fmt: v => v.toFixed(1), mejor: 'min' },
   { key: 'mbt',     head: 'MaxB',  grupo: 'nuevo', get: j => j.max_bolas_turno,     fmt: v => v,            mejor: 'max' },
+  { key: 'racha_b', head: 'Racha🎱', grupo: 'nuevo', get: j => j.max_bolas_seguidas ?? 0, fmt: v => v,        mejor: 'max' },
 ]
 
 function sortVal(j, key) {
@@ -220,7 +221,7 @@ function TablaComparativa({ jugadores }) {
       </div>
       <p style={{ fontSize: '10px', color: 'var(--text-dim)', padding: '8px 12px',
         lineHeight: 1.5 }}>
-        PJ partidas jugadas · B/T bolas/turno · B/P bolas/partida · Break% breaks con bola · F/P faltas/partida · MaxB máx bolas en un turno
+        PJ partidas jugadas · B/T bolas/turno · B/P bolas/partida · Break% breaks con bola · F/P faltas/partida · MaxB máx bolas en un turno · Racha🎱 máx bolas seguidas sin cambio de turno
       </p>
     </div>
   )
