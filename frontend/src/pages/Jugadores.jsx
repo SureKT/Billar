@@ -402,7 +402,7 @@ function JugadorCard({ j, onReload, todosStats }) {
               <span style={{ fontSize: '10px', color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '.04em' }}>
                 Bolas por turno
               </span>
-              <div style={{ display: 'flex', alignItems: 'flex-end', gap: 5, height: 48, marginTop: 5 }}>
+              <div style={{ display: 'flex', alignItems: 'flex-end', gap: 5, height: 66, marginTop: 6 }}>
                 {(() => {
                   const max = Math.max(...j.histograma_bolas_turno, 1)
                   return j.histograma_bolas_turno.map((count, n) => (
