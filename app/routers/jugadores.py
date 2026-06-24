@@ -45,7 +45,7 @@ class JugadorStats(BaseModel):
     faltas_por_partida: float = 0.0    # faltas / partidas jugadas
     racha_peor: int = 0                # peor racha perdedora histórica (nº de derrotas seguidas)
     histograma_bolas_turno: list[int] = []  # [turnos con 0, 1, 2, 3, 4+ bolas (excl. blanca)]
-    max_bolas_seguidas: int = 0        # máx bolas propias seguidas sin cambio de turno (una visita)
+    max_bolas_seguidas: int = 0        # máx bolas propias seguidas en una visita (incl. la de victoria si gana; runout = 8/9)
 
 
 class H2HRecord(BaseModel):
@@ -248,18 +248,24 @@ def _calcular_stats(
     # Máxima racha de bolas propias seguidas sin cambio de turno.
     # Una "visita" = turnos consecutivos del jugador mientras conserva la mesa
     # (repite=True encadena al mismo jugador). La racha acumula bolas del propio grupo
-    # (excl. blanca y la bola de victoria) hasta que el turno pasa (repite=False) o gana.
+    # hasta que el turno pasa (repite=False) o gana. La blanca nunca cuenta.
+    # La bola de victoria (8 en bola8, 9 en bola9) SÍ cuenta, pero solo cuando es legal
+    # (el jugador gana esa partida) — así el máximo posible en una visita es un runout
+    # completo (8 en bola8, 9 en bola9). Metida ilegal de la 8/9 = derrota, no suma.
     equipo_por_partida = {p.partida_id: p.equipo for p in participaciones}
 
-    def _bolas_propias(bolas: list[int], modalidad: str, grupo: Optional[str]) -> int:
+    def _bolas_propias(bolas: list[int], modalidad: str, grupo: Optional[str], gano: bool) -> int:
         if modalidad == "bola9":
-            return sum(1 for b in bolas if 1 <= b <= 8)  # la 9 = victoria, no cuenta
+            n = sum(1 for b in bolas if 1 <= b <= 8)
+            return n + 1 if gano and 9 in bolas else n  # la 9 legal = victoria
         if grupo == "lisas":
-            return sum(1 for b in bolas if 1 <= b <= 7)
-        if grupo == "rayadas":
-            return sum(1 for b in bolas if 9 <= b <= 15)
-        # bola8 sin grupo asignado aún: cualquier numerada salvo la 8 y la blanca
-        return sum(1 for b in bolas if 1 <= b <= 7 or 9 <= b <= 15)
+            n = sum(1 for b in bolas if 1 <= b <= 7)
+        elif grupo == "rayadas":
+            n = sum(1 for b in bolas if 9 <= b <= 15)
+        else:
+            # bola8 sin grupo asignado aún: cualquier numerada salvo la 8 y la blanca
+            n = sum(1 for b in bolas if 1 <= b <= 7 or 9 <= b <= 15)
+        return n + 1 if gano and 8 in bolas else n  # la 8 legal = victoria
 
     turnos_por_partida: dict[int, list[Turno]] = defaultdict(list)
     for t in turnos:
@@ -272,9 +278,10 @@ def _calcular_stats(
             continue
         equipo = equipo_por_partida.get(pid, 1)
         grupo = p.equipo1_grupo if equipo == 1 else p.equipo2_grupo
+        gano = p.ganador_equipo == equipo
         racha = 0
         for t in sorted(ts, key=lambda t: t.numero):
-            racha += _bolas_propias(t.bolas_metidas, p.modalidad, grupo)
+            racha += _bolas_propias(t.bolas_metidas, p.modalidad, grupo, gano)
             if not t.repite:  # cambio de turno → cierra la visita
                 max_bolas_seguidas = max(max_bolas_seguidas, racha)
                 racha = 0

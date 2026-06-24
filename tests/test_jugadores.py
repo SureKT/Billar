@@ -67,6 +67,39 @@ def test_stats_max_bolas_seguidas_bola9(session):
     assert stats.max_bolas_seguidas == 3
 
 
+def test_stats_max_bolas_seguidas_runout_bola8(session):
+    """Runout completo: 7 lisas + la 8 legal en una visita → racha = 8."""
+    partida, j1, j2 = crear_partida(session, "bola8")
+    crear_turno_contextual(session, partida, j1, [1], 1)           # break → repite
+    crear_turno_contextual(session, partida, j1, [2], 2)           # asigna lisas → repite
+    crear_turno_contextual(session, partida, j1, [3, 4, 5], 3)     # repite
+    crear_turno_contextual(session, partida, j1, [6, 7], 4)        # quedan 0 lisas → repite
+    crear_turno_contextual(session, partida, j1, [8], 5)           # 8 legal → gana
+    stats = _calcular_stats(session, j1)
+    assert stats.max_bolas_seguidas == 8
+
+
+def test_stats_max_bolas_seguidas_runout_bola9(session):
+    """Runout completo bola9: 1-8 + la 9 legal en una visita → racha = 9."""
+    partida, j1, j2 = crear_partida(session, "bola9")
+    crear_turno_contextual(session, partida, j1, [1], 1)              # repite
+    crear_turno_contextual(session, partida, j1, [2, 3, 4], 2)       # repite
+    crear_turno_contextual(session, partida, j1, [5, 6, 7, 8], 3)    # repite
+    crear_turno_contextual(session, partida, j1, [9], 4)             # 9 legal → gana
+    stats = _calcular_stats(session, j1)
+    assert stats.max_bolas_seguidas == 9
+
+
+def test_stats_max_bolas_seguidas_ocho_ilegal_no_cuenta(session):
+    """Meter la 8 con lisas pendientes = derrota: la 8 no suma → racha = 2."""
+    partida, j1, j2 = crear_partida(session, "bola8")
+    crear_turno_contextual(session, partida, j1, [1], 1)   # break lisa → repite
+    crear_turno_contextual(session, partida, j1, [3], 2)   # asigna lisas → repite
+    crear_turno_contextual(session, partida, j1, [8], 3)   # 8 con pendientes → pierde
+    stats = _calcular_stats(session, j1)
+    assert stats.max_bolas_seguidas == 2
+
+
 def test_stats_max_bolas_seguidas_resetea_entre_visitas(session):
     """Dos visitas separadas por una fallida: el máximo es la mayor, no la suma."""
     partida, j1, j2 = crear_partida(session, "bola8")
