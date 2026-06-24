@@ -13,6 +13,7 @@ import Logros from './pages/Logros'
 import Nav from './components/Nav'
 import ErrorBoundary from './components/ErrorBoundary'
 import ToastContainer from './components/Toast'
+import PullToRefresh from './components/PullToRefresh'
 
 // SPA: al cambiar de ruta la ventana conserva el scrollY anterior — la nueva
 // página aparecía scrolleada. Resetea al top en cada navegación.
@@ -26,6 +27,7 @@ export default function App() {
   return (
     <>
       <ScrollToTop />
+      <PullToRefresh />
       <Nav />
       <main style={{ flex: 1, minWidth: 0, padding: '16px', paddingBottom: '24px' }}>
         <ErrorBoundary>
