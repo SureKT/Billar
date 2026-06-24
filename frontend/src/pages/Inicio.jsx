@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useApi } from '../hooks/useApi'
 import { api } from '../api/client'
@@ -116,32 +116,12 @@ function MarcadorNoche({ sesion, jugadores, onVerJugador }) {
 }
 
 export default function Inicio() {
-  const { data: partidas, loading, error, reload } = useApi(api.getPartidas)
+  const { data: partidas, loading, error } = useApi(api.getPartidas)
   const { data: jugadores } = useApi(api.getJugadores)
   const { data: torneos } = useApi(api.getTorneos)
   const navigate = useNavigate()
   const desktop = useMediaQuery('(min-width: 1024px)')
   const [filtroEstado, setFiltroEstado]   = useSessionState('inicio_filtro_estado', 'todas')
-  const touchStartY = useRef(0)
-  const [pullY, setPullY]   = useState(0)
-  const [pulling, setPulling] = useState(false)
-
-  function onTouchStart(e) {
-    touchStartY.current = e.touches[0].clientY
-  }
-  function onTouchMove(e) {
-    if (document.documentElement.scrollTop > 5) return
-    const dy = e.touches[0].clientY - touchStartY.current
-    if (dy > 0) {
-      setPullY(Math.min(dy * 0.4, 56))
-      setPulling(dy > 70)
-    }
-  }
-  function onTouchEnd() {
-    if (pulling) reload()
-    setPullY(0)
-    setPulling(false)
-  }
   const [colapsadas, setColapsadas]       = useState(new Set())
 
   function toggleSesion(clave) {
@@ -304,24 +284,9 @@ export default function Inicio() {
     )
   }
 
-  // ── Móvil: stack vertical con pull-to-refresh ──
+  // ── Móvil: stack vertical (refresh vía el pull-to-refresh global de App) ──
   return (
-    <div
-      onTouchStart={onTouchStart}
-      onTouchMove={onTouchMove}
-      onTouchEnd={onTouchEnd}
-      style={{ display: 'flex', flexDirection: 'column', gap: 20 }}
-    >
-      {pullY > 8 && (
-        <div style={{
-          height: pullY, display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 12, color: 'var(--text-dim)', transition: pulling ? 'none' : 'height .2s',
-          overflow: 'hidden',
-        }}>
-          {pulling ? '↑ Suelta para actualizar' : '↓ Arrastra para actualizar'}
-        </div>
-      )}
-
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       {vacio}
       {bloqueTorneos}
       {bloqueMarcador}
