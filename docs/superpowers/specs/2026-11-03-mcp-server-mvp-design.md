@@ -1,6 +1,6 @@
 # Servidor MCP de Billar — MVP
 
-Fecha: 2026-11-03 · Estado: borrador pendiente de aprobación
+Fecha: 2026-11-03 · Estado: aprobada e implementada
 
 ## Por qué
 
@@ -95,17 +95,15 @@ Limitaciones conocidas (van en la respuesta de la tool y en el README): el CV pe
 más a medias bajas; no ve la dificultad del tiro; mide variación entre partidas, no dentro de
 una noche.
 
-Con datos reales hoy (bolas/turno; jugadores activos):
+Con datos reales (salida de la tool sobre copia de la DB del server, 2026-11-03):
 
-| Jugador | Partidas válidas | Media | CV |
+| Jugador | Partidas válidas | Media b/t por partida | CV |
 |---|---|---|---|
-| Gerard | 30 | 0.56 | 0.27 |
-| Pau | 24 | 0.35 | 0.29 |
-| Stasik | 26 | 0.48 | 0.34 |
-| Patri | 23 | 0.34 | 0.42 |
-| Rita | 7 | 0.38 | insuficiente |
-
-(Cálculo exploratorio previo; los números exactos los dará la tool.)
+| Gerard | 29 | 0.582 | 0.272 |
+| Pau | 24 | 0.348 | 0.287 |
+| Stasik | 26 | 0.508 | 0.339 |
+| Patri | 22 | 0.343 | 0.417 |
+| Rita | < 8 | — | insuficiente |
 
 ### Conexión con Claude Code
 
@@ -144,6 +142,11 @@ Sección "Servidor MCP" en `README.md`: qué hace, cómo conectarlo, y las 3 dec
 - `_calcular_stats` reutilizada tal cual (deuda documentada).
 - Umbrales: ≥ 3 turnos por partida, ≥ 8 partidas, `min_partidas = 5` en el ranking.
 - `stats_jugador` devuelve un subconjunto curado, no las 30 claves de `JugadorStats`.
+- (Durante la implementación) `sqlmodel==0.0.38` fijado en `requirements.txt`: es la versión
+  que corre en el server, y desde 0.0.4x SQLModel rechaza datetimes naive y rompe 21 tests.
+  Sin el pin, el rebuild de la imagen para instalar `mcp` habría roto la app.
+- (Durante la implementación) SDK `mcp` 2.x: `FastMCP` se llama ahora `MCPServer`; fijado
+  `mcp>=2.3,<3`.
 
 ## Lo que queda al implementador
 

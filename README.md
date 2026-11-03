@@ -122,6 +122,87 @@ Soporta **Bola 8** y **Bola 9** con lógica completa y automática.
 
 ---
 
+## Servidor MCP
+
+Servidor [Model Context Protocol](https://modelcontextprotocol.io) de solo lectura para que un
+asistente (Claude Code, Claude Desktop) conteste preguntas sobre las partidas con cifras
+calculadas por la app, no inventadas: *"¿quién es el jugador más consistente?"*, *"¿quién gana
+más en bola 9?"*, *"¿cómo va Pau?"*.
+
+Código en [`app/mcp_server.py`](app/mcp_server.py) (SDK oficial `mcp` 2.x, `MCPServer`).
+Spec: [`docs/superpowers/specs/2026-11-03-mcp-server-mvp-design.md`](docs/superpowers/specs/2026-11-03-mcp-server-mvp-design.md).
+
+### Tools
+
+| Tool | Responde a | Parámetros |
+|---|---|---|
+| `ranking_jugadores` | ¿Quién gana más / mete más bolas? | `criterio` (`win_rate` · `bolas_por_turno` · `partidas_ganadas`), `modalidad`, `min_partidas` |
+| `stats_jugador` | ¿Cómo juega X? | `nombre` (sin distinguir mayúsculas), `modalidad` |
+| `consistencia_jugadores` | ¿Quién es más regular y quién más irregular? | `modalidad` |
+
+Todas devuelven salida estructurada con `outputSchema` y están anotadas como
+`readOnlyHint` / no destructivas. Si un nombre no existe, el error lista los jugadores
+válidos para que el modelo se corrija solo.
+
+**Consistencia** = coeficiente de variación (desviación típica / media) de las bolas por turno
+partida a partida, en partidas finalizadas con ≥ 3 turnos del jugador y con un mínimo de 8
+partidas. Menor = más regular. Por partida y no por noche porque hay varias veces más muestras;
+CV y no desviación absoluta para no castigar a quien mete más. Vive en
+[`app/consistencia.py`](app/consistencia.py) como función pura y testeada: la definición la
+fija el servidor y el modelo solo la interpreta. Si cada conversación la recalculase a su
+manera, saldrían respuestas distintas a la misma pregunta.
+
+### Conectarlo a Claude Code
+
+Producción (DB canónica en el homelab), ya configurado en [`.mcp.json`](.mcp.json):
+
+```bash
+ssh hub docker exec -i billar-billar-1 python -m app.mcp_server
+```
+
+Desarrollo, contra una DB local:
+
+```bash
+claude mcp add billar-local -e DATABASE_URL=sqlite:///./billar.db -- python -m app.mcp_server
+```
+
+Tests (cliente MCP en memoria del SDK, protocolo real sobre streams en memoria):
+
+```bash
+pytest tests/test_mcp_server.py tests/test_consistencia.py
+```
+
+### Decisiones
+
+**1. Tools y no resources.** En MCP un *resource* es contenido direccionable por URI que
+normalmente elige la aplicación cliente para meterlo en contexto; una *tool* la decide invocar
+el modelo con argumentos. Las preguntas aquí son parametrizadas y calculadas (modalidad,
+criterio, mínimo de partidas) y el modelo debe poder pedirlas a mitad de razonamiento, así que
+son tools. Además son tools *de intención* (`consistencia_jugadores`), no de tabla
+(`listar_turnos`, `ejecutar_sql`): si el modelo recibe turnos en crudo, gasta contexto y
+calcula la métrica de forma distinta cada vez.
+
+**2. Solo lectura, garantizada en dos capas.** Un asistente con tools puede recibir
+instrucciones inyectadas (un nombre de jugador, un texto pegado) o simplemente equivocarse. Con
+cero tools de escritura, lo peor que puede pasar es una respuesta mala, no una partida borrada.
+No basta con no exponer escrituras: el servidor abre SQLite con `mode=ro`, así que aunque un
+bug intentase escribir, la conexión lo rechaza, y si el fichero no existe falla en vez de crear
+una DB vacía (los dos casos tienen test). La escritura con confirmación humana queda como
+siguiente paso.
+
+**3. stdio y no HTTP.** Hay un solo usuario y la DB vive en una máquina de su red privada.
+Con stdio, el cliente lanza el proceso por SSH sobre Tailscale: SSH ya autentica y cifra, y no
+hay puerto nuevo que exponer ni OAuth que montar (el mecanismo de autorización que la spec MCP
+define para HTTP; en stdio no aplica, las credenciales vienen del entorno). Si
+algún día hubiese varios usuarios o clientes web, entonces sí tocaría Streamable HTTP + OAuth.
+
+**Deuda consciente:** el ranking y las stats reutilizan `_calcular_stats` del router de
+jugadores para dar las mismas cifras que la app. Que un adaptador importe una función privada
+de otro adaptador es justo lo que resuelve la siguiente fase: extraer una capa de servicios
+(ports & adapters) de la que cuelguen la API REST y el MCP por igual.
+
+---
+
 ## Requisitos
 
 - Python 3.11+
@@ -175,6 +256,8 @@ billar/
 │   ├── models.py        # Jugador, Partida, Turno, Bola, Falta
 │   ├── database.py      # Init DB, seed bolas y faltas
 │   ├── logic.py         # evaluar_turno — lógica central
+│   ├── consistencia.py  # métrica de consistencia (función pura)
+│   ├── mcp_server.py    # servidor MCP de solo lectura (stdio)
 │   └── routers/
 │       ├── jugadores.py # Stats, H2H, color, activo
 │       ├── partidas.py  # CRUD, sugerencias, SSE eventos

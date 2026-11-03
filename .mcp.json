@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "billar": {
+      "command": "ssh",
+      "args": ["hub", "docker", "exec", "-i", "billar-billar-1", "python", "-m", "app.mcp_server"]
+    }
+  }
+}
